@@ -224,7 +224,7 @@ theorem norm_pos {u : E} (h : u ≠ 0) : ‖u‖ₑ > 0 := by
 theorem norm_symm (u : E) : ‖u‖ₑ = ‖-u‖ₑ := by
   unfold norm; rw [prod_neg, neg_prod, neg_neg]
 
-@[simp] noncomputable instance : HDiv E ℝ E where
+@[simp] noncomputable local instance : HDiv E ℝ E where
   hDiv := u ↦ x ↦ x⁻¹ • u
 
 -- pour éviter la confusion avec la division scalaire:
@@ -250,7 +250,7 @@ theorem cauchy_schwarz (u v : E) : ⟨u, v⟩ ≤ ‖u‖ₑ * ‖v‖ₑ := by
         exact mul_pos (norm_pos h) (norm_pos h')
       have ineq := am_gm_ineq (u / ‖u‖ₑ) (v / ‖v‖ₑ)
       rw [div_norm_sq h, div_norm_sq h', div_prod_div] at ineq
-      rw [←div_le_one pos]; linarith [ineq]
+      rw [←div_le_one pos]; linarith
 
 theorem norm_ineq (u v : E) : ‖u + v‖ₑ ≤ ‖u‖ₑ + ‖v‖ₑ := by
   unfold norm; apply le_of_sq_le_sq

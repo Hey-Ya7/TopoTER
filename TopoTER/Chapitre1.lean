@@ -26,10 +26,24 @@ structure estDistance (X : Set α) (d : α → α → ℝ) where
   symm : symm X d
   ineq : ineq X d
 
-structure EspaceMetrique (α : Type*) where
-  X : Set α
+class EspaceMetrique (X : Set α) where
   d : α → α → ℝ
   is_dist : estDistance X d
+
+notation X "(" x ", " y ")" => EspaceMetrique.d X x y
+
+-- quelques lemmes élémentaires
+
+variable [M : EspaceMetrique X]
+
+lemma self_dist {x : α} (h : x ∈ X) : X(x, x) = 0 := by
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+  rw [sep x h x h]
+
+lemma sub_ineq : ∀ x y z ∈ X, X(x, y) - X(x, z) ≤ X(y, z) := by
+  intro x hx y hy z hz; rw [sub_le_iff_le_add]
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+  rw [symm x hx z hz, symm x hx y hy]; exact ineq y hy z hz x hx
 
 -- Exemple 1.2.
 
@@ -48,8 +62,7 @@ lemma abs_symm : symm R abs_dist := by
 lemma abs_ineq : ineq R abs_dist := by
   intro x _ y _ z _; dsimp; apply abs_sub_le
 
-def R_usuelle : EspaceMetrique ℝ where
-  X := R
+instance : EspaceMetrique R where
   d := abs_dist
   is_dist := ⟨
     abs_nneg, abs_sep,
@@ -76,8 +89,7 @@ lemma module_ineq : ineq C module_dist := by
   have eq : x - z = (x - y) + (y - z) := by ring
   rw [eq]; apply norm_ineq
 
-def C_usuelle : EspaceMetrique ℂ where
-  X := C
+instance : EspaceMetrique C where
   d := module_dist
   is_dist := ⟨
     module_nneg, module_sep,
@@ -107,8 +119,7 @@ lemma euclid_ineq : ineq E↑ euclid_dist := by
   have eq : x - z = (x - y) + (y - z) := by abel
   rw [eq]; apply norm_ineq
 
-def Euclid : EspaceMetrique E where
-  X := E↑
+instance : EspaceMetrique E↑ where
   d := euclid_dist
   is_dist := ⟨
     euclid_nneg, euclid_sep,
@@ -119,8 +130,11 @@ end Euclidean
 
 -- 4.
 noncomputable section Discrete
+omit M
 open Classical in
 @[simp] def discrete_dist : α → α → ℝ := x ↦ y ↦ ite (x = y) 0 1
+
+def Discrete (X : Set α) : Set α := X
 
 lemma discrete_nneg : nneg X discrete_dist := by
   intro x _ y _; dsimp; split
@@ -149,8 +163,7 @@ lemma discrete_ineq : ineq X discrete_dist := by
     · case isFalse => apply le_add_of_nonneg_right
                       apply discrete_nneg y h2 z h3
 
-def Discrete (X : Set α) : EspaceMetrique α where
-  X := X
+instance {X : Set α} : EspaceMetrique (Discrete X) where
   d := discrete_dist
   is_dist := ⟨
     discrete_nneg, discrete_sep,
@@ -160,19 +173,19 @@ def Discrete (X : Set α) : EspaceMetrique α where
 end Discrete
 
 -- 5.
-variable {A : Set α} {d : α → α → ℝ}
 
-lemma induite_dist (h : A ⊆ X) (h' : estDistance X d) : estDistance A d := by
-  rcases h' with ⟨nneg, sep, symm, ineq⟩; constructor
+def Induite {A : Set α} (_ : A ⊆ X) : Set α := A
+
+lemma induite_dist {A : Set α} (h : A ⊆ X) : estDistance A M.d := by
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩; constructor
   · case nneg => intro x hx y hy; apply nneg x (h hx) y (h hy)
   · case sep => intro x hx y hy; apply sep x (h hx) y (h hy)
   · case symm => intro x hx y hy; apply symm x (h hx) y (h hy)
   · case ineq => intro x hx y hy z hz; apply ineq x (h hx) y (h hy) z (h hz)
 
-def Induite {M : EspaceMetrique α} (h : A ⊆ M.X) : EspaceMetrique α where
-  X := A
+instance {A : Set α} {h : A ⊆ X} : EspaceMetrique (Induite h) where
   d := M.d
-  is_dist := induite_dist h M.is_dist
+  is_dist := induite_dist h
 
 end Metrique
 
@@ -192,31 +205,34 @@ def homogen (N : E → ℝ) := ∀ x, ∀ a : K, N (a • x) = |a| * N x
 
 def ineq (N : E → ℝ) := ∀ x y, N (x + y) ≤ N x + N y
 
+class GroupeNorme (E : Type*) [AddCommGroup E] where
+  norm : E → ℝ
+  nneg : nneg norm
+  definie : definie norm
+  ineq : ineq norm
+
 structure estNorme (N : E → ℝ) where
   nneg : nneg N
   definie : definie N
   homogen : homogen (K := K) N
   ineq : ineq N
 
-class EspaceNorme' (E : Type*) where
-  norm : E → ℝ
-
-scoped notation "‖"u"‖" => EspaceNorme'.norm u
+notation : max "‖" x "‖" => GroupeNorme.norm x
 
 class EspaceVecNorme (K : Type*) [Field K] [ValuationField K] (E : Type*)
-  [AddCommGroup E] extends Module K E where
-  norm : E → ℝ
-  is_norm : estNorme (K := K) norm
+  [AddCommGroup E] [G : GroupeNorme E] extends Module K E where
+  norm : E → ℝ := G.norm
+  homogen : homogen (K := K) G.norm
 
-instance [V : EspaceVecNorme K E] : EspaceNorme' E where
-
+  is_norm : estNorme (K := K) G.norm :=
+    ⟨G.nneg, G.definie, homogen, G.ineq⟩
 
 -- Proposition 1.4.
 
 open Metrique
 
 theorem dist_of_norme (K : Type*) [Field K] [ValuationField K] (E : Type*)
-  [AddCommGroup E] [V : EspaceVecNorme K E] :
+  [AddCommGroup E] [GroupeNorme E] [V : EspaceVecNorme K E] :
   let d : E → E → ℝ := x ↦ y ↦ ‖x - y‖; estDistance E↑ d := by
   rcases V.is_norm with ⟨nneg, defi, homo, ineq⟩; constructor
   · case nneg => intro x _ y _; apply nneg
@@ -227,6 +243,199 @@ theorem dist_of_norme (K : Type*) [Field K] [ValuationField K] (E : Type*)
                  have eq : x - z = (x - y) + (y - z) := by abel
                  rw [eq]; apply ineq
 
---instance [V : EspaceVecNorme K E] : Coe E (EspaceMetrique E) := fromNorm
+def MetriqueNorme (K : Type*) [Field K] [ValuationField K] (E : Type*)
+  [AddCommGroup E] [GroupeNorme E] [EspaceVecNorme K E] : Set E := E↑
+
+instance [G : GroupeNorme E] [EspaceVecNorme K E] : EspaceMetrique
+  (MetriqueNorme K E) where
+  d := x ↦ y ↦ ‖x - y‖
+  is_dist := dist_of_norme K E
+
+-- Proposition 1.5.
 
 end EspaceNorme
+
+-- 1.2. Ouverts et fermés d'un espace métrique
+
+-- Définition 1.6.
+
+open Metrique
+
+variable {α : Type} {X : Set α} [M : EspaceMetrique X]
+
+@[simp] def boule_ouverte (a : α) (r : ℝ) : Set α := {x ∈ X | X(x, a) < r}
+
+@[simp] def boule_fermee (a : α) (r : ℝ) : Set α := {x ∈ X | X(x, a) ≤ r}
+
+abbrev Bₒ (X : Set α) [EspaceMetrique X] (a : α) (r : ℝ) : Set α :=
+  boule_ouverte (X := X) a r
+
+abbrev Bf (X : Set α) [EspaceMetrique X] (a : α) (r : ℝ) : Set α :=
+  boule_fermee (X := X) a r
+
+@[simp] lemma boule_vide {a : α} {r : ℝ} (ha : a ∈ X) (hr : r ≤ 0) :
+  Bₒ X a r = ∅ := by
+  suffices h : ∀ x ∈ X, r ≤ X(x, a) by simp_all
+  intro x hx
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+  apply le_trans hr (nneg x hx a ha)
+
+@[simp] lemma boule_vide_f {a : α} {r : ℝ} (ha : a ∈ X) (hr : r < 0) :
+  Bf X a r = ∅ := by
+  suffices h : ∀ x ∈ X, r < X(x, a) by simp_all
+  intro x hx
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+  apply lt_of_lt_of_le hr (nneg x hx a ha)
+
+lemma centre_in_boule {a : α} {r : ℝ} (ha : a ∈ X) (hr : r > 0) :
+  a ∈ Bₒ X a r := by
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+  apply And.intro ha; rw [self_dist ha]; linarith
+
+-- Définition 1.7.
+
+def ouverte (X : Set α) [EspaceMetrique X] (A : Set α) := ∀ x ∈ A, ∃ r > 0,
+  Bₒ X x r ⊆ A
+
+def fermee (X : Set α) [EspaceMetrique X] (A : Set α) := ouverte X (X \ A)
+
+-- Exemple 1.8.
+
+-- a)
+
+@[simp] theorem ouverte_of_uni : ouverte X X := by
+  intro x hx; use 1, zero_lt_one; simp
+
+@[simp] theorem ouverte_of_vide : ouverte X ∅ := by
+  intro x hx; absurd hx; simp
+
+@[simp] theorem fermee_of_vide : fermee X ∅ := by
+  rw [fermee, Set.diff_empty]; apply ouverte_of_uni
+
+@[simp] theorem fermee_of_uni : fermee X X := by
+  rw [fermee, Set.diff_self]; apply ouverte_of_vide
+
+
+-- Proposition 1.9.
+
+-- b)
+
+@[simp] theorem ouverte_of_inter {A B : Set α} (hA : ouverte X A)
+  (hB : ouverte X B) : ouverte X (A ∩ B) := by
+  intro x hx; rw [Set.mem_inter_iff] at hx
+  rcases hA x hx.left with ⟨r₁, r₁_pos, hr₁⟩
+  rcases hB x hx.right with ⟨r₂, r₂_pos, hr₂⟩
+--
+  let r := min r₁ r₂
+  have r_pos : r > 0 := by apply lt_min r₁_pos r₂_pos
+  use r, r_pos; intro y hy; rw [Set.mem_inter_iff]
+  apply And.intro
+  · apply hr₁; dsimp; apply And.intro hy.left
+    apply lt_of_lt_of_le hy.right; apply min_le_left
+  · apply hr₂; dsimp; apply And.intro hy.left
+    apply lt_of_lt_of_le hy.right; apply min_le_right
+
+-- c)
+
+@[simp] theorem ouv_of_boule_ouv {a : α} (h : a ∈ X) (r : ℝ) :
+  ouverte X (Bₒ X a r) := by
+  intro x hx; let r' := r - X(x, a)
+  have r'_pos : r' > 0 := sub_pos_of_lt hx.right
+  use r', r'_pos; intro y hy; dsimp
+  apply And.intro hy.left; rw [←sub_add_cancel r (X(x, a))]
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+  apply lt_of_le_of_lt (ineq y hy.left x hx.left a h)
+  apply add_lt_add_left; exact hy.right
+
+
+-- Definition 1.11.
+
+def converges_to (X : Set α) [EspaceMetrique X] (u : ℕ → α) (l : α) :=
+  ∀ ε > 0, ∃ N, ∀ n ≥ N, X(u n, l) ≤ ε
+
+def converges (X : Set α) [EspaceMetrique X] (u : ℕ → α) := ∃ l ∈ X,
+  converges_to X u l
+
+-- Remarque 1.12.
+
+def converges_to' (X : Set α) [EspaceMetrique X] (u : ℕ → α) (l : α) :=
+  ∀ U, ouverte X U → l ∈ U → ∃ N, ∀ n ≥ N, u n ∈ U
+
+def seq_in (u : ℕ → α) (X : Set α) := ∀ n, u n ∈ X
+
+theorem lim_iff_lim' {u : ℕ → α} (hu : seq_in u X) {l : α} (hl : l ∈ X) :
+  converges_to X u l ↔ converges_to' X u l := by
+  apply Iff.intro
+  case mp => intro h U ouv l_in; have l_vois := ouv l l_in
+             rcases l_vois with ⟨r, r_pos, hr⟩
+             rcases (h (r/2) (by linarith)) with ⟨N, hN⟩
+             use N; intro n hn; apply hr; apply And.intro (hu n)
+             apply lt_of_le_of_lt (hN n hn); linarith
+--
+  case mpr => intro h' ε ε_pos; let U := Bₒ X l ε
+              have ouv_U := ouv_of_boule_ouv hl ε
+              have l_in := centre_in_boule hl ε_pos
+              rcases (h' U ouv_U l_in) with ⟨N, hN⟩
+              use N; intro n hn; apply le_of_lt
+              have u_n_in := hN n hn
+              unfold U at u_n_in; apply u_n_in.right
+
+-- Exemple 1.13.
+
+-- a)
+
+theorem conv_of_inv_n : let u := (n : ℕ) ↦ (1 : ℝ) / (n + 1);
+  converges_to R u 0 := by
+  intro u ε ε_pos; sorry
+
+-- 1.3. Espaces métriques complets (I)
+
+-- Définition 1.14.
+
+def cauchy (X : Set α) [EspaceMetrique X] (u : ℕ → α) := ∀ ε > 0,
+  ∃ N, ∀ m ≥ N, ∀ n ≥ N, X(u m, u n) ≤ ε
+
+-- Proposition 1.15.
+
+-- a)
+
+theorem cauchy_of_conv {u : ℕ → α} (hu : seq_in u X) (h : converges X u) :
+  cauchy X u := by
+  rcases h with ⟨l, l_in, hl⟩; intro ε ε_pos
+  rcases (hl (ε / 2) (by linarith)) with ⟨N, hN⟩
+  use N; intro m hm n hn
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+  have ineq₁ := ineq (u m) (hu m) l l_in (u n) (hu n)
+  have ineq₂ := hN m hm; have ineq₃ := hN n hn
+  rw [symm l l_in (u n) (hu n)] at ineq₁; linarith
+
+-- c)
+
+def extraction (φ : ℕ → ℕ) := ∀ m n, m < n → φ m < φ n
+
+lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
+  intro n; induction n
+  · case zero => apply zero_le
+  · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
+                      apply lt_of_le_of_lt hk; apply h; linarith
+
+theorem conv_of_cauchy_extr {u : ℕ → α} (hu : seq_in u X) (h : cauchy X u)
+  (φ : ℕ → ℕ) (hφ : extraction φ) (conv : converges X (u ∘ φ)) : converges X u
+  := by
+  rcases conv with ⟨l, l_in, hl⟩; use l, l_in; intro ε ε_pos
+  rcases (hl (ε / 2) (by linarith)) with ⟨N₁, hN₁⟩
+  rcases (h (ε / 2) (by linarith)) with ⟨N₂, hN₂⟩
+--
+  let N := max N₁ N₂; use N; intro n hn
+  have hn₁ := le_of_max_le_left hn
+  have hn₂ := le_of_max_le_right hn
+  have hn₃ := le_trans hn₂ (n_le_extr_n hφ n)
+  rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+  have ineq₁ := ineq (u n) (hu n) ((u ∘ φ) n) (hu (φ n)) l l_in
+  have ineq₂ := hN₁ n hn₁; have ineq₃ := hN₂ n hn₂ (φ n) hn₃
+  rw [Function.comp_apply] at ineq₁ ineq₂; linarith
+
+-- Définition 1.16.
+
+def complet (X : Set α) [EspaceMetrique X] := ∀ u, seq_in u X → cauchy X u →
+  converges X u
