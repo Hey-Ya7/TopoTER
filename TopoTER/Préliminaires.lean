@@ -2,6 +2,7 @@
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Real.Sqrt
 import Mathlib.Data.Complex.Basic
+-- import Mathlib.Algebra.DirectSum.Basic
 import Mathlib.LinearAlgebra.FiniteDimensional.Defs
 
 -- Préliminaires
@@ -71,6 +72,7 @@ lemma norm_add_one (z : ℂ) : ‖z + 1‖ᵢ ≤ ‖z‖ᵢ + 1 := by
         apply mul_le_mul_of_nonneg_left (ha := zero_le_two)
         apply le_sqrt_of_sq_le; rw [sq]
         apply le_add_of_nonneg_right; apply mul_self_nonneg
+--
       let re2 := z.re * z.re; let im2 := z.im * z.im; refold_let re2 im2
       calc re2 + 2 * z.re + 1 + im2
       _ = re2 + im2 + 1 + 2 * z.re := by ring
@@ -128,6 +130,163 @@ open Complex in
 noncomputable instance : ValuationField ℂ where
   abs := module
   isAbv := module_abs
+
+@[ext]
+structure R_n (n : ℕ) where
+  p : ℕ → ℝ
+  is_fin : ∀ m ≥ n, p m = 0
+
+notation : max "ℝ^" n : max => R_n n
+
+namespace R_n
+
+@[simp] instance {n : ℕ} : HAdd ℝ^n ℝ^n ℝ^n where
+  hAdd := x ↦ y ↦ ⟨
+    x.p + y.p, by {
+      intro m m_ge; rw [Pi.add_apply]
+      rw [x.is_fin m m_ge, y.is_fin m m_ge, zero_add]
+    }
+  ⟩
+
+@[simp] instance {n : ℕ} : HSub ℝ^n ℝ^n ℝ^n where
+  hSub := x ↦ y ↦ ⟨
+    x.p - y.p, by {
+      intro m m_ge; rw [Pi.sub_apply]
+      rw [x.is_fin m m_ge, y.is_fin m m_ge, sub_zero]
+    }
+  ⟩
+
+@[simp] instance {n : ℕ} : Zero ℝ^n where
+  zero := ⟨0, by simp⟩
+
+@[simp] instance {n : ℕ} : Neg ℝ^n where
+  neg := x ↦ ⟨
+    -x.p, by {
+      intro m m_ge; rw [Pi.neg_apply]
+      rw [x.is_fin m m_ge, neg_zero]
+    }
+  ⟩
+
+@[simp] instance {n : ℕ} : SMul ℕ ℝ^n where
+  smul := k ↦ x ↦ ⟨
+    k * x.p, by {
+      intro m m_ge; rw [Pi.mul_apply]
+      rw [x.is_fin m m_ge, mul_zero]
+    }
+  ⟩
+
+@[simp] instance {n : ℕ} : SMul ℤ ℝ^n where
+  smul := k ↦ x ↦ ⟨
+    k * x.p, by {
+      intro m m_ge; rw [Pi.mul_apply]
+      rw [x.is_fin m m_ge, mul_zero]
+    }
+  ⟩
+
+@[simp] instance {n : ℕ} : SMul ℝ ℝ^n where
+  smul := r ↦ x ↦ ⟨
+    k ↦ r * x.p k, by {
+      intro m m_ge; dsimp
+      rw [x.is_fin m m_ge, mul_zero]
+    }
+  ⟩
+
+@[simp] theorem add_assoc {n : ℕ} (x y z : ℝ^n) : x + y + z = x + (y + z)
+  := by dsimp; ring_nf
+
+@[simp] theorem add_comm {n : ℕ} (x y : ℝ^n) : x + y = y + x := by
+  dsimp; ring_nf
+
+@[simp] theorem zero_add {n : ℕ} (x : ℝ^n) : 0 + x = x := by
+  rw [Zero.toOfNat0]; simp
+
+@[simp] theorem add_zero {n : ℕ} (x : ℝ^n) : x + 0 = x := by
+  rw [add_comm, zero_add]
+
+@[simp] theorem neg_add_cancel {n : ℕ} (x : ℝ^n) : -x + x = 0 := by
+  dsimp; ring_nf; rfl
+
+@[simp] theorem add_neg_cancel {n : ℕ} (x : ℝ^n) : x + (-x) = 0 := by
+  rw [add_comm, neg_add_cancel]
+
+@[simp] theorem zero_nsmul {n : ℕ} (x : ℝ^n) : 0 • x = 0 := by
+  simp [HSMul.hSMul]; rfl
+
+@[simp] theorem zero_zsmul {n : ℕ} (x : ℝ^n) : (0 : ℤ) • x = 0 := by
+  simp [HSMul.hSMul]; rfl
+
+@[simp] theorem zero_rsmul {n : ℕ} (x : ℝ^n) : (0 : ℝ) • x = 0 := by
+  simp [HSMul.hSMul]; rfl
+
+@[simp] theorem rsmul_zero {n : ℕ} (r : ℝ) : r • (0 : ℝ^n) = 0 := by
+  rw [Zero.toOfNat0]; simp [HSMul.hSMul]; rfl
+
+@[simp] theorem one_nsmul {n : ℕ} (x : ℝ^n) : 1 • x = x := by
+  simp [HSMul.hSMul]
+
+@[simp] theorem one_zsmul {n : ℕ} (x : ℝ^n) : (1 : ℤ) • x = x := by
+  simp [HSMul.hSMul]
+
+@[simp] theorem one_rsmul {n : ℕ} (x : ℝ^n) : (1 : ℝ) • x = x := by
+  simp [HSMul.hSMul]
+
+@[simp] theorem cast_zsmul {n : ℕ} (k : ℕ) (x : ℝ^n) : (k : ℤ) • x =
+  k • x := by
+  simp [HSMul.hSMul]
+
+@[simp] theorem neg_smul {n : ℕ} (k : ℤ) (x : ℝ^n) : -k • x = -(k • x)
+  := by simp [HSMul.hSMul]
+
+@[simp] theorem add_nsmul {n : ℕ} (k m : ℕ) (x : ℝ^n) : (k + m) • x =
+  k • x + m • x := by
+  simp [HSMul.hSMul]; ring
+
+@[simp] theorem add_zsmul {n : ℕ} (k m : ℤ) (x : ℝ^n) : (k + m) • x =
+  k • x + m • x := by
+  simp [HSMul.hSMul]; ring
+
+@[simp] theorem add_rsmul {n : ℕ} (r s : ℝ) (x : ℝ^n) : (r + s) • x =
+  r • x + s • x := by
+  simp [HSMul.hSMul]; ring_nf; rfl
+
+@[simp] theorem rsmul_add {n : ℕ} (r : ℝ) (x y : ℝ^n) : r • (x + y) =
+  r • x + r • y := by
+  simp [HSMul.hSMul]; ring_nf; rfl
+
+@[simp] theorem mul_rsmul {n : ℕ} (r s : ℝ) (x : ℝ^n) : (r * s) • x =
+  r • s • x := by
+  simp [HSMul.hSMul]; ring_nf
+
+instance {n : ℕ} : AddCommGroup ℝ^n where
+  add := x ↦ y ↦ x + y
+  add_assoc := add_assoc
+  zero := 0
+  zero_add := zero_add
+  add_zero := add_zero
+
+  nsmul := k ↦ x ↦ k • x
+  zsmul := k ↦ x ↦ k • x
+  neg_add_cancel := neg_add_cancel
+  add_comm := add_comm
+
+  nsmul_zero := zero_nsmul
+  nsmul_succ := by simp
+  zsmul_zero' := zero_nsmul
+  zsmul_succ' := by simp
+  zsmul_neg' := by
+    simp [Int.negSucc_eq, -add_comm]
+
+
+instance {n : ℕ} : Module ℝ ℝ^n where
+  smul := r ↦ x ↦ r • x
+  mul_smul := mul_rsmul
+  one_smul := one_rsmul
+  smul_zero := rsmul_zero
+  smul_add := rsmul_add
+  add_smul := add_rsmul
+  zero_smul := zero_rsmul
+
+end R_n
 
 def S' (α : Type*) : Set α := Set.univ
 scoped postfix : max "↑" => S'

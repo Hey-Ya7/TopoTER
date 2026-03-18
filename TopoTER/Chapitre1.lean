@@ -253,6 +253,15 @@ instance [G : GroupeNorme E] [EspaceVecNorme K E] : EspaceMetrique
 
 -- Proposition 1.5.
 
+open R_n
+
+def norme_sup {n : ℕ} : ℝ^n → ℝ := x ↦ ∑ i : Finset.range n, (x.p i)
+instance {n : ℕ} : GroupeNorme ℝ^n where
+  norm := norme_sup
+  nneg := sorry
+  definie := sorry
+  ineq := sorry
+
 end EspaceNorme
 
 -- 1.2. Ouverts et fermés d'un espace métrique
@@ -263,65 +272,78 @@ open Metrique
 
 variable {α : Type} {X : Set α} [M : EspaceMetrique X]
 
-@[simp] def boule_ouverte (a : α) (r : ℝ) : Set α := {x ∈ X | X(x, a) < r}
+@[simp] def Metrique.EspaceMetrique.boule_ouverte (a : α) (r : ℝ) :=
+  {x ∈ X | X(x, a) < r}
 
-@[simp] def boule_fermee (a : α) (r : ℝ) : Set α := {x ∈ X | X(x, a) ≤ r}
+@[simp] def Metrique.EspaceMetrique.boule_fermee (a : α) (r : ℝ) :=
+  {x ∈ X | X(x, a) ≤ r}
 
-abbrev Bₒ (X : Set α) [EspaceMetrique X] (a : α) (r : ℝ) : Set α :=
-  boule_ouverte (X := X) a r
+abbrev Metrique.EspaceMetrique.Bₒ (a : α) (r : ℝ) := M.boule_ouverte a r
 
-abbrev Bf (X : Set α) [EspaceMetrique X] (a : α) (r : ℝ) : Set α :=
-  boule_fermee (X := X) a r
+abbrev Metrique.EspaceMetrique.Bf (a : α) (r : ℝ) := M.boule_fermee a r
 
 @[simp] lemma boule_vide {a : α} {r : ℝ} (ha : a ∈ X) (hr : r ≤ 0) :
-  Bₒ X a r = ∅ := by
+  M.Bₒ a r = ∅ := by
   suffices h : ∀ x ∈ X, r ≤ X(x, a) by simp_all
   intro x hx
   rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
   apply le_trans hr (nneg x hx a ha)
 
 @[simp] lemma boule_vide_f {a : α} {r : ℝ} (ha : a ∈ X) (hr : r < 0) :
-  Bf X a r = ∅ := by
+  M.Bf a r = ∅ := by
   suffices h : ∀ x ∈ X, r < X(x, a) by simp_all
   intro x hx
   rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
   apply lt_of_lt_of_le hr (nneg x hx a ha)
 
 lemma centre_in_boule {a : α} {r : ℝ} (ha : a ∈ X) (hr : r > 0) :
-  a ∈ Bₒ X a r := by
+  a ∈ M.Bₒ a r := by
   rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
   apply And.intro ha; rw [self_dist ha]; linarith
 
 -- Définition 1.7.
 
-def ouverte (X : Set α) [EspaceMetrique X] (A : Set α) := ∀ x ∈ A, ∃ r > 0,
-  Bₒ X x r ⊆ A
+def Metrique.EspaceMetrique.ouverte (A : Set α) := ∀ x ∈ A, ∃ r > 0,
+  M.Bₒ x r ⊆ A
 
-def fermee (X : Set α) [EspaceMetrique X] (A : Set α) := ouverte X (X \ A)
+def Metrique.EspaceMetrique.fermee (A : Set α) := M.ouverte (X \ A)
+
+@[simp] lemma ouverte_def {A : Set α} : M.ouverte A ↔ ∀ x ∈ A, ∃ r > 0,
+  M.Bₒ x r ⊆ A := by rfl
+
+@[simp] lemma fermee_def {A} : M.fermee A ↔ M.ouverte (X \ A) := by rfl
 
 -- Exemple 1.8.
 
 -- a)
 
-@[simp] theorem ouverte_of_uni : ouverte X X := by
+@[simp] theorem ouverte_of_uni : M.ouverte X := by
   intro x hx; use 1, zero_lt_one; simp
 
-@[simp] theorem ouverte_of_vide : ouverte X ∅ := by
+@[simp] theorem ouverte_of_vide : M.ouverte ∅ := by
   intro x hx; absurd hx; simp
 
-@[simp] theorem fermee_of_vide : fermee X ∅ := by
-  rw [fermee, Set.diff_empty]; apply ouverte_of_uni
+@[simp] theorem fermee_of_vide : M.fermee ∅ := by
+  rw [fermee_def, Set.diff_empty]; apply ouverte_of_uni
 
-@[simp] theorem fermee_of_uni : fermee X X := by
-  rw [fermee, Set.diff_self]; apply ouverte_of_vide
-
+@[simp] theorem fermee_of_uni : M.fermee X := by
+  rw [fermee_def, Set.diff_self]; apply ouverte_of_vide
 
 -- Proposition 1.9.
 
+-- a)
+
+@[simp] theorem ouverte_of_union {ι : Type} {u : ι → Set α}
+  (hu : ∀ i, M.ouverte (u i)) : M.ouverte (⋃ i, u i) := by
+  intro x hx; rcases hx with ⟨A, hA, x_in⟩
+  rcases hA with ⟨i, hi⟩; rw [←hi] at x_in
+  rcases (hu i x x_in) with ⟨r, r_pos, hr⟩
+  use r, r_pos; exact Set.subset_iUnion_of_subset i hr
+
 -- b)
 
-@[simp] theorem ouverte_of_inter {A B : Set α} (hA : ouverte X A)
-  (hB : ouverte X B) : ouverte X (A ∩ B) := by
+@[simp] theorem ouverte_of_inter {A B : Set α} (hA : M.ouverte A)
+  (hB : M.ouverte B) : M.ouverte (A ∩ B) := by
   intro x hx; rw [Set.mem_inter_iff] at hx
   rcases hA x hx.left with ⟨r₁, r₁_pos, hr₁⟩
   rcases hB x hx.right with ⟨r₂, r₂_pos, hr₂⟩
@@ -338,7 +360,7 @@ def fermee (X : Set α) [EspaceMetrique X] (A : Set α) := ouverte X (X \ A)
 -- c)
 
 @[simp] theorem ouv_of_boule_ouv {a : α} (h : a ∈ X) (r : ℝ) :
-  ouverte X (Bₒ X a r) := by
+  M.ouverte (M.Bₒ a r) := by
   intro x hx; let r' := r - X(x, a)
   have r'_pos : r' > 0 := sub_pos_of_lt hx.right
   use r', r'_pos; intro y hy; dsimp
@@ -347,24 +369,37 @@ def fermee (X : Set α) [EspaceMetrique X] (A : Set α) := ouverte X (X \ A)
   apply lt_of_le_of_lt (ineq y hy.left x hx.left a h)
   apply add_lt_add_left; exact hy.right
 
+-- d)
+
+theorem ouv_boule_union {U : Set α} (h : M.ouverte U) : ∃ ι : Type,
+  ∃ u : ι → α × ℝ, U = ⋃ i, M.Bₒ (u i).fst (u i).snd := by
+  let r (x : U) : ℝ := Exists.choose (h x.val x.prop)
+  have r_prop : ∀ x, r x > 0 ∧ M.Bₒ x (r x) ⊆ U := by
+    intro x; exact Exists.choose_spec (h x.val x.prop)
+--
+  use U, x ↦ (x.val, r x); rw [Set.ext_iff]; intro x
+  apply Iff.intro
+  case mp => intro in_u; let X : U := ⟨x, in_u⟩
+             apply Set.mem_iUnion_of_mem X; sorry
+  sorry
 
 -- Definition 1.11.
 
-def converges_to (X : Set α) [EspaceMetrique X] (u : ℕ → α) (l : α) :=
-  ∀ ε > 0, ∃ N, ∀ n ≥ N, X(u n, l) ≤ ε
+def Metrique.EspaceMetrique.converges_to (u : ℕ → α) (l : α) := ∀ ε > 0,
+  ∃ N, ∀ n ≥ N, X(u n, l) ≤ ε
 
-def converges (X : Set α) [EspaceMetrique X] (u : ℕ → α) := ∃ l ∈ X,
-  converges_to X u l
+def Metrique.EspaceMetrique.converges (u : ℕ → α) := ∃ l ∈ X,
+  M.converges_to u l
 
 -- Remarque 1.12.
 
-def converges_to' (X : Set α) [EspaceMetrique X] (u : ℕ → α) (l : α) :=
-  ∀ U, ouverte X U → l ∈ U → ∃ N, ∀ n ≥ N, u n ∈ U
+def Metrique.EspaceMetrique.converges_to' (u : ℕ → α) (l : α) :=
+  ∀ U, M.ouverte U → l ∈ U → ∃ N, ∀ n ≥ N, u n ∈ U
 
 def seq_in (u : ℕ → α) (X : Set α) := ∀ n, u n ∈ X
 
 theorem lim_iff_lim' {u : ℕ → α} (hu : seq_in u X) {l : α} (hl : l ∈ X) :
-  converges_to X u l ↔ converges_to' X u l := by
+  M.converges_to u l ↔ M.converges_to' u l := by
   apply Iff.intro
   case mp => intro h U ouv l_in; have l_vois := ouv l l_in
              rcases l_vois with ⟨r, r_pos, hr⟩
@@ -372,7 +407,7 @@ theorem lim_iff_lim' {u : ℕ → α} (hu : seq_in u X) {l : α} (hl : l ∈ X) 
              use N; intro n hn; apply hr; apply And.intro (hu n)
              apply lt_of_le_of_lt (hN n hn); linarith
 --
-  case mpr => intro h' ε ε_pos; let U := Bₒ X l ε
+  case mpr => intro h' ε ε_pos; let U := M.Bₒ l ε
               have ouv_U := ouv_of_boule_ouv hl ε
               have l_in := centre_in_boule hl ε_pos
               rcases (h' U ouv_U l_in) with ⟨N, hN⟩
@@ -384,23 +419,23 @@ theorem lim_iff_lim' {u : ℕ → α} (hu : seq_in u X) {l : α} (hl : l ∈ X) 
 
 -- a)
 
-theorem conv_of_inv_n : let u := (n : ℕ) ↦ (1 : ℝ) / (n + 1);
-  converges_to R u 0 := by
-  intro u ε ε_pos; sorry
+theorem conv_of_inv [M' : EspaceMetrique R] (u : ℕ → ℝ := n ↦ 1 / (n + 1)) :
+  M'.converges_to u 0 := by
+  intro ε ε_pos; sorry
 
 -- 1.3. Espaces métriques complets (I)
 
 -- Définition 1.14.
 
-def cauchy (X : Set α) [EspaceMetrique X] (u : ℕ → α) := ∀ ε > 0,
-  ∃ N, ∀ m ≥ N, ∀ n ≥ N, X(u m, u n) ≤ ε
+def Metrique.EspaceMetrique.cauchy (u : ℕ → α) := ∀ ε > 0, ∃ N, ∀ m ≥ N,
+  ∀ n ≥ N, X(u m, u n) ≤ ε
 
 -- Proposition 1.15.
 
 -- a)
 
-theorem cauchy_of_conv {u : ℕ → α} (hu : seq_in u X) (h : converges X u) :
-  cauchy X u := by
+theorem cauchy_of_conv {u : ℕ → α} (hu : seq_in u X) (h : M.converges u) :
+  M.cauchy u := by
   rcases h with ⟨l, l_in, hl⟩; intro ε ε_pos
   rcases (hl (ε / 2) (by linarith)) with ⟨N, hN⟩
   use N; intro m hm n hn
@@ -419,8 +454,8 @@ lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := 
   · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
                       apply lt_of_le_of_lt hk; apply h; linarith
 
-theorem conv_of_cauchy_extr {u : ℕ → α} (hu : seq_in u X) (h : cauchy X u)
-  (φ : ℕ → ℕ) (hφ : extraction φ) (conv : converges X (u ∘ φ)) : converges X u
+theorem conv_of_cauchy_extr {u : ℕ → α} (hu : seq_in u X) (h : M.cauchy u)
+  (φ : ℕ → ℕ) (hφ : extraction φ) (conv : M.converges (u ∘ φ)) : M.converges u
   := by
   rcases conv with ⟨l, l_in, hl⟩; use l, l_in; intro ε ε_pos
   rcases (hl (ε / 2) (by linarith)) with ⟨N₁, hN₁⟩
@@ -437,5 +472,5 @@ theorem conv_of_cauchy_extr {u : ℕ → α} (hu : seq_in u X) (h : cauchy X u)
 
 -- Définition 1.16.
 
-def complet (X : Set α) [EspaceMetrique X] := ∀ u, seq_in u X → cauchy X u →
-  converges X u
+def complet (X : Set α) [M : EspaceMetrique X] := ∀ u, seq_in u X →
+  M.cauchy u → M.converges u
