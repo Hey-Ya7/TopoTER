@@ -18,13 +18,17 @@ variable {Y : Type} [EspTop Y]
 
 open EspTop
 
-lemma EspTop.bunion_ouvert {ι : Type} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I, est_ouvert (u i)) : est_ouvert (⋃ i ∈ I, u i) := by
+lemma EspTop.bunion_ouvert {ι : Type} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I, est_ouvert (u i)) :
+est_ouvert (⋃ i ∈ I, u i) := by
   apply union_ouvert
   intro i
   by_cases hi : i ∈ I
   · simp [hi, h]
   · simp only [hi, iUnion_of_empty]
     exact empty_ouvert
+
+lemma EspTop.union_est_ouvert (u v : Set X) (hu : est_ouvert u) (hv : est_ouvert v) :
+est_ouvert (u ∪ v) := by sorry
 
 lemma EspTop.inter_fini_ouvert {ι : Type} {u : ι → Set X} {I : Set ι} (hI : I.Finite)
   (h : ∀ i ∈ I, est_ouvert (u i)) : est_ouvert (⋂ i ∈ I, u i) := by
@@ -132,6 +136,8 @@ lemma contenu_adh (s : Set X) : s ⊆ adh s := by
     exact hV.x_dans
   exact hx
 
+lemma adh_ferme (s : Set X) : est_ferme (adh s) := by sorry
+
 lemma adh_eq_inter (s : Set X) : adh s = ⋂₀ {F : Set X | est_ferme F ∧ s ⊆ F} := by
   apply Subset.antisymm_iff.mpr
   constructor
@@ -143,7 +149,6 @@ lemma adh_eq_inter (s : Set X) : adh s = ⋂₀ {F : Set X | est_ferme F ∧ s �
     have hne : (Fᶜ ∩ F).Nonempty := Nonempty.mono subs_nempty hasx
     rw[nonempty_iff_ne_empty, inter_comm] at hne
     exact hne (inter_compl_self F)
-
   rintro x hx U ⟨V, ⟨h1, h2, h3⟩⟩
   have HVUS : V ∩ s ⊆ U ∩ s := by exact inter_subset_inter_left s h3
   apply Nonempty.mono HVUS
@@ -177,13 +182,13 @@ class EspSepareT2 (X : Type) extends EspTop X where
 variable {X : Type} [EspTop X]
 variable {Y : Type} [EspSepareT2 Y]
 
-def est_continu_point {X Y: Type} [EspTop X] [EspTop Y] (f : X → Y) (x : X): Prop :=
+def est_continu_point {X Y : Type} [EspTop X] [EspTop Y] (f : X → Y) (x : X) : Prop :=
   ∀(V : Set Y), (est_vois (f x) V) → ∃(U : Set X), (est_vois x U) ∧  (f '' U ⊆ V)
 
-def est_continu {X Y: Type} [EspTop X] [EspTop Y] (f : X → Y): Prop :=
+def est_continu {X Y : Type} [EspTop X] [EspTop Y] (f : X → Y) : Prop :=
   ∀(x : X), est_continu_point f x
 
-theorem continu_iff_preim_ouv (f : X → Y):
+theorem continu_iff_preim_ouv (f : X → Y) :
   est_continu f ↔ ∀ (V : Set Y), est_ouvert V → est_ouvert (f ⁻¹' V) := by
   constructor
   · intro h V Vouv
@@ -212,7 +217,8 @@ theorem continu_iff_preim_ouv (f : X → Y):
       exact ⟨fxV, fVouv, by rfl⟩
     · trans V; simp; exact VinW
 
-theorem continu_ouv_ferm (f : X → Y) : (∀ (V : Set Y), (est_ouvert V → est_ouvert (f ⁻¹' V)))  ↔ (∀(F : Set Y), est_ferme F → est_ferme (f ⁻¹' F)) := by
+theorem continu_ouv_ferm (f : X → Y) : (∀ (V : Set Y),
+(est_ouvert V → est_ouvert (f ⁻¹' V)))  ↔ (∀(F : Set Y), est_ferme F → est_ferme (f ⁻¹' F)) := by
   constructor
   · intro h V hV
     --unfold est_ferme at *
@@ -225,11 +231,13 @@ theorem continu_ouv_ferm (f : X → Y) : (∀ (V : Set Y), (est_ouvert V → est
     rw[preimage_compl] at h
     exact h
 
-theorem continu_iff_preim_ferm (f : X → Y) : est_continu f ↔ ∀ (F : Set Y), est_ferme F → est_ferme (f ⁻¹' F) := by
+theorem continu_iff_preim_ferm (f : X → Y) :
+est_continu f ↔ ∀ (F : Set Y), est_ferme F → est_ferme (f ⁻¹' F) := by
   rw[continu_iff_preim_ouv]
   exact continu_ouv_ferm f
 
-lemma continu_im_adh_in_adh_im (f : X → Y) (A : Set X) : est_continu f → f '' (adh A) ⊆ adh (f '' A) := by
+lemma continu_im_adh_in_adh_im (f : X → Y) (A : Set X) :
+est_continu f → f '' (adh A) ⊆ adh (f '' A) := by
   intro h y hy V hV
   rw [mem_image] at hy
   rcases hy with ⟨x, ⟨hx, yeqfx⟩⟩
@@ -265,31 +273,62 @@ instance (s : Set X) : EspTop s where
     · exact inter_ouvert Uouv Vouv
     · rw [hU, hV]; simp
 
-def dense (X : Type) [EspTop X] (A : Set X) : Prop := adh A = X
+def dense (X : Type) [EspTop X] (A : Set X) : Prop := adh A = univ
 
-def prop_baire {X : Type} [EspTop X] (u : ℕ → Set X) : Prop := (∀ (n : ℕ), dense X (u n)) → dense X (⋂ n : ℕ, u n)
+lemma dense_iff_inter_ouvert_nonempty (s : Set X) :
+dense X s ↔ ∀ V, est_ouvert V → V.Nonempty → (V ∩ s).Nonempty := by
+  constructor
+  · rintro s_dens V V_ouv ⟨x, hxV⟩
+    have hxs : x ∈ (adh s) := by
+      rw [s_dens]
+      exact mem_univ x
+    have V_vois : est_vois x V := ⟨V, hxV, V_ouv, fun y hy ↦ hy⟩
+    exact hxs V V_vois
+  · intro h
+    unfold dense
+    apply Subset.antisymm_iff.mpr
+    constructor
+    · exact (fun x _ ↦ mem_univ x)
+    · rintro x _ u ⟨v, ⟨x_in_v, v_ouv, v_in_u⟩⟩
+      have v_ne : v.Nonempty := by use x
+      specialize h v v_ouv v_ne
+      exact Nonempty.mono (inter_subset_inter_left s v_in_u) h
+
+def prop_baire {X : Type} [EspTop X] (u : ℕ → Set X) :
+Prop := (∀ (n : ℕ), dense X (u n) ∧ est_ouvert (u n)) → dense X (⋂ n : ℕ, u n)
 
 def baire (X : Type) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
 
 lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → (baire v) := by
   intro hv u h
   unfold dense
-  have vinadh : ∀ (n : ℕ), v ⊆ adh (↑(u n)) := by
+  let U : ℕ -> Set X := fun n ↦ (u n) ∪ ((adh ↑v)ᶜ)
+  have hU : ∀ (n : ℕ), U n = ↑(u n) ∪ ((adh v)ᶜ) := by
     intro n
-    specialize h n
-    unfold dense at h
-    intro x hx
+    unfold U
+    rfl
+  have Uouv : ∀ (n : ℕ), est_ouvert (U n) := by
+    intro n
+    rw [hU n]
+    apply union_est_ouvert
+    · have h : est_ouvert (u n) := (h n).2
+      rcases h with ⟨w, ⟨hw, h'⟩⟩
+      simp [h']
+      exact inter_ouvert hv hw
+    · rw [est_ouvert_iff_compl_est_ferme, compl_compl]
+      exact adh_ferme v
+  have Udens : ∀ (n : ℕ), dense X (U n) := by
+    intro n
+    unfold dense
+
+
+  have h1 : ∀ (n : ℕ), v ⊆ adh (U n) := by
+    intro n x hx
     intro w hw
-    rw [inter_nonempty]
-    use x
-    constructor
-    · rcases hw with ⟨U, ⟨h1, _, h2⟩⟩
-      exact h2 h1
-    · sorry
---  have adhv : ∀ (n : ℕ), adh (u n) = adh v := by
---    intro n
---    specialize h n
-  sorry
+    let hdens := (h n).1
+    have g : (w ∩ v).Nonempty := ⟨x, ⟨by rcases hw with ⟨a, ⟨ha1, _, ha3⟩⟩; exact (ha3 ha1), hx⟩⟩
+    have f : ((u n) ∩ (w ∩ v)).Nonempty := by
+      rw [<-(h n).1]
 
 def topo_engendree (S : Set (Set X)) : EspTop X where
   est_ouvert := _
