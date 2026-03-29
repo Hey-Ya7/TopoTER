@@ -22,6 +22,7 @@ scoped syntax (name := for_all) "∀ " ident ident+ " ∈ " term ", " term : ter
 macro_rules (kind := for_all)
   | `(∀ $x $y* ∈ $S, $desc) => `([$x, $y,*] $S, $desc)
 
+abbrev Ω {α} : Set α := Set.univ
 abbrev R : Set ℝ := Set.univ
 
 abbrev R_star : Set ℝ := {x : ℝ | x ≠ 0}
@@ -44,45 +45,24 @@ abbrev C : Set ℂ := Set.univ
 abbrev C_star : Set ℂ := {x : ℂ | x ≠ 0}
 notation "Cˣ" => C_star
 
+instance : Coe ℝ R := ⟨r ↦ ⟨r, by simp⟩⟩
+instance : Coe ℂ C := ⟨z ↦ ⟨z, by simp⟩⟩
+
 open Real Complex
 namespace SupReal
 
 @[simp] instance : HSMul ℝ (Set ℝ) (Set ℝ) where
   hSMul := r ↦ S ↦ {r * s | s ∈ S}
 
-theorem fin_union {α : Type} (f : ℕ → α) (k : ℕ) : let s₁ := {f i | i < k};
-  let s := {f i | i < k + 1}; s = s₁ ∪ {f k} := by
-  intro s₁ s; rw [Set.union_def]; ext; dsimp [s₁, s]
-  apply Iff.intro
-  · case mp => intro h; rcases h with ⟨i, i_lt, hi⟩
-               by_cases lt_k : i < k
-               · case pos => apply Or.inl; use i, lt_k, hi
-               · case neg => apply Nat.eq_of_lt_succ_of_not_lt i_lt at lt_k
-                             apply Or.inr; rw [lt_k] at hi; simp [hi]
-  · case mpr => intro h; cases h
-                · case inl h₁ => rcases h₁ with ⟨i, i_lt, hi⟩
-                                 apply Nat.lt_succ_of_lt at i_lt
-                                 use i, i_lt, hi
-                · case inr h₂ => rw [Set.mem_singleton_iff, Eq.comm] at h₂
-                                 have k_lt : k < k + 1 := by simp
-                                 use k, k_lt, h₂
+theorem image_of_fin {α} {n : ℕ} (f : Fin n → α) : Finite {f i | i} := by
+  apply Set.Finite.of_surjOn f (s := Set.univ)
+  · intro x hx; rcases hx with ⟨i, hi⟩; use i, by simp
+  · apply Set.finite_univ
 
-
-theorem image_of_fin {α : Type} (f : ℕ → α) (n : ℕ) : Finite {f i | i < n}
-  := by
-  induction n
-  · case zero => suffices h : {f i | i < 0} = ∅ by
-                   rw [h]; apply Set.finite_empty
-                 simp
-  · case succ k hk => rw [fin_union f k]
-                      apply Finite.Set.finite_union
-
-theorem bddabove_of_fin_image (f : ℕ → ℝ) (n : ℕ) : BddAbove {f i | i < n}
-  := by
+theorem bddabove_of_fin_image {n} (f : Fin n → ℝ) : BddAbove {f i | i} := by
   apply Set.Finite.bddAbove; apply image_of_fin
 
-lemma bddabove_of_const {s : Set ℝ} {c : ℝ} (h : ∀ x ∈ s, x = c) : BddAbove s
-  := by
+lemma bddabove_of_const {s} {c : ℝ} (h : ∀ x ∈ s, x = c) : BddAbove s := by
   use c; intro x x_in; exact le_of_eq (h x x_in)
 
 theorem sSup_const {s : Set ℝ} {c : ℝ} (h : s.Nonempty) (h₂ : ∀ x ∈ s, x = c)
@@ -246,7 +226,7 @@ theorem abs_le_zero (k : K) (hk : |k|ₖ ≤ 0) : k = 0 := by
 
 end Valuation
 
-@[simp] theorem Fin.sum_trunc' {α : Type*} [AddCommGroup α] (n : ℕ)
+@[simp] theorem Fin.sum_trunc_last {α : Type*} [AddCommGroup α] (n : ℕ)
   (u : ℕ → α) :  ∑ i : Fin (n + 1), u i = ∑ i : Fin n, u i + u n := by
   let u' : Fin (n + 1) → α := i ↦ u i
   refold_let u'; rw [Fin.sum_univ_castSucc]; simp
@@ -264,8 +244,7 @@ class Euclidean (E : Type*) [AddCommGroup E] [Module ℝ E]
 
 @[ext]
 structure K_n (K : Type*) [Field K] (n : ℕ) where
-  p : ℕ → K
-  is_fin : ∀ m ≥ n, p m = 0
+  p : Fin n → K
 
 notation : max K : max "^" n : max => K_n K n
 
@@ -273,55 +252,25 @@ namespace K_n
 variable {K : Type*} {n : ℕ} [Field K]
 
 @[simp] instance : HAdd K^n K^n K^n where
-  hAdd := x ↦ y ↦ ⟨
-    x.p + y.p, by {
-      intro m m_ge; rw [Pi.add_apply]
-      rw [x.is_fin m m_ge, y.is_fin m m_ge, zero_add]
-    }
-  ⟩
+  hAdd := x ↦ y ↦ ⟨x.p + y.p⟩
 
 @[simp] instance : HSub K^n K^n K^n where
-  hSub := x ↦ y ↦ ⟨
-    x.p - y.p, by {
-      intro m m_ge; rw [Pi.sub_apply]
-      rw [x.is_fin m m_ge, y.is_fin m m_ge, sub_zero]
-    }
-  ⟩
+  hSub := x ↦ y ↦ ⟨x.p - y.p⟩
 
 @[simp] instance : Zero K^n where
-  zero := ⟨0, by simp⟩
+  zero := ⟨0⟩
 
 @[simp] instance : Neg K^n where
-  neg := x ↦ ⟨
-    -x.p, by {
-      intro m m_ge; rw [Pi.neg_apply]
-      rw [x.is_fin m m_ge, neg_zero]
-    }
-  ⟩
+  neg := x ↦ ⟨-x.p⟩
 
 @[simp] instance : SMul ℕ K^n where
-  smul := k ↦ x ↦ ⟨
-    k * x.p, by {
-      intro m m_ge; rw [Pi.mul_apply]
-      rw [x.is_fin m m_ge, mul_zero]
-    }
-  ⟩
+  smul := k ↦ x ↦ ⟨k * x.p⟩
 
 @[simp] instance : SMul ℤ K^n where
-  smul := k ↦ x ↦ ⟨
-    k * x.p, by {
-      intro m m_ge; rw [Pi.mul_apply]
-      rw [x.is_fin m m_ge, mul_zero]
-    }
-  ⟩
+  smul := k ↦ x ↦ ⟨k * x.p⟩
 
 @[simp] instance : SMul K K^n where
-  smul := r ↦ x ↦ ⟨
-    k ↦ r * x.p k, by {
-      intro m m_ge; dsimp
-      rw [x.is_fin m m_ge, mul_zero]
-    }
-  ⟩
+  smul := r ↦ x ↦ ⟨k ↦ r * x.p k⟩
 
 @[simp] theorem add_assoc (x y z : K^n) : x + y + z = x + (y + z) := by
   dsimp; ring_nf
@@ -389,16 +338,10 @@ variable {K : Type*} {n : ℕ} [Field K]
   k₁ • k₂ • x := by
   simp [HSMul.hSMul]; ring_nf
 
-@[simp] theorem eq_iff (x y : K^n) : x = y ↔ ∀ i < n, x.p i = y.p i := by
+@[simp] theorem eq_zero_iff (x : K^n) : x = 0 ↔ ∀ i, x.p i = 0 := by
   apply Iff.intro
-  · case mp => intro h i; simp [h]
-  · case mpr => intro h; ext i; by_cases h' : i < n
-                · case pos => simp [h i h']
-                · case neg => apply Nat.ge_of_not_lt at h'
-                              simp [h', x.is_fin, y.is_fin]
-
-@[simp] theorem eq_zero_iff (x : K^n) : x = 0 ↔ ∀ i < n, x.p i = 0 := by
-  rw [Zero.toOfNat0]; simp
+  · case mp => intro h i; rw [h]; rfl
+  · case mpr => intro h; ext i; exact h i
 
 instance : AddCommGroup K^n where
   add := x ↦ y ↦ x + y
@@ -428,37 +371,30 @@ instance : Module K K^n where
   add_smul := add_ksmul
   zero_smul := zero_ksmul
 
-@[simp] theorem sum_distrib (u : Fin n → K ^ n) : (∑ i : Fin n, u i).p =
-  ∑ i : Fin n, (u i).p := by
+@[simp] theorem sum_distrib (u : Fin n → K ^ n) : (∑ i, u i).p = ∑ i, (u i).p
+  := by
   let u' : ℕ → K^n := j ↦ if h : j < n then (u ⟨j, h⟩) else 0
   have recur : ∀ j, (∑ i : Fin j, u' i).p = ∑ i : Fin j, (u' i).p := by
     intro j; induction j
     case zero => simp; rfl
     case succ k hk =>
-        let p' : ℕ → ℕ → K := i ↦ (u' i).p
-        rw [Fin.sum_trunc', Fin.sum_trunc' (u := p')]
+        let p' : ℕ → Fin n → K := i ↦ (u' i).p
+        rw [Fin.sum_trunc_last, Fin.sum_trunc_last (u := p')]
         rw [add_comm]; simp [hk]; ring
 --
-  have sum_eq : ∑ i : Fin n, u i = ∑ i : Fin n, u' i := by
+  have sum_eq : ∑ i, u i = ∑ i : Fin n, u' i := by
     congr; ext i; unfold u'; rw [dif_pos]
   rw [sum_eq, recur]; congr; ext i; unfold u'; rw [dif_pos]
 
 def canonBasis (K : Type*) [Field K] (i : Fin n) : K^n where
-  p := k ↦ ite (i = k) 1 0
-  is_fin := by {
-    intro m hm; apply if_neg; by_contra hi
-    absurd hm; linarith [i.is_lt]
-  }
+  p := k ↦ if i = k then 1 else 0
 
-theorem inCanonBasis (x : K^n) : x = ∑ i : Fin n, (x.p i) • canonBasis K i
-  := by
-  rw [eq_iff, sum_distrib]; intro i i_lt
-  rw [Finset.sum_apply]; unfold canonBasis
+theorem inCanonBasis (x : K^n) : x = ∑ i, (x.p i) • canonBasis K i := by
+  ext i; rw [sum_distrib, Finset.sum_apply]; unfold canonBasis
   simp only [instHSMul, instSMul, mul_ite, mul_one, mul_zero]
-  rw [Finset.sum_eq_single ⟨i, i_lt⟩]
-  · rw [if_pos (rfl)]
-  · intro b _ hb; apply if_neg; by_contra eq; absurd hb
-    rwa [←Fin.val_inj]
+  rw [Finset.sum_eq_single i]
+  · rw [if_pos rfl]
+  · intro b _ hb; apply if_neg; by_contra eq; exact hb eq
   · intro h; absurd h; apply Finset.mem_univ
 
 end K_n
@@ -572,7 +508,7 @@ theorem norm_ineq (u v : E) : ‖u + v‖ₑ ≤ ‖u‖ₑ + ‖v‖ₑ := by
     · rw [←add_prod_add]; apply prod_pos
   · rw [←norm, ←norm]; apply add_nonneg; repeat apply norm_nonneg
 
-def Rn_prod {n : ℕ} (x y : ℝ^n) : ℝ := ∑ i : Fin n, x.p i * y.p i
+def Rn_prod {n : ℕ} (x y : ℝ^n) : ℝ := ∑ i, x.p i * y.p i
 
 instance {n : ℕ} : Euclidean ℝ^n where
   scalar := Rn_prod
@@ -608,12 +544,9 @@ instance {n : ℕ} : Euclidean ℝ^n where
     intro u; unfold Rn_prod
     rw [Finset.sum_eq_zero_iff_of_nonneg, K_n.eq_zero_iff]
     · apply Iff.intro
-      · case mp => intro h i hi; rw [←mul_self_eq_zero]
-                   apply h ⟨i, hi⟩; apply Finset.mem_univ
-      · case mpr => intro h i hi; rw [mul_self_eq_zero]
-                    by_cases i_le : i < n
-                    · case _ => apply h i i_le
-                    · case _ => apply u.is_fin; linarith
+      · case mp => intro h i; rw [←mul_self_eq_zero]
+                   apply h i; apply Finset.mem_univ
+      · case mpr => intro h i hi; rw [h i, mul_zero]
     · intro i hi; apply mul_self_nonneg
   }
 
