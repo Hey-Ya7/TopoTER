@@ -104,7 +104,7 @@ end Complex
 -- 3.
 noncomputable section Euclidean
 open VectorSpace
-variable {E : Type*} [AddCommGroup E] [Module ℝ E] [Euclidean E]
+variable {E : Type*} [AddCommGroup E] [Euclidean E]
 
 @[simp] def euclid_dist : E↑ → E↑ → ℝ := x ↦ y ↦ ‖x.val - y‖ₑ
 
@@ -202,8 +202,7 @@ end Metrique
 namespace EspaceNorme
 open Valuation VectorSpace
 
-variable {K : Type*} [Field K] [VF : ValuationField K] {E : Type*}
-  [AddCommGroup E] [Module K E]
+variable {K E : Type*} [ValuationField K] [AddCommGroup E] [Module K E]
 
 def nneg (N : E → ℝ) := ∀ x, N x ≥ 0
 
@@ -213,7 +212,7 @@ def homogen (N : E → ℝ) := ∀ x, ∀ a : K, N (a • x) = |a|ₖ * N x
 
 def ineq (N : E → ℝ) := ∀ x y, N (x + y) ≤ N x + N y
 
-class GroupeNorme (E : Type*) [AddCommGroup E] where
+class GroupeNorme (E : Type*) extends AddCommGroup E where
   norm : E → ℝ
   nneg : nneg norm
   definie : definie norm
@@ -227,8 +226,8 @@ structure estNorme (N : E → ℝ) where
 
 notation : max "‖" x "‖" => GroupeNorme.norm x
 
-class EspaceVecNorme (K : Type*) [Field K] [ValuationField K] (E : Type*)
-  [AddCommGroup E] [G : GroupeNorme E] extends Module K E where
+class EspaceVecNorme (K E : Type*) [ValuationField K] [G : GroupeNorme E]
+  extends Module K E where
   norm : E → ℝ := G.norm
   homogen : homogen (K := K) G.norm
 
@@ -239,8 +238,8 @@ class EspaceVecNorme (K : Type*) [Field K] [ValuationField K] (E : Type*)
 
 open Metrique
 
-theorem dist_of_norme (K : Type*) [Field K] [ValuationField K] (E : Type*)
-  [AddCommGroup E] [GroupeNorme E] [V : EspaceVecNorme K E] :
+theorem dist_of_norme (K E : Type*) [ValuationField K] [GroupeNorme E]
+  [V : EspaceVecNorme K E] :
   let d : E↑ → E↑ → ℝ := x ↦ y ↦ ‖x.val - y‖; estDistance d := by
   rcases V.is_norm with ⟨nneg, defi, homo, ineq⟩; constructor
   · case nneg => intro x y; apply nneg
@@ -251,11 +250,11 @@ theorem dist_of_norme (K : Type*) [Field K] [ValuationField K] (E : Type*)
                  have eq : x.val - z = (x - y) + (y - z) := by abel
                  rw [eq]; apply ineq
 
-def MetriqueNorme (K : Type*) [Field K] [ValuationField K] (E : Type*)
-  [AddCommGroup E] [GroupeNorme E] [EspaceVecNorme K E] : Set E := E↑
+def MetriqueNorme (K E : Type*) [ValuationField K] [GroupeNorme E]
+  [EspaceVecNorme K E] : Set E := E↑
 
-instance [G : GroupeNorme E] [EspaceVecNorme K E] : EspaceMetrique
-  (MetriqueNorme K E) where
+instance {K E : Type*} [ValuationField K] [GroupeNorme E]
+  [EspaceVecNorme K E] : EspaceMetrique (MetriqueNorme K E) where
   d := x ↦ y ↦ ‖x.val - y‖
   is_dist := dist_of_norme K E
 
@@ -266,7 +265,7 @@ variable {n : ℕ}
 
 noncomputable def norme_sup : K^n → ℝ := x ↦ sSup {|x.p i|ₖ | i}
 
-@[simp] lemma norme_Kzero (x : K^(0 : ℕ)) : norme_sup x = 0 := by
+@[simp] lemma norme_Kzero (x : K ^ (0 : ℕ)) : norme_sup x = 0 := by
   unfold norme_sup; simp
 
 lemma Kn_nonempty {n : ℕ} (h : n > 0) (x : K^n) : let s := {|x.p i|ₖ | i};
@@ -288,14 +287,14 @@ noncomputable instance : GroupeNorme K^n where
                  rw [←hi]; apply le_csSup
                  · apply bddabove_of_fin_image
                  · dsimp; use i
-    · case mpr => intro h; cases n
-                  · case zero => apply norme_Kzero
-                  · case succ k =>
-                    have h₁ := Nat.zero_lt_succ k
-                    have h₂ := Kn_nonempty (K := K) h₁ x
-                    apply sSup_const h₂; intro x x_in
-                    rcases x_in with ⟨i, hi⟩; rw [h i] at hi
-                    rw [←Valuation.abs_zero (K := K), hi]
+    · case mpr =>
+        intro h; cases n
+        · case zero => apply norme_Kzero
+        · case succ k =>
+          have h' := Kn_nonempty (Nat.succ_pos k) x
+          apply sSup_const h'; intro x x_in
+          rcases x_in with ⟨i, hi⟩; rw [h i] at hi
+          rw [←Valuation.abs_zero (K := K), hi]
   }
 
   ineq := by {
@@ -304,10 +303,9 @@ noncomputable instance : GroupeNorme K^n where
     · case succ k =>
         let sx := {|x.p i|ₖ | i}; let sy := {|y.p i|ₖ | i}
         let s := {|(x + y).p i|ₖ | i}; let s' := sx + sy
-        have h := Nat.zero_lt_succ k
-        have hx := Kn_nonempty (K := K) h x
-        have hy := Kn_nonempty (K := K) h y
-        have hs := Kn_nonempty (K := K) h (x + y)
+        have hx := Kn_nonempty (Nat.succ_pos k) x
+        have hy := Kn_nonempty (Nat.succ_pos k) y
+        have hs := Kn_nonempty (Nat.succ_pos k) (x + y)
         have hs' := add_nonempty hx hy
 --
         have ineq₁ : sSup s ≤ sSup s' := by
@@ -335,6 +333,9 @@ noncomputable instance : EspaceVecNorme K K^n where
   }
 
 def norme_inf : K^n → ℝ := x ↦ ∑ i, |x.p i|ₖ
+
+@[simp] lemma norme_inf_Kzero (x : K ^ (0 : ℕ)) : norme_inf x = 0 := by
+  unfold norme_inf; simp
 
 def Inf (α : Type _) : Type _ := α
 instance {E : Type*} [G : AddCommGroup E] : AddCommGroup (Inf E) := G
@@ -374,6 +375,9 @@ noncomputable def norme_euclid : K^n → ℝ := x ↦ √(∑ i, |x.p i|ₖ^2)
 -- on réduit au cas simple ℝⁿ :
 def Rn_of_Kn (x : K^n) : ℝ^n where
   p := i ↦ |x.p i|ₖ
+
+@[simp] lemma norme_eucl_Kzero (x : K ^ (0 : ℕ)) : norme_euclid x = 0
+  := by unfold norme_euclid; simp
 
 lemma euclid_eq_Rn_norm (x : K^n) : norme_euclid x = ‖Rn_of_Kn x‖ₑ := by
   dsimp [norme_euclid, norm, Euclidean.scalar, Rn_prod]
@@ -424,8 +428,7 @@ noncomputable instance : GroupeNorme (Eucl K^n) where
         rw [two_mul, two_mul, add_mul, abs_mul_homo]; apply abs_add_ineq
       }
 --
-    rw [←abs_of_nonneg (sqrt_nonneg s)]
-    rw [←abs_of_nonneg x_add_y_nneg, ←sq_le_sq]
+    apply le_of_sq_le_sq _ (x_add_y_nneg)
     rw [sq_sqrt (sum_nneg (x + y)), add_sq]
     rw [sq_sqrt (sum_nneg x), sq_sqrt (sum_nneg y)]
     apply le_trans ineq; apply add_le_add_left
@@ -446,6 +449,100 @@ noncomputable instance : EspaceVecNorme K (Eucl K^n) where
     rw [←sqrt_mul (sq_nonneg |a|ₖ), Finset.mul_sum]
     congr; ext i; simp [sq, SMul.smul, instHSMul]; ring_nf
   }
+
+structure NormeEquiv (K E : Type*) [ValuationField K] [GroupeNorme E]
+  [EspaceVecNorme K E] (norm₁ : E → ℝ) (norm₂ : E → ℝ) where
+  exists_C : ∃ C > 0, ∀ x, norm₁ x ≤ C * norm₂ x
+  exists_D : ∃ D > 0, ∀ x, norm₂ x ≤ D * norm₁ x
+
+notation N₁ " ≃ " N₂ " on " K ", " E => NormeEquiv K E N₁ N₂
+
+instance NormeEq {K E : Type*} [ValuationField K] [GroupeNorme E]
+  [EspaceVecNorme K E] : Equivalence (NormeEquiv K E) where
+  refl := by {
+    intro N; constructor
+    · use 1, zero_lt_one; simp
+    · use 1, zero_lt_one; simp
+  }
+
+  symm := by {
+    intro N₁ N₂ h; rcases h with ⟨hC, hD⟩
+    constructor
+    · rcases hD with ⟨D, pos, h'⟩; use D
+    · rcases hC with ⟨C, pos, h'⟩; use C
+  }
+
+  trans := by {
+    intro N₁ N₂ N₃ h₁ h₂; rcases h₁ with ⟨hC₁, hD₁⟩
+    rcases h₂ with ⟨hC₂, hD₂⟩; constructor
+    · rcases hC₁ with ⟨C₁, pos₁, h'₁⟩
+      rcases hC₂ with ⟨C₂, pos₂, h'₂⟩
+      use C₁ * C₂, mul_pos pos₁ pos₂
+      intro x; apply le_trans (h'₁ x)
+      rw [mul_assoc, mul_le_mul_iff_right₀ pos₁]; apply h'₂
+--
+    · rcases hD₁ with ⟨D₁, pos₁, h'₁⟩
+      rcases hD₂ with ⟨D₂, pos₂, h'₂⟩
+      use D₂ * D₁, mul_pos pos₂ pos₁
+      intro x; apply le_trans (h'₂ x)
+      rw [mul_assoc, mul_le_mul_iff_right₀ pos₂]; apply h'₁
+  }
+
+lemma sup_equiv_inf : norme_sup ≃ norme_inf on K, K^n := by
+  cases n
+  · case zero => constructor
+                 · use 1, zero_lt_one; intro x; simp
+                 · use 1, zero_lt_one; intro x; simp
+  · case succ k =>
+    unfold norme_sup norme_inf; constructor
+    · use 1, zero_lt_one; intro x; apply csSup_le
+      · apply Kn_nonempty (Nat.succ_pos k)
+      · intro b hb; rcases hb with ⟨i, hi⟩; rw [one_mul, ←hi]
+        apply Finset.single_le_sum (f := i ↦ |x.p i|ₖ)
+        · intro i hi; apply Valuation.abs_nonneg
+        · apply Finset.mem_univ
+--
+    · use k.succ, (by apply Nat.cast_pos.mpr; simp)
+      intro x; rw [←nsmul_eq_mul, ←Fin.sum_const]
+      apply Finset.sum_le_sum; intro i hi
+      apply le_csSup _ (by use i)
+      apply SupReal.bddabove_of_fin_image
+
+open Real in
+lemma sup_equiv_eucl : norme_sup ≃ norme_euclid on K, K^n := by
+  cases n
+  · case zero => constructor
+                 · use 1, zero_lt_one; intro x; simp
+                 · use 1, zero_lt_one; intro x; simp
+  · case succ k =>
+    unfold norme_sup norme_euclid; constructor
+    · use 1, zero_lt_one; intro x; apply csSup_le
+      · apply Kn_nonempty (Nat.succ_pos k)
+      · intro b hb; rcases hb with ⟨i, hi⟩
+        rw [one_mul, ←hi, le_sqrt (abs_nonneg (x.p i))]
+        · apply Finset.single_le_sum (f := i ↦ |x.p i|ₖ ^ 2)
+          · intro i hi; apply sq_nonneg
+          · apply Finset.mem_univ
+        · apply Finset.sum_nonneg; intro i hi; apply sq_nonneg
+--
+    · use √k.succ; apply And.intro
+      · rw [gt_iff_lt, sqrt_pos, Nat.cast_pos]; simp
+      intro x; apply le_of_sq_le_sq
+      · nth_rw 2 [sq]; ring_nf; rw [sq_sqrt, sq_sqrt]
+        · rw [←nsmul_eq_mul, ←Fin.sum_const]
+          apply Finset.sum_le_sum; intro i hi; rw [sq_le_sq]
+          apply abs_le_abs_of_nonneg (abs_nonneg (x.p i))
+          apply le_csSup _ (by use i)
+          apply SupReal.bddabove_of_fin_image
+        · apply Nat.cast_nonneg
+        · apply Finset.sum_nonneg; intro i hi; apply sq_nonneg
+      · apply mul_nonneg (sqrt_nonneg k.succ); apply sSup_nonneg
+        intro xi xi_in; rcases xi_in with ⟨i, hi⟩; rw [←hi]
+        apply Valuation.abs_nonneg
+
+lemma inf_equiv_eucl : norme_inf ≃ norme_euclid on K, K^n := by
+  apply NormeEq.trans _ sup_equiv_eucl
+  apply NormeEq.symm; exact sup_equiv_inf
 
 end EspaceNorme
 

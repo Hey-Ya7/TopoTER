@@ -163,11 +163,11 @@ end Complex
 
 namespace Valuation
 
-class ValuationField (K : Type*) [Field K] where
+class ValuationField (K : Type*) extends Field K where
   abs : K → ℝ
   isAbv : IsAbsoluteValue abs
 
-instance : ValuationField ℝ where
+noncomputable instance : ValuationField ℝ where
   abs := abs
   isAbv := IsAbsoluteValue.abs_isAbsoluteValue
 
@@ -187,7 +187,7 @@ scoped syntax : max (name := abs) atomic("|" noWs) term "|ₖ" : term
 macro_rules (kind := abs)
   | `(|$x|ₖ) => `(ValuationField.abs $x)
 
-variable {K : Type*} [Field K] [VF : ValuationField K]
+variable {K : Type*} [VF : ValuationField K]
 
 theorem abs_nonneg (k : K) : 0 ≤ |k|ₖ := by
   apply VF.isAbv.abv_nonneg
@@ -233,8 +233,8 @@ end Valuation
 
 namespace VectorSpace
 
-class Euclidean (E : Type*) [AddCommGroup E] [Module ℝ E]
-  extends FiniteDimensional ℝ E where
+class Euclidean (E : Type*) [AddCommGroup E] extends Module ℝ E,
+  FiniteDimensional ℝ E where
   scalar : E → E → ℝ
   symm (u v : E) : scalar u v = scalar v u
   add_left (u v w : E) : scalar (u + v) w = scalar u w + scalar v w
@@ -338,10 +338,13 @@ variable {K : Type*} {n : ℕ} [Field K]
   k₁ • k₂ • x := by
   simp [HSMul.hSMul]; ring_nf
 
-@[simp] theorem eq_zero_iff (x : K^n) : x = 0 ↔ ∀ i, x.p i = 0 := by
+theorem eq_zero_iff (x : K^n) : x = 0 ↔ ∀ i, x.p i = 0 := by
   apply Iff.intro
   · case mp => intro h i; rw [h]; rfl
   · case mpr => intro h; ext i; exact h i
+
+theorem zero_of_K_zero (x : K ^ (0 : ℕ)) : x = 0 := by
+  rw [eq_zero_iff]; intro i; linarith [i.is_lt]
 
 instance : AddCommGroup K^n where
   add := x ↦ y ↦ x + y
@@ -406,7 +409,7 @@ scoped syntax (name := dot_prod) "⟨" term ", " term "⟩" : term
 macro_rules (kind := dot_prod)
   | `(⟨$x, $y⟩) => `(Euclidean.scalar $x $y)
 
-variable {E : Type*} [AddCommGroup E] [Module ℝ E] [EuclidE : Euclidean E]
+variable {E : Type*} [AddCommGroup E] [EuclidE : Euclidean E]
 
 theorem prod_symm (u v : E) : ⟨u, v⟩ = ⟨v, u⟩ := EuclidE.symm u v
 
@@ -510,7 +513,7 @@ theorem norm_ineq (u v : E) : ‖u + v‖ₑ ≤ ‖u‖ₑ + ‖v‖ₑ := by
 
 def Rn_prod {n : ℕ} (x y : ℝ^n) : ℝ := ∑ i, x.p i * y.p i
 
-instance {n : ℕ} : Euclidean ℝ^n where
+noncomputable instance {n : ℕ} : Euclidean ℝ^n where
   scalar := Rn_prod
   fg_top := by {
     let ei : Fin n → ℝ^n := i ↦ K_n.canonBasis ℝ i
