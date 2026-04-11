@@ -13,8 +13,8 @@ class EspTop (X : Type) where
 
 attribute [simp] EspTop.univ_ouvert EspTop.empty_ouvert
 
-variable {X : Type} [EspTop X]
-variable {Y : Type} [EspTop Y]
+variable {X} {α : Type} [EspTop X]
+variable {Y} {β : Type} [EspTop Y]
 
 open EspTop
 
@@ -291,9 +291,23 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → (baire v) := by
 --    specialize h n
   sorry
 
+inductive is_open_in_top_gen (S : Set (Set X)) : Set X → Prop
+| base_top {U} (h : U ∈ S) : is_open_in_top_gen S U
+| univ : is_open_in_top_gen S univ
+| empty : is_open_in_top_gen S ∅
+| Inter (U V : Set X) : is_open_in_top_gen S U → is_open_in_top_gen S V →
+    is_open_in_top_gen S (U ∩ V)
+| Union {ι : Type} {u : ι → Set X} :
+  (∀ i , is_open_in_top_gen S (u i)) → is_open_in_top_gen S (⋃ i, u i)
+
+
 def topo_engendree (S : Set (Set X)) : EspTop X where
-  est_ouvert := _
-  univ_ouvert := _
-  empty_ouvert := _
-  union_ouvert := _
-  inter_ouvert := _
+  est_ouvert := is_open_in_top_gen S
+  univ_ouvert := is_open_in_top_gen.univ
+  empty_ouvert := is_open_in_top_gen.empty
+  union_ouvert := is_open_in_top_gen.Union
+  inter_ouvert := by exact fun {u v} hu hv ↦ is_open_in_top_gen.Inter u v hu hv
+
+structure base_topo (S : Set (Set X)) : Prop where
+  Union_univ : ⋃₀ S = univ
+  base_inter : ∀ b₁ ∈ S, ∀ b₂ ∈ S, ∀ x ∈ b₁ ∩ b₂, ∃ b ∈ S, x ∈ b ∧ b ⊆ b₁ ∩ b₂
