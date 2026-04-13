@@ -10,7 +10,7 @@ namespace Metrique
 
 -- Définition 1.1.
 
-variable {X : Type*}
+variable {X : Type*} [Nonempty X]
 
 def nneg (d : X → X → ℝ) := ∀ x y, d x y ≥ 0
 
@@ -26,7 +26,7 @@ structure estDistance (d : X → X → ℝ) where
   symm : symm d
   ineq : ineq d
 
-class EspaceMetrique (X : Type _) where
+class EspaceMetrique (X : Type _) [Nonempty X] where
   d : X → X → ℝ
   is_dist : estDistance d
 
@@ -131,28 +131,28 @@ end Euclidean
 
 -- 4.
 noncomputable section Discrete
-omit M
 open Classical in
-@[simp] def discrete_dist (X : Type) : X → X → ℝ := x ↦ y ↦
+@[simp] def discrete_dist (X : Type*) : X → X → ℝ := x ↦ y ↦
   if x = y then 0 else 1
 
-def Discrete (X : Type) : Type _ := X
+def Discrete (X : Type*) : Type _ := X
+instance {X : Type*} [N : Nonempty X] : Nonempty (Discrete X) := N
 
-lemma discrete_nneg (X : Type) : nneg (discrete_dist X) := by
+lemma discrete_nneg (X : Type*) : nneg (discrete_dist X) := by
   intro x y; dsimp; split
   · case isTrue => rfl
   · case isFalse => linarith
 
-lemma discrete_sep (X : Type) : sep (discrete_dist X) := by
+lemma discrete_sep (X : Type*) : sep (discrete_dist X) := by
   intro x y; dsimp; split
   · case isTrue h => simp only [h]
   · case isFalse h => simp only [one_ne_zero, h]
 
-lemma discrete_symm (X : Type) : symm (discrete_dist X) := by
+lemma discrete_symm (X : Type*) : symm (discrete_dist X) := by
   intro x y; dsimp; congr 1; rw [Eq.comm (a := x)]
 
 open Classical in
-lemma discrete_ineq (X : Type) : ineq (discrete_dist X) := by
+lemma discrete_ineq (X : Type*) : ineq (discrete_dist X) := by
   intro x y z; dsimp; split
   · case isTrue => apply add_nonneg (discrete_nneg X x y)
                    exact discrete_nneg X y z
@@ -165,7 +165,7 @@ lemma discrete_ineq (X : Type) : ineq (discrete_dist X) := by
     · case isFalse => apply le_add_of_nonneg_right
                       exact discrete_nneg X y z
 
-instance {X : Type} : EspaceMetrique (Discrete X) where
+instance : EspaceMetrique (Discrete X) where
   d := discrete_dist X
   is_dist := ⟨
     discrete_nneg X, discrete_sep X,
@@ -187,7 +187,10 @@ lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
   · case symm => intro x y; unfold induite_dist; apply symm
   · case ineq => intro x y z; unfold induite_dist; apply ineq
 
-instance (A : Partie X) : EspaceMetrique (Induite A) where
+variable {A : Partie X} [Nonempty A]
+instance {A : Partie X} [N : Nonempty A] : Nonempty (Induite A) := N
+
+instance : EspaceMetrique (Induite A) where
   d := induite_dist A
   is_dist := dist_of_induite A
 
@@ -554,7 +557,7 @@ end EspaceNorme
 
 open Metrique
 
-variable {X : Type*} [M : EspaceMetrique X]
+variable {X : Type*} [Nonempty X] [M : EspaceMetrique X]
 
 @[simp] def boule_ouverte (a : X) (r : ℝ) := {x | d(x, a) < r}
 
@@ -682,18 +685,27 @@ theorem ouv_boule_union {U : Partie X} (h : ouverte U) : ∃ ι : Type u_1,
 -- Définition 1.10.
 
 open Classical in
-noncomputable def diam (A : Set X) := let S := {d(x, y) | (x ∈ A) (y ∈ A)};
+noncomputable def diam (A : Partie X) := let S := {d(x, y) | (x ∈ A) (y ∈ A)};
   if BddAbove S then sSup S else -1
 
-def diam_bornee (A : Set X) := diam A > -1
+def diam_bornee (A : Partie X) := diam A > -1
 
-def dist_bornee_nneg (A : Set X) := ∃ M ≥ 0, ∀ x y ∈ A, d(x, y) ≤ M
+def dist_bornee_nneg (A : Partie X) := ∃ M ≥ 0, ∀ x y ∈ A, d(x, y) ≤ M
 
-def dist_bornee (A : Set X) := ∃ M, ∀ x y ∈ A, d(x, y) ≤ M
+def dist_bornee (A : Partie X) := ∃ M, ∀ x y ∈ A, d(x, y) ≤ M
+-- en général, on utilisera cette définition pour une partie bornée
 
-def in_boule (A : Set X) := ∃ x, ∃ r > 0, A ⊆ Bₒ x r
+def in_boule (A : Partie X) := ∃ x, ∃ r > 0, A ⊆ Bₒ x r
 
-lemma bornee_iff_bdd (A : Set X) : diam_bornee A ↔ dist_bornee A := by
+lemma bdd_iff_bdd_by_nneg (A : Partie X) : dist_bornee A ↔ dist_bornee_nneg A
+  := by
+  unfold dist_bornee dist_bornee_nneg; apply Iff.intro
+  · case mp => intro h; rcases h with ⟨M, hM⟩
+               use max M 0, le_max_right M 0; intro x hx y hy
+               apply le_trans (hM x hx y hy); apply le_max_left
+  · case mpr => intro h; rcases h with ⟨M, M_nneg, hM⟩; use M, hM
+
+lemma bornee_iff_bdd (A : Partie X) : diam_bornee A ↔ dist_bornee A := by
   let S := {d(x, y) | (x ∈ A) (y ∈ A)}
   unfold diam_bornee dist_bornee diam; apply Iff.intro
   case mp => intro h; dsimp at h; have bdd : BddAbove S := by
@@ -720,10 +732,28 @@ lemma bornee_iff_bdd (A : Set X) : diam_bornee A ↔ dist_bornee A := by
                 use d(x, x); apply And.intro (by use x, hx, x, hx)
                 rw [self_dist]; linarith
 
+lemma bdd_iff_in_boule (A : Partie X) : dist_bornee A ↔ in_boule A := by
+  unfold in_boule; apply Iff.intro
+  · case mp => rw [bdd_iff_bdd_by_nneg]; intro h
+               rcases h with ⟨M, M_nneg, hM⟩; by_cases empty : A = ∅
+               · case pos =>
+                  rw [empty]; suffices hyp : ∃ r : ℝ, 0 < r by simp_all
+                  use 1, by linarith
+               · case neg =>
+                  rw [←ne_eq, ←Set.nonempty_iff_ne_empty] at empty
+                  rw [Set.nonempty_def] at empty
+                  rcases empty with ⟨x, hx⟩; use x, M + 1, by linarith
+                  intro y hy; apply lt_of_le_of_lt (hM y hy x hx); linarith
+--
+  · case mpr => intro h; rcases h with ⟨a, r, r_pos, in_B⟩
+                rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
+                use r + r; intro x hx y hy
+                apply le_trans (ineq x a y); rw [symm a y]
+                apply le_of_lt; exact add_lt_add (in_B hx) (in_B hy)
+
 -- Définition 1.11.
 
-def converges_to (u : ℕ → X) (l : X) := ∀ ε > 0, ∃ N, ∀ n ≥ N,
-  d(u n, l) ≤ ε
+def converges_to (u : ℕ → X) (l : X) := ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u n, l) ≤ ε
 
 def converges (u : ℕ → X) := ∃ l, converges_to u l
 
@@ -731,11 +761,11 @@ def bornee (u : ℕ → X) := dist_bornee {u n | n}
 
 -- Remarque 1.12.
 
-def converges_to' (u : ℕ → X) (l : X) := ∀ U, ouverte U → l ∈ U →
+def converges_in_vois (u : ℕ → X) (l : X) := ∀ U, ouverte U → l ∈ U →
   ∃ N, ∀ n ≥ N, u n ∈ U
 
-theorem lim_iff_lim' (u : ℕ → X) (l : X) : converges_to u l ↔
-  converges_to' u l := by
+theorem lim_iff_lim_vois (u : ℕ → X) (l : X) : converges_to u l ↔
+  converges_in_vois u l := by
   apply Iff.intro
   case mp => intro h U ouv l_in; have l_vois := ouv l l_in
              rcases l_vois with ⟨r, r_pos, hr⟩
@@ -755,14 +785,29 @@ theorem lim_iff_lim' (u : ℕ → X) (l : X) : converges_to u l ↔
 
 -- a)
 
-theorem conv_of_inv (u : ℕ → ℝ := n ↦ 1 / (n + 1)) :
-  converges_to u (0 : ℝ) := by
+theorem conv_of_inv (u : ℕ → ℝ := n ↦ 1 / (n + 1)) : converges_to u 0 := by
   intro ε ε_pos; sorry
 
 -- b)
 
-theorem conv_of_bornee (u : ℕ → X) (h : converges u) : bornee u := by
-  sorry
+theorem bornee_of_conv (u : ℕ → X) (h : converges u) : bornee u := by
+  rcases h with ⟨l, hl⟩; rcases hl 1 zero_lt_one with ⟨N, hN⟩
+  have bdd : BddAbove {d(u n, l) | n : Fin N} := by
+    apply SupReal.bddabove_of_fin_image
+  rcases bdd with ⟨M, hM⟩; unfold bornee; rw [bdd_iff_in_boule]
+  let M' := max (M + 1) 2
+  use l, M', lt_max_of_lt_right (zero_lt_two)
+  intro x hx; rcases hx with ⟨n, hn⟩; rw [←hn]; dsimp
+--
+  by_cases lt : n < N
+  · case pos =>
+      have u_n_in : d(u n, l) ∈ {d(u n, l) | n : Fin N}
+        := by use ⟨n, lt⟩
+      apply lt_max_of_lt_left
+      exact lt_of_le_of_lt (hM u_n_in) (by linarith)
+  · case neg =>
+      push_neg at lt; apply lt_max_of_lt_right
+      exact lt_of_le_of_lt (hN n lt) (by linarith)
 
 -- 1.3. Espaces métriques complets (I)
 
@@ -782,6 +827,11 @@ theorem cauchy_of_conv (u : ℕ → X) (h : converges u) : cauchy u := by
   have ineq₁ := ineq (u m) l (u n)
   have ineq₂ := hN m hm; have ineq₃ := hN n hn
   rw [symm l (u n)] at ineq₁; linarith
+
+-- b)
+
+theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : bornee u := by
+  sorry
 
 -- c)
 
@@ -810,4 +860,5 @@ theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
 
 -- Définition 1.16.
 
-def complet (X) [EspaceMetrique X] := ∀ u : ℕ → X, cauchy u → converges u
+def complet (X : Type*) [Nonempty X] [EspaceMetrique X] := ∀ u : ℕ → X,
+  cauchy u → converges u

@@ -29,6 +29,10 @@ abbrev Z : Partie ℝ := {k | k : ℤ}
 abbrev Q : Partie ℝ := {q | q : ℚ}
 abbrev R : Partie ℝ := Ω
 
+instance : Nonempty Z := by use 0; simp
+instance : Nonempty Q := by use 0; simp
+instance : Nonempty R := by use 0; simp
+
 abbrev R_star : Partie ℝ := {x : ℝ | x ≠ 0}
 notation "Rˣ" => R_star
 
@@ -45,6 +49,7 @@ abbrev R_star_neg : Partie ℝ := {x : ℝ | x < 0}
 notation "R₋ˣ" => R_star_neg
 
 abbrev C : Partie ℂ := Ω
+instance : Nonempty C := by use 0; simp
 
 abbrev C_star : Partie ℂ := {x : ℂ | x ≠ 0}
 notation "Cˣ" => C_star
