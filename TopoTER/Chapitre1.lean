@@ -10,7 +10,7 @@ namespace Metrique
 
 -- Définition 1.1.
 
-variable {X : Type*} [Nonempty X]
+variable {X : Type*}
 
 def nneg (d : X → X → ℝ) := ∀ x y, d x y ≥ 0
 
@@ -26,7 +26,7 @@ structure estDistance (d : X → X → ℝ) where
   symm : symm d
   ineq : ineq d
 
-class EspaceMetrique (X : Type _) [Nonempty X] where
+class EspaceMetrique (X : Type _) where
   d : X → X → ℝ
   is_dist : estDistance d
 
@@ -136,7 +136,6 @@ open Classical in
   if x = y then 0 else 1
 
 def Discrete (X : Type*) : Type _ := X
-instance {X : Type*} [N : Nonempty X] : Nonempty (Discrete X) := N
 
 lemma discrete_nneg (X : Type*) : nneg (discrete_dist X) := by
   intro x y; dsimp; split
@@ -187,12 +186,18 @@ lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
   · case symm => intro x y; unfold induite_dist; apply symm
   · case ineq => intro x y z; unfold induite_dist; apply ineq
 
-variable {A : Partie X} [Nonempty A]
-instance {A : Partie X} [N : Nonempty A] : Nonempty (Induite A) := N
+variable {A : Partie X}
 
 instance : EspaceMetrique (Induite A) where
   d := induite_dist A
   is_dist := dist_of_induite A
+
+instance : Coe (Partie X) (Partie Induite A) where
+  coe := S ↦ {x | (x : X) ∈ S}
+
+omit M in
+@[simp] lemma self_induite : (A : Partie Induite A) = Ω := by
+  ext x; unfold Induite; simp
 
 end Metrique
 
@@ -223,6 +228,20 @@ structure estNorme (N : E → ℝ) where
   homogen : homogen (K := K) N
   ineq : ineq N
 
+lemma norm_zero {N : E → ℝ} (h : estNorme (K := K) N) : N 0 = 0 := by
+  rw [h.definie]
+
+lemma norm_neg {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x, N (-x) = N x
+  := by intro x; rw [←neg_one_smul K, h.homogen, abs_neg_one, one_mul]
+
+lemma norm_symm {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N (x - y) =
+  N (y - x) := by intro x y; rw [←neg_sub, norm_neg h]
+
+lemma sub_ineq {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N x - N y ≤
+  N (x - y) := by
+  intro x y; rw [sub_le_iff_le_add]
+  nth_rw 1 [←sub_add_cancel x y]; apply h.ineq
+
 notation : max "‖" x "‖" => GroupeNorme.norm x
 
 class EspaceVecNorme (K E : Type*) [ValuationField K] [G : GroupeNorme E]
@@ -243,23 +262,25 @@ theorem dist_of_norme (K E : Type*) [ValuationField K] [GroupeNorme E]
   rcases V.is_norm with ⟨nneg, defi, homo, ineq⟩; constructor
   · case nneg => intro x y; apply nneg
   · case sep => intro x y; rw [defi, sub_eq_zero]
-  · case symm => intro x y; dsimp; rw [←neg_sub]
-                 rw [←neg_one_smul K, homo, abs_neg_one, one_mul]
+  · case symm => intro x y; dsimp; rw [norm_symm V.is_norm]
   · case ineq => intro x y z; dsimp
                  have eq : x - z = (x - y) + (y - z) := by abel
                  rw [eq]; apply ineq
 
-def MetriqueNorme (K E : Type*) [ValuationField K] [GroupeNorme E]
+def EspaceMetNorme (K E : Type*) [ValuationField K] [GroupeNorme E]
   [EspaceVecNorme K E] : Type _ := E
 
+notation "Vec⟨" K " | " E "⟩" => EspaceMetNorme K E
+notation "N(" K ", " E ")" => fun (x : Vec⟨K | E⟩) => ‖x‖
+
 instance {K E : Type*} [ValuationField K] [G : GroupeNorme E]
-  [EspaceVecNorme K E] : GroupeNorme (MetriqueNorme K E) := G
+  [EspaceVecNorme K E] : GroupeNorme Vec⟨K | E⟩ := G
 
 instance {K E : Type*} [ValuationField K] [GroupeNorme E]
-  [V : EspaceVecNorme K E] : EspaceVecNorme K (MetriqueNorme K E) := V
+  [V : EspaceVecNorme K E] : EspaceVecNorme K Vec⟨K | E⟩ := V
 
 instance {K E : Type*} [ValuationField K] [GroupeNorme E]
-  [EspaceVecNorme K E] : EspaceMetrique (MetriqueNorme K E) where
+  [EspaceVecNorme K E] : EspaceMetrique Vec⟨K | E⟩ where
   d := x ↦ y ↦ ‖x - y‖
   is_dist := dist_of_norme K E
 
@@ -336,6 +357,10 @@ noncomputable instance : EspaceVecNorme K K^n where
       rw [←sSup_smul_of_nonneg (abs_nonneg a), h]
     ext r; simp [HSMul.hSMul]
   }
+
+noncomputable instance : EspaceMetrique K^n where
+  d := x ↦ y ↦ ‖x - y‖
+  is_dist := dist_of_norme K K^n
 
 def norme_taxi : K^n → ℝ := x ↦ ∑ i, |x.p i|ₖ
 
@@ -455,15 +480,13 @@ noncomputable instance : EspaceVecNorme K (Eucl K^n) where
     congr; ext i; simp [sq, SMul.smul, instHSMul]; ring_nf
   }
 
-structure NormeEquiv (K E : Type*) [ValuationField K] [GroupeNorme E]
-  [EspaceVecNorme K E] (norm₁ : E → ℝ) (norm₂ : E → ℝ) where
+structure NormeEquiv (E : Type*) (norm₁ : E → ℝ) (norm₂ : E → ℝ) where
   exists_C : ∃ C > 0, ∀ x, norm₁ x ≤ C * norm₂ x
   exists_D : ∃ D > 0, ∀ x, norm₂ x ≤ D * norm₁ x
 
-notation N₁ " ≃ " N₂ " on " K ", " E => NormeEquiv K E N₁ N₂
+notation N₁ " ≃ " N₂ " on " E => NormeEquiv E N₁ N₂
 
-instance NormeEq {K E : Type*} [ValuationField K] [GroupeNorme E]
-  [EspaceVecNorme K E] : Equivalence (NormeEquiv K E) where
+instance NormeEq {E : Type*} : Equivalence (NormeEquiv E) where
   refl := by {
     intro N; constructor
     · use 1, zero_lt_one; simp
@@ -493,7 +516,7 @@ instance NormeEq {K E : Type*} [ValuationField K] [GroupeNorme E]
       rw [mul_assoc, mul_le_mul_iff_right₀ pos₂]; apply h'₁
   }
 
-lemma sup_equiv_taxi : norme_sup ≃ norme_taxi on K, K^n := by
+lemma sup_equiv_taxi : norme_sup ≃ norme_taxi on K^n := by
   cases n
   · case zero => constructor
                  · use 1, zero_lt_one; intro x; simp
@@ -514,7 +537,7 @@ lemma sup_equiv_taxi : norme_sup ≃ norme_taxi on K, K^n := by
       apply SupReal.bddabove_of_fin_image
 
 open Real in
-lemma sup_equiv_eucl : norme_sup ≃ norme_euclid on K, K^n := by
+lemma sup_equiv_eucl : norme_sup ≃ norme_euclid on K^n := by
   cases n
   · case zero => constructor
                  · use 1, zero_lt_one; intro x; simp
@@ -545,7 +568,7 @@ lemma sup_equiv_eucl : norme_sup ≃ norme_euclid on K, K^n := by
         intro xi xi_in; rcases xi_in with ⟨i, hi⟩; rw [←hi]
         apply Valuation.abs_nonneg
 
-lemma taxi_equiv_eucl : norme_taxi ≃ norme_euclid on K, K^n := by
+lemma taxi_equiv_eucl : norme_taxi ≃ norme_euclid on K^n := by
   apply NormeEq.trans _ sup_equiv_eucl
   apply NormeEq.symm; exact sup_equiv_taxi
 
@@ -557,7 +580,7 @@ end EspaceNorme
 
 open Metrique
 
-variable {X : Type*} [Nonempty X] [M : EspaceMetrique X]
+variable {X : Type*} [M : EspaceMetrique X]
 
 @[simp] def boule_ouverte (a : X) (r : ℝ) := {x | d(x, a) < r}
 
@@ -581,9 +604,8 @@ lemma centre_in_boule (a : X) {r : ℝ} (hr : r > 0) : a ∈ Bₒ a r := by
   rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
   dsimp; rw [self_dist a]; linarith
 
-lemma half_in_boule (a : X) {x : X} {r : ℝ} (hr : r > 0) (hx : d(x, a) < r / 2)
-  : x ∈ Bₒ a r := by
-  dsimp; apply lt_trans hx; linarith
+lemma boule_in_boule_f (a : X) {r : ℝ} (_ : r > 0) : Bₒ a r ⊆ Bf a r := by
+  intro x x_in; dsimp; dsimp at x_in; linarith
 
 -- Définition 1.7.
 
@@ -627,9 +649,194 @@ lemma ouverte_of_Z_induite (A : Partie Z_induite) : ouverte A := by
   rwa [boule_in_Z_induite, Set.singleton_subset_iff]
 
 lemma fermee_of_Z_induite (A : Partie Z_induite) : fermee A := by
-  rw [fermee_def]; apply ouverte_of_Z_induite
+  apply ouverte_of_Z_induite
 
 -- b)
+
+lemma Ioo_ouverte (a b : ℝ) : ouverte [a <__< b] := by
+  intro x x_in; rcases x_in with ⟨h₁, h₂⟩
+  use min ((x - a) / 2) ((b - x) / 2)
+  apply And.intro
+  · apply lt_min; repeat linarith
+  · intro y y_in; unfold instEspaceMetriqueReal at y_in
+    dsimp at y_in; rw [lt_min_iff] at y_in; apply And.intro
+    · rw [abs_sub_lt_iff] at y_in; linarith
+    · nth_rw 2 [abs_sub_lt_iff] at y_in; linarith
+
+lemma Ioi_ouverte (a : ℝ) : ouverte [a <__< +∞] := by
+  intro x x_in; dsimp at x_in
+  use (x - a) / 2, by linarith
+  intro y y_in; unfold instEspaceMetriqueReal at y_in
+  dsimp at y_in; rw [abs_sub_lt_iff] at y_in; dsimp; linarith
+
+lemma Iio_ouverte (b : ℝ) : ouverte [-∞ <__< b] := by
+  intro x x_in; dsimp at x_in
+  use (b - x) / 2, by linarith
+  intro y y_in; unfold instEspaceMetriqueReal at y_in
+  dsimp at y_in; rw [abs_sub_lt_iff] at y_in; dsimp; linarith
+
+lemma Icc_fermee (a b : ℝ) : fermee [a ≤__≤ b] := by
+  have int_compl : Ω \ [a ≤__≤ b] = {x | x < a ∨ x > b} := by
+    ext x; simp [-not_and, not_and_or]
+  rw [fermee_def, int_compl]; intro x x_in
+  apply Or.by_cases x_in
+  · case h₁ => intro h; have ouv := Iio_ouverte a
+               rcases ouv x h with ⟨r, r_pos, hr⟩
+               use r, r_pos; intro y y_in; apply Or.inl (hr y_in)
+  · case h₂ => intro h; have ouv := Ioi_ouverte b
+               rcases ouv x h with ⟨r, r_pos, hr⟩
+               use r, r_pos; intro y y_in; apply Or.inr (hr y_in)
+
+lemma Ici_fermee (a : ℝ) : fermee [a ≤__< +∞] := by
+  have int_compl : Ω \ [a ≤__< +∞] = {x | x < a} := by
+    ext x; simp
+  rw [fermee_def, int_compl]; exact Iio_ouverte a
+
+lemma Iic_fermee (b : ℝ) : fermee [-∞ <__≤ b] := by
+  have int_compl : Ω \ [-∞ <__≤ b] = {x | x > b} := by
+    ext x; simp
+  rw [fermee_def, int_compl]; exact Ioi_ouverte b
+
+lemma Icc_pas_ouverte {a b : ℝ} (h : a ≤ b) : ¬ ouverte [a ≤__≤ b] := by
+  rw [ouverte_def]; push_neg; use a
+  apply And.intro ⟨le_refl a, h⟩
+  intro r r_pos; rw [Set.not_subset]; use a - r/2
+  apply And.intro _ (by simp [r_pos])
+  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  apply And.intro (by linarith) (by linarith)
+
+lemma Ici_pas_ouverte (a : ℝ) : ¬ ouverte [a ≤__< +∞] := by
+  rw [ouverte_def]; push_neg; use a
+  apply And.intro (le_refl a)
+  intro r r_pos; rw [Set.not_subset]; use a - r/2
+  apply And.intro _ (by simp [r_pos])
+  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  apply And.intro (by linarith) (by linarith)
+
+lemma Iic_pas_ouverte (b : ℝ) : ¬ ouverte [-∞ <__≤ b] := by
+  rw [ouverte_def]; push_neg; use b
+  apply And.intro (le_refl b)
+  intro r r_pos; rw [Set.not_subset]; use b + r/2
+  apply And.intro _ (by simp [r_pos])
+  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  apply And.intro (by linarith) (by linarith)
+
+lemma Ioo_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__< b] := by
+  have int_compl : Ω \ [a <__< b] = {x | x ≤ a ∨ x ≥ b} := by
+    ext; simp [-not_and, not_and_or]
+  rw [fermee_def, int_compl, ouverte_def]; push_neg
+  use a, (by simp); intro r r_pos; rw [Set.not_subset]
+  let m := min (b - a) r
+  have m_pos : 0 < m := by
+    rw [lt_min_iff]; apply And.intro _ r_pos; linarith
+--
+  have ineq₁ : m ≤ b - a := min_le_left (b - a) r
+  have ineq₂ : m ≤ r := min_le_right (b - a) r
+  use a + m/2; apply And.intro
+  · unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+    apply And.intro (by linarith) (by linarith)
+  · dsimp; push_neg; apply And.intro (by linarith) (by linarith)
+
+lemma Ioi_pas_fermee (a : ℝ) : ¬ fermee [a <__< +∞] := by
+  have int_compl : Ω \ [a <__< +∞] = {x | x ≤ a} := by
+    ext x; simp
+  rw [fermee_def, int_compl]; exact Iic_pas_ouverte a
+
+lemma Iio_pas_fermee (b : ℝ) : ¬ fermee [-∞ <__< b] := by
+  have int_compl : Ω \ [-∞ <__< b] = {x | x ≥ b} := by
+    ext x; simp
+  rw [fermee_def, int_compl]; exact Ici_pas_ouverte b
+
+lemma Ioc_pas_ouverte {a b : ℝ} (h : a < b) : ¬ ouverte [a <__≤ b] := by
+  rw [ouverte_def]; push_neg; use b
+  apply And.intro ⟨h, le_refl b⟩
+  intro r r_pos; rw [Set.not_subset]; use b + r/2
+  apply And.intro _ (by simp [r_pos])
+  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  apply And.intro (by linarith) (by linarith)
+
+lemma Ioc_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__≤ b] := by
+  have int_compl : Ω \ [a <__≤ b] = {x | x ≤ a ∨ x > b} := by
+    ext; simp [-not_and, not_and_or]
+  rw [fermee_def, int_compl, ouverte_def]; push_neg
+  use a, (by simp); intro r r_pos; rw [Set.not_subset]
+  let m := min (b - a) r
+  have m_pos : 0 < m := by
+    rw [lt_min_iff]; apply And.intro _ r_pos; linarith
+--
+  have ineq₁ : m ≤ b - a := min_le_left (b - a) r
+  have ineq₂ : m ≤ r := min_le_right (b - a) r
+  use a + m/2; apply And.intro
+  · unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+    apply And.intro (by linarith) (by linarith)
+  · dsimp; push_neg; apply And.intro (by linarith) (by linarith)
+
+lemma Ico_pas_ouverte {a b : ℝ} (h : a < b) : ¬ ouverte [a ≤__< b] := by
+  rw [ouverte_def]; push_neg; use a
+  apply And.intro ⟨le_refl a, h⟩
+  intro r r_pos; rw [Set.not_subset]; use a - r/2
+  apply And.intro _ (by simp [r_pos])
+  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  apply And.intro (by linarith) (by linarith)
+
+lemma Ico_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a ≤__< b] := by
+  have int_compl : Ω \ [a ≤__< b] = {x | x < a ∨ x ≥ b} := by
+    ext; simp [-not_and, not_and_or]
+  rw [fermee_def, int_compl, ouverte_def]; push_neg
+  use b, (by simp); intro r r_pos; rw [Set.not_subset]
+  let m := min (b - a) r
+  have m_pos : 0 < m := by
+    rw [lt_min_iff]; apply And.intro _ r_pos; linarith
+--
+  have ineq₁ : m ≤ b - a := min_le_left (b - a) r
+  have ineq₂ : m ≤ r := min_le_right (b - a) r
+  use b - m/2; apply And.intro
+  · unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+    apply And.intro (by linarith) (by linarith)
+  · dsimp; push_neg; apply And.intro (by linarith) (by linarith)
+
+example : let S := [0 ≤__< 1]; ¬ ouverte S ∧ ¬ fermee S := by
+  apply And.intro
+  · apply Ico_pas_ouverte; linarith
+  · apply Ico_pas_fermee; linarith
+
+-- c)
+
+section Relatifs
+
+lemma ouverte_of_self_ind (A : Partie X) : ouverte (A : Partie Induite A)
+  := by rw [self_induite]; exact ouverte_of_uni
+
+def S : Partie ℝ := [0 ≤__< 1]
+abbrev Sᵢ : Partie ℝ := Induite S
+
+example : ouverte (S : Partie Sᵢ) := ouverte_of_self_ind S
+example : ¬ ouverte (S : Partie ℝ) := Ico_pas_ouverte zero_lt_one
+
+lemma in_Z_induite : ∀ n : ℕ, ↑n ∈ Z := by
+  intro n; use n; rw [Int.cast_natCast]
+
+instance {n : ℕ} : OfNat Z_induite n where
+  ofNat := ⟨n, in_Z_induite n⟩
+
+example : Bₒ (0 : Z_induite) (1/2) = {0} := boule_in_Z_induite 0
+
+example : Infinite (Bₒ (0 : ℝ) (1/2)) := by
+  let B := Bₒ (0 : ℝ) (1/2)
+  have N_to_B : ∀ n : ℕ, (1 : ℝ) / (n + 3) ∈ B := by
+    intro n; unfold B instEspaceMetriqueReal; dsimp
+    have h : (1 : ℝ) / (n + 3) > 0 := by
+      apply div_pos (by linarith) (by linarith)
+    rw [sub_zero, abs_of_pos h, div_lt_div_iff_of_pos_left]
+    repeat linarith
+--
+  let f : ℕ → B := n ↦ ⟨(1 : ℝ) / (n + 3), N_to_B n⟩
+  apply Infinite.of_injective f; intro m n h
+  rw [←Subtype.val_inj] at h; dsimp [f] at h;
+  rw [←inv_eq_one_div, ←inv_eq_one_div, inv_inj] at h
+  rwa [add_right_cancel_iff, Nat.cast_inj] at h
+
+end Relatifs
 
 -- Proposition 1.9.
 
@@ -732,10 +939,11 @@ lemma bornee_iff_bdd (A : Partie X) : diam_bornee A ↔ dist_bornee A := by
                 use d(x, x); apply And.intro (by use x, hx, x, hx)
                 rw [self_dist]; linarith
 
-lemma bdd_iff_in_boule (A : Partie X) : dist_bornee A ↔ in_boule A := by
+lemma bdd_iff_in_boule (A : Partie X) : Nonempty X ∧ dist_bornee A ↔
+  in_boule A := by
   unfold in_boule; apply Iff.intro
-  · case mp => rw [bdd_iff_bdd_by_nneg]; intro h
-               rcases h with ⟨M, M_nneg, hM⟩; by_cases empty : A = ∅
+  · case mp => rw [bdd_iff_bdd_by_nneg]; intro ⟨h₁, h₂⟩
+               rcases h₂ with ⟨M, M_nneg, hM⟩; by_cases empty : A = ∅
                · case pos =>
                   rw [empty]; suffices hyp : ∃ r : ℝ, 0 < r by simp_all
                   use 1, by linarith
@@ -747,9 +955,10 @@ lemma bdd_iff_in_boule (A : Partie X) : dist_bornee A ↔ in_boule A := by
 --
   · case mpr => intro h; rcases h with ⟨a, r, r_pos, in_B⟩
                 rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
-                use r + r; intro x hx y hy
-                apply le_trans (ineq x a y); rw [symm a y]
-                apply le_of_lt; exact add_lt_add (in_B hx) (in_B hy)
+                apply And.intro (by use a); use r + r
+                intro x hx y hy
+                apply le_trans (ineq x a y); apply le_of_lt
+                rw [symm a y]; exact add_lt_add (in_B hx) (in_B hy)
 
 -- Définition 1.11.
 
@@ -794,7 +1003,8 @@ theorem bornee_of_conv (u : ℕ → X) (h : converges u) : bornee u := by
   rcases h with ⟨l, hl⟩; rcases hl 1 zero_lt_one with ⟨N, hN⟩
   have bdd : BddAbove {d(u n, l) | n : Fin N} := by
     apply SupReal.bddabove_of_fin_image
-  rcases bdd with ⟨M, hM⟩; unfold bornee; rw [bdd_iff_in_boule]
+  rcases bdd with ⟨M, hM⟩; unfold bornee
+  apply And.right; rw [bdd_iff_in_boule]
   let M' := max (M + 1) 2
   use l, M', lt_max_of_lt_right (zero_lt_two)
   intro x hx; rcases hx with ⟨n, hn⟩; rw [←hn]; dsimp
@@ -860,5 +1070,5 @@ theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
 
 -- Définition 1.16.
 
-def complet (X : Type*) [Nonempty X] [EspaceMetrique X] := ∀ u : ℕ → X,
-  cauchy u → converges u
+def complet (X : Type*) [EspaceMetrique X] := ∀ u : ℕ → X, cauchy u →
+  converges u

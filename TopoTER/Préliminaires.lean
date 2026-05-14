@@ -29,10 +29,6 @@ abbrev Z : Partie ℝ := {k | k : ℤ}
 abbrev Q : Partie ℝ := {q | q : ℚ}
 abbrev R : Partie ℝ := Ω
 
-instance : Nonempty Z := by use 0; simp
-instance : Nonempty Q := by use 0; simp
-instance : Nonempty R := by use 0; simp
-
 abbrev R_star : Partie ℝ := {x : ℝ | x ≠ 0}
 notation "Rˣ" => R_star
 
@@ -49,7 +45,6 @@ abbrev R_star_neg : Partie ℝ := {x : ℝ | x < 0}
 notation "R₋ˣ" => R_star_neg
 
 abbrev C : Partie ℂ := Ω
-instance : Nonempty C := by use 0; simp
 
 abbrev C_star : Partie ℂ := {x : ℂ | x ≠ 0}
 notation "Cˣ" => C_star
@@ -63,25 +58,25 @@ lemma Z_eq_of_sub_lt_one (x y : Z) (h : |(x : ℝ) - y| < 1) : x = y := by
   · rw [abs_sub_comm, ←Int.cast_sub] at h; apply lt_of_abs_lt at h
     rw [Int.cast_lt] at h; linarith
 
-def Interval₁ (a b : ℝ) : Set ℝ := {x | a < x ∧ x < b}
-def Interval₂ (a b : ℝ) : Set ℝ := {x | a ≤ x ∧ x ≤ b}
-def Interval₃ (a b : ℝ) : Set ℝ := {x | a < x ∧ x ≤ b}
-def Interval₄ (a b : ℝ) : Set ℝ := {x | a ≤ x ∧ x < b}
+@[simp] def Interval₁ (a b : ℝ) : Set ℝ := {x | a < x ∧ x < b}
+@[simp] def Interval₂ (a b : ℝ) : Set ℝ := {x | a ≤ x ∧ x ≤ b}
+@[simp] def Interval₃ (a b : ℝ) : Set ℝ := {x | a < x ∧ x ≤ b}
+@[simp] def Interval₄ (a b : ℝ) : Set ℝ := {x | a ≤ x ∧ x < b}
 
-notation "(" a ", " b ")" => Interval₁ a b
-notation "[" a ", " b "]" => Interval₂ a b
-notation "(" a ", " b "]" => Interval₃ a b
-notation "[" a ", " b ")" => Interval₄ a b
+notation "[" a "<__<"  b "]" => Interval₁ a b
+notation "[" a "≤__≤"  b "]" => Interval₂ a b
+notation "[" a "<__≤"  b "]" => Interval₃ a b
+notation "[" a "≤__<"  b "]" => Interval₄ a b
 
-def Interval₅ (a : ℝ) : Set ℝ := {x | a < x}
-def Interval₆ (a : ℝ) : Set ℝ := {x | a ≤ x}
-def Interval₇ (b : ℝ) : Set ℝ := {x | x < b}
-def Interval₈ (b : ℝ) : Set ℝ := {x | x ≤ b}
+@[simp] def Interval₅ (a : ℝ) : Set ℝ := {x | a < x}
+@[simp] def Interval₆ (a : ℝ) : Set ℝ := {x | a ≤ x}
+@[simp] def Interval₇ (b : ℝ) : Set ℝ := {x | x < b}
+@[simp] def Interval₈ (b : ℝ) : Set ℝ := {x | x ≤ b}
 
-notation "]" a ", " "+∞[" => Interval₅ a
-notation "[" a ", " "+∞[" => Interval₆ a
-notation "]-∞" ", " b "[" => Interval₇ b
-notation "]-∞" ", " b "]" => Interval₈ b
+notation "[" a "<__<" "+∞]" => Interval₅ a
+notation "[" a "≤__<" "+∞]" => Interval₆ a
+notation "[-∞" "<__<" b "]" => Interval₇ b
+notation "[-∞" "<__≤" b "]" => Interval₈ b
 
 open Real Complex
 namespace SupReal
@@ -261,10 +256,14 @@ theorem abs_le_zero (k : K) (hk : |k|ₖ ≤ 0) : k = 0 := by
 
 end Valuation
 
-@[simp] theorem Fin.sum_trunc_last {α : Type*} [AddCommGroup α] (n : ℕ)
-  (u : ℕ → α) :  ∑ i : Fin (n + 1), u i = ∑ i : Fin n, u i + u n := by
-  let u' : Fin (n + 1) → α := i ↦ u i
-  refold_let u'; rw [Fin.sum_univ_castSucc]; simp
+theorem Finset.eq_sum_of_additive {α β : Type*} [AddCommGroup α] [AddCommGroup β]
+  (n : ℕ) (f : α → β) (g : Fin n → α) : f 0 = 0 → (∀ x y, f (x + y) = f x + f y) →
+  f (∑ i, g i) = ∑ i, f (g i) := by
+  intro eq_zero additive; induction n
+  · case zero => simp [eq_zero]
+  · case succ k hk => repeat rw [Fin.sum_univ_succ]
+                      rw [additive, add_left_cancel_iff]
+                      apply hk
 
 namespace VectorSpace
 
@@ -288,9 +287,6 @@ variable {K : Type*} {n : ℕ} [Field K]
 
 @[simp] instance : HAdd K^n K^n K^n where
   hAdd := x ↦ y ↦ ⟨x.p + y.p⟩
-
-@[simp] instance : HSub K^n K^n K^n where
-  hSub := x ↦ y ↦ ⟨x.p - y.p⟩
 
 @[simp] instance : Zero K^n where
   zero := ⟨0⟩
@@ -410,19 +406,9 @@ instance : Module K K^n where
   zero_smul := zero_ksmul
 
 @[simp] theorem sum_distrib (u : Fin n → K ^ n) : (∑ i, u i).p = ∑ i, (u i).p
-  := by
-  let u' : ℕ → K^n := j ↦ if h : j < n then (u ⟨j, h⟩) else 0
-  have recur : ∀ j, (∑ i : Fin j, u' i).p = ∑ i : Fin j, (u' i).p := by
-    intro j; induction j
-    case zero => simp; rfl
-    case succ k hk =>
-        let p' : ℕ → Fin n → K := i ↦ (u' i).p
-        rw [Fin.sum_trunc_last, Fin.sum_trunc_last (u := p')]
-        rw [add_comm]; simp [hk]; ring
---
-  have sum_eq : ∑ i, u i = ∑ i : Fin n, u' i := by
-    congr; ext i; unfold u'; rw [dif_pos]
-  rw [sum_eq, recur]; congr; ext i; unfold u'; rw [dif_pos]
+  := by apply Finset.eq_sum_of_additive
+        · congr
+        · intro x y; congr
 
 def canonBasis (K : Type*) [Field K] (i : Fin n) : K^n where
   p := k ↦ if i = k then 1 else 0

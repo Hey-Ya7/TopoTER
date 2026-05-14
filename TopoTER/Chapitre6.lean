@@ -1,0 +1,67 @@
+import TopoTER.Chapitre1
+
+open TER
+
+open Metrique
+
+variable {X Y : Type*} [EspaceMetrique X] [EspaceMetrique Y]
+
+def lipschitz (k : ℝ) (f : X → Y) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
+
+def k_lipschitz (f : X → Y) := ∃ k, lipschitz k f
+
+open Valuation VectorSpace EspaceNorme
+
+variable {K E : Type*} [ValuationField K] [GroupeNorme E] [V : EspaceVecNorme K E]
+
+open EspaceNorme in
+lemma norme_lipschitz : lipschitz 1 N(K, E) := by
+  intro x y; unfold instEspaceMetriqueReal
+  dsimp; rw [one_mul, abs_sub_le_iff];
+  apply And.intro
+  · apply sub_ineq V.is_norm
+  · unfold instEspaceMetriqueEspaceMetNorme; dsimp
+    rw [norm_symm V.is_norm]; apply sub_ineq V.is_norm
+
+-- 6.4. Compacts d'un e.v.n. de dimension finie
+
+open Valuation VectorSpace K_n EspaceNorme
+
+variable {n : ℕ} {K : Type*} [ValuationField K]
+
+-- Lemme 6.23.
+
+open EspaceNorme in
+lemma norme_Kn_lipschitz {N : K ^ n → ℝ} (h : estNorme (K := K) N) :
+  k_lipschitz N := by
+  let e (i : Fin n) := canonBasis K i
+  let C := sSup {N (e i) | i}
+  use n * C; intro x y
+  have ineq₁ : |N x - N y| ≤ N (x - y) := by
+    rw [abs_sub_le_iff]; apply And.intro
+    · apply sub_ineq h
+    · rw [norm_symm h]; apply sub_ineq h
+  apply le_trans ineq₁
+--
+  let z := x - y; refold_let z
+  have ineq₂ : N z ≤ ∑ i, N (z.p i • e i) := by
+    nth_rw 1 [inCanonBasis z]; induction n
+    · case zero => simp [norm_zero h]
+    · case succ k hk => apply Finset.le_sum_of_subadditive
+                        · rw [norm_zero h]
+                        · intro x y; apply h.ineq
+  apply le_trans ineq₂; rw [mul_assoc, ←nsmul_eq_mul]
+  nth_rw 10 [←Finset.card_fin n]
+  apply Finset.sum_le_card_nsmul; intro i hi
+  rw [mul_comm, h.homogen]; apply mul_le_mul
+  · apply le_csSup _ (by use i)
+    apply SupReal.bddabove_of_fin_image
+  · apply le_csSup _ (by use i)
+    apply SupReal.bddabove_of_fin_image
+  · exact h.nneg (e i)
+  · exact EspaceMetrique.is_dist.nneg x y
+
+-- Theorème 6.22.
+
+theorem K_norm_equiv {N₁ N₂ : K ^ n → ℝ} (h₁ : estNorme (K := K) N₁)
+  (h₂ : estNorme (K := K) N₂) : N₁ ≃ N₂ on K^n := by sorry
