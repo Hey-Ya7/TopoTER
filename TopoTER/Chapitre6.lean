@@ -1,6 +1,57 @@
 import TopoTER.Chapitre1
+import TopoTER.Chapitre2
 
 open TER
+
+-- 6. Espaces topologiques compacts
+
+variable {X : Type*} [EspSepareT2 X]
+open Set
+open EspTop
+
+-- 6.1. Compacité via les recouvrements
+
+-- a)
+
+structure famille (X : Type*) where
+  ι : Type
+  u : ι → Set X
+  I : Set ι
+
+def couvrement (F : famille X) (A : Partie X) := A ⊆ ⋃ i ∈ F.I, F.u i
+
+def sous_couvrement (F : famille X) (J : Set F.ι) (A : Partie X) :=
+  couvrement ⟨F.ι, F.u, J⟩ A
+
+def compact (X : Type*) [EspSepareT2 X] := ∀ C : famille X, (∀ i ∈ C.I,
+  est_ouvert (C.u i)) → couvrement C Ω → ∃ J ⊆ C.I, sous_couvrement C J Ω
+
+-- 6.2.
+
+def est_compact (A : Partie X) := ∀ C : famille X, (∀ i ∈ C.I, est_ouvert (C.u i))
+  → couvrement C A → ∃ J ⊆ C.I, sous_couvrement C J A
+
+-- Théorème 6.5.
+
+theorem comp_of_continu_image {X Y : Type*} [EspSepareT2 X] [EspSepareT2 Y] {f : X → Y}
+  (h : est_continu f) (A : Partie X) (comp : est_compact A) : est_compact (f '' A) := by
+  intro C h₁ h₂
+  let F : famille X := ⟨C.ι, i ↦ f ⁻¹' (C.u i), C.I⟩
+  have F_couvre : couvrement F A := by
+    unfold couvrement; intro x x_in; unfold F
+    simp only [mem_iUnion, exists_prop, mem_preimage]
+    have in_image : f x ∈ f '' A := by use x
+    apply h₂ at in_image
+    simp_all only [mem_iUnion, exists_prop]
+--
+  have F_ouvert : ∀ i ∈ F.I, est_ouvert (F.u i) := by
+    intro i hi; rw [continu_iff_preim_ouv] at h
+    apply h; exact h₁ i hi
+  rcases comp F F_ouvert F_couvre with ⟨J, J_sub, hJ⟩
+  use J, J_sub; intro y y_in; rw [mem_image] at y_in
+  rcases y_in with ⟨x, x_in, hx⟩; apply hJ at x_in
+  simp_all only [mem_iUnion, exists_prop]
+  rcases x_in with ⟨j, j_in, hj⟩; use j, j_in; rwa [←hx]
 
 open Metrique
 

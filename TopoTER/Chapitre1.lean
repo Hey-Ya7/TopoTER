@@ -968,6 +968,18 @@ def converges (u : ℕ → X) := ∃ l, converges_to u l
 
 def bornee (u : ℕ → X) := dist_bornee {u n | n}
 
+lemma converges_iff_c_converges (u : ℕ → X) (l : X) {C : ℝ} (C_pos : C > 0) :
+  converges_to u l ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u n, l) ≤ C * ε := by
+  apply Iff.intro
+  · case mp => intro h ε ε_pos
+               rcases h (C * ε) (mul_pos C_pos ε_pos) with ⟨N, hN⟩
+               use N
+  · case mpr => intro h ε ε_pos
+                rcases h (ε / C) (div_pos ε_pos C_pos) with ⟨N, hN⟩
+                use N; intro n n_ge; have ineq := hN n n_ge
+                rwa [←mul_div_assoc, mul_div_cancel_left₀] at ineq
+                exact ne_of_gt C_pos
+
 -- Remarque 1.12.
 
 def converges_in_vois (u : ℕ → X) (l : X) := ∀ U, ouverte U → l ∈ U →
