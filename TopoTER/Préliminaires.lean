@@ -1,4 +1,3 @@
--- import TopoTER.SetElem
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Real.Sqrt
 import Mathlib.Data.Complex.Basic
@@ -77,6 +76,32 @@ notation "[" a "<__<" "+∞]" => Interval₅ a
 notation "[" a "≤__<" "+∞]" => Interval₆ a
 notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
+
+structure Famille (X : Type u) where
+  ι : Type u
+  u : ι → Partie X
+
+def iUnion {X} (F : Famille X) := ⋃ i, F.u i
+def iInter {X} (F : Famille X) := ⋂ i, F.u i
+
+notation "⋃ᵢ " F : max => iUnion F
+notation "⋂ᵢ " F : max => iInter F
+
+instance {X : Type*} : Membership (Partie X) (Famille X) where
+  mem := F ↦ A ↦ A ∈ Set.range fun i ↦ F.u i
+
+lemma mem_union_famille {X} {F : Famille X} {x : X} : x ∈ ⋃ᵢ F ↔ ∃ A, A ∈ F ∧
+  x ∈ A := by
+  apply Iff.intro
+  · case mp => intro h; rcases h with ⟨A, hA, x_in⟩
+               use A, hA, x_in
+  · case mpr => intro h; rcases h with ⟨A, hA, x_in⟩
+                use A, hA, x_in
+
+lemma subset_union_famille {X} {F : Famille X} {A B : Partie X} (h₁ : A ⊆ B)
+  (h₂ : B ∈ F) : A ⊆ ⋃ᵢ F := by
+  rcases h₂ with ⟨i, hi⟩
+  apply Set.subset_iUnion_of_subset i; dsimp at hi; rwa [hi]
 
 open Real Complex
 namespace SupReal

@@ -26,7 +26,7 @@ structure estDistance (d : X → X → ℝ) where
   symm : symm d
   ineq : ineq d
 
-class EspaceMetrique (X : Type _) where
+class EspaceMetrique (X : Type*) where
   d : X → X → ℝ
   is_dist : estDistance d
 
@@ -590,6 +590,10 @@ abbrev Bₒ (a : X) (r : ℝ) := boule_ouverte a r
 
 abbrev Bf (a : X) (r : ℝ) := boule_fermee a r
 
+def is_boule (B : Partie X) := ∃ a, ∃ r, B = Bₒ a r
+
+def is_boule_f (B : Partie X) := ∃ a, ∃ r, B = Bf a r
+
 @[simp] lemma boule_vide (a : X) {r : ℝ} (hr : r ≤ 0) : Bₒ a r = ∅ := by
   suffices h : ∀ x, r ≤ d(x, a) by ext; simp_all
   intro x; rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
@@ -842,12 +846,11 @@ end Relatifs
 
 -- a)
 
-@[simp] theorem ouverte_of_union {ι : Type} {u : ι → Partie X}
-  (hu : ∀ i, ouverte (u i)) : ouverte (⋃ i, u i) := by
+@[simp] theorem ouverte_of_union {F : Famille X} (hu : ∀ A ∈ F, ouverte A)
+  : ouverte (⋃ᵢ F) := by
   intro x hx; rcases hx with ⟨A, hA, x_in⟩
-  rcases hA with ⟨i, hi⟩; rw [←hi] at x_in
-  rcases (hu i x x_in) with ⟨r, r_pos, hr⟩
-  use r, r_pos; exact Set.subset_iUnion_of_subset i hr
+  rcases (hu A hA) x x_in with ⟨r, r_pos, hr⟩
+  use r, r_pos; exact subset_union_famille hr hA
 
 -- b)
 
@@ -875,19 +878,23 @@ end Relatifs
 
 -- d)
 
-theorem ouv_boule_union {U : Partie X} (h : ouverte U) : ∃ ι : Type u_1,
-  ∃ u : ι → X × ℝ, U = ⋃ i, Bₒ (u i).fst (u i).snd := by
+theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille X,
+  (∀ B ∈ F, is_boule B) ∧ U = ⋃ᵢ F := by
   let r (x : U) : ℝ := Exists.choose (h x.val x.prop)
   have r_prop : ∀ x, r x > 0 ∧ Bₒ (X := X) x (r x) ⊆ U := by
     intro x; exact Exists.choose_spec (h x.val x.prop)
+  let F : Famille X := ⟨U, x ↦ Bₒ x.val (r x)⟩
+  have F_is_boule : ∀ B ∈ F, is_boule B := by
+    intro B hB; rcases hB with ⟨x, hx⟩; rw [←hx]; use x, r x
 --
-  use U, x ↦ (x.val, r x); ext x; apply Iff.intro
-  · case mp => intro in_u; let X : U := ⟨x, in_u⟩
-               apply Set.mem_iUnion_of_mem X
-               apply centre_in_boule; exact (r_prop X).left
-  · case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩
-                rcases hU' with ⟨U'', hU''⟩; dsimp at hU''
-                apply (r_prop U'').right; rwa [←hU''] at x_in
+  sorry
+  --use F, F_is_boule; ext x; apply Iff.intro
+  --· case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
+  --             rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ
+  --             apply centre_in_boule; exact (r_prop xᵤ).left
+  --· case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩
+  --              rcases hU' with ⟨U'', hU''⟩; dsimp at hU''
+  --              apply (r_prop U'').right; rwa [←hU''] at x_in
 
 -- Définition 1.10.
 

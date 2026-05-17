@@ -1,42 +1,36 @@
-import TopoTER.Chapitre1
-import TopoTER.Chapitre2
+import TopoTER.Chapitre5
 
-open TER
+open TER Set EspTop
 
 -- 6. Espaces topologiques compacts
 
 variable {X : Type*} [EspSepareT2 X]
-open Set
-open EspTop
 
 -- 6.1. Compacité via les recouvrements
 
 -- a)
 
-structure famille (X : Type*) where
-  ι : Type
-  u : ι → Set X
-  I : Set ι
+def couvrement (F : Famille X) (A : Partie X) := A ⊆ ⋃ᵢ F
 
-def couvrement (F : famille X) (A : Partie X) := A ⊆ ⋃ i ∈ F.I, F.u i
+def sous_couvrement (F : Famille X) (J : Set F.ι) (A : Partie X) :=
+  couvrement ⟨J, i ↦ F.u i.val⟩ A
 
-def sous_couvrement (F : famille X) (J : Set F.ι) (A : Partie X) :=
-  couvrement ⟨F.ι, F.u, J⟩ A
-
-def compact (X : Type*) [EspSepareT2 X] := ∀ C : famille X, (∀ i ∈ C.I,
-  est_ouvert (C.u i)) → couvrement C Ω → ∃ J ⊆ C.I, sous_couvrement C J Ω
+class EspCompact (X : Type*) extends EspSepareT2 X where
+  compact := ∀ C : Famille X, (∀ i, est_ouvert (C.u i)) →
+    couvrement C Ω → ∃ J, sous_couvrement C J Ω
 
 -- 6.2.
 
-def est_compact (A : Partie X) := ∀ C : famille X, (∀ i ∈ C.I, est_ouvert (C.u i))
-  → couvrement C A → ∃ J ⊆ C.I, sous_couvrement C J A
+def est_compact (A : Partie X) := ∀ C : Famille X, (∀ i, est_ouvert (C.u i))
+  → couvrement C A → ∃ J, sous_couvrement C J A
 
 -- Théorème 6.5.
 
-theorem comp_of_continu_image {X Y : Type*} [EspSepareT2 X] [EspSepareT2 Y] {f : X → Y}
-  (h : est_continu f) (A : Partie X) (comp : est_compact A) : est_compact (f '' A) := by
+theorem comp_of_continu_image {X Y : Type*} [EspSepareT2 X] [EspSepareT2 Y]
+  {f : X → Y} (h : est_continu f) (A : Partie X) (comp : est_compact A) :
+  est_compact (f '' A) := by
   intro C h₁ h₂
-  let F : famille X := ⟨C.ι, i ↦ f ⁻¹' (C.u i), C.I⟩
+  let F : Famille X := ⟨C.ι, i ↦ f ⁻¹' (C.u i)⟩
   have F_couvre : couvrement F A := by
     unfold couvrement; intro x x_in; unfold F
     simp only [mem_iUnion, exists_prop, mem_preimage]
