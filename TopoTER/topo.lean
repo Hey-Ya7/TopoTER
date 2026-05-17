@@ -82,6 +82,11 @@ lemma ouvert_ssi_vois (s : Set X) : est_ouvert s ↔ ∀ x ∈ s, est_vois x s :
     intro j hj
     exact (hu j hj).ouv_ouvert
 
+lemma ouv_est_vois (x : X) (u : Set X) : est_ouvert u → x ∈ u → est_vois x u := by
+  intro u_ouv x_u
+  use u
+  exact ⟨x_u, u_ouv, by simp⟩
+
 @[simp]
 def est_ferme (s : Set X) := est_ouvert sᶜ
 
@@ -317,7 +322,10 @@ instance toto (s : Set X) : EspTop s where
     intro I u h
     choose v hv using h
     use ⋃ i, v i
-    constructor; exact union_ouvert (fun i ↦ (hv i).1); ext x; simp [hv]
+    constructor
+    · exact union_ouvert (fun i ↦ (hv i).1)
+    · ext x
+      simp [hv]
   inter_ouvert := by
     rintro u v ⟨U, ⟨Uouv, hU⟩⟩ ⟨V, ⟨Vouv, hV⟩⟩
     use U ∩ V
@@ -351,6 +359,12 @@ Prop := (∀ (n : ℕ), dense X (u n) ∧ est_ouvert (u n)) → dense X (⋂ n :
 
 def baire (X : Type) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
 
+lemma ouv_sub_ouv (v : Set X) (u : Set ↑v) :
+est_ouvert v → est_ouvert u → est_ouvert (Subtype.val '' u) := by
+  intro hv hu
+  rcases hu with ⟨w, hw, ueq⟩
+  simp [ueq, inter_ouvert hv hw]
+
 lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
   rintro hv u hu
   let U : ℕ -> Set X := fun n ↦ (u n) ∪ ((adh v)ᶜ)
@@ -358,11 +372,8 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
   have Uouv : ∀ (n : ℕ), est_ouvert (U n) := by
     intro n
     unfold U
-    --rw [hU n]
     apply union_est_ouvert
-    · have h : est_ouvert (u n) := (hu n).2
-      rcases h with ⟨w, hw, h'⟩
-      simp [h', inter_ouvert hv hw]
+    · exact ouv_sub_ouv v (u n) hv (hu n).2
     · rw [est_ouvert_iff_compl_est_ferme, compl_compl]
       exact adh_ferme v
 
@@ -371,21 +382,20 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
     rw [dense_iff_inter_ouvert_nonempty]
     intro W W_ouv W_ne
     rcases W_ne with ⟨x, hx⟩
-    have W_vois : est_vois x W := by -- ⟨W, hx, W_ouv, by simp⟩
-      use W
-      exact ⟨hx, W_ouv, by simp⟩
+    have W_vois : est_vois x W := ouv_est_vois x W W_ouv hx
     let W_sub : Set v := Subtype.val ⁻¹' W
     have Ws_ouv : est_ouvert W_sub := by use W
     rcases (hu n) with ⟨u_dens, u_ouv⟩
     rw [dense_iff_inter_ouvert_nonempty] at u_dens
 
-    by_cases x_v : x ∈ v
+    by_cases x_adh : x ∈ (adh v)
     · have Ws_ne : W_sub.Nonempty := by
+        specialize x_adh W W_vois
+        rcases x_adh with ⟨y, hy⟩
+        use ⟨y, hy.2⟩
         unfold W_sub
-        use ⟨x, x_v⟩
         simp only [mem_preimage]
-        rcases W_vois with ⟨U, ⟨x_U, _, U_W⟩⟩
-        exact U_W x_U
+        exact hy.1
       specialize u_dens W_sub Ws_ouv Ws_ne
       rcases u_dens with ⟨y, ⟨y_Ws, y_u⟩⟩
       use y
@@ -395,43 +405,22 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
         left
         simp
         exact y_u
+    · use x
+      constructor
+      · exact hx
+      · right
+        exact x_adh
 
-    · by_cases x_adh : x ∈ (adh v)
-      · have Ws_ne : W_sub.Nonempty := by
-          specialize x_adh W W_vois
-          rcases x_adh with ⟨y, hy⟩
-          use ⟨y, hy.2⟩
-          unfold W_sub
-          simp only [mem_preimage]
-          exact hy.1
-        unfold adh at x_adh
-        simp only [mem_setOf_eq] at x_adh
-        specialize x_adh W W_vois
-        specialize u_dens W_sub Ws_ouv Ws_ne
-        rcases u_dens with ⟨y, ⟨y_Ws, y_u⟩⟩
-        use y
-        constructor
-        · exact y_Ws
-        · unfold U
-          left
-          simp
-          exact y_u
-      · use x
-        constructor
-        · exact hx
-        · right
-          exact x_adh
   unfold baire prop_baire at h
   have h' : dense X (⋂ n, U n) := by
     apply h
     intro n
     exact ⟨Udens n, Uouv n⟩
-  unfold dense adh at h'
+  rw [dense, adh, Set.eq_univ_iff_forall] at h'
   unfold dense adh
   ext x
   simp only [mem_setOf_eq, mem_univ, iff_true]
   intro W W_vois
-  rw [Set.eq_univ_iff_forall] at h'
   specialize h' x
   rw [mem_setOf_eq] at h'
   specialize h' W
