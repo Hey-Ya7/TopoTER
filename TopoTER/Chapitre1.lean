@@ -844,9 +844,11 @@ end Relatifs
 
 -- Proposition 1.9.
 
+variable {ι : Type*}
+
 -- a)
 
-@[simp] theorem ouverte_of_union {F : Famille X} (hu : ∀ A ∈ F, ouverte A)
+@[simp] theorem ouverte_of_union {F : Famille ι X} (hu : ∀ A ∈ F, ouverte A)
   : ouverte (⋃ᵢ F) := by
   intro x hx; rcases hx with ⟨A, hA, x_in⟩
   rcases (hu A hA) x x_in with ⟨r, r_pos, hr⟩
@@ -878,23 +880,22 @@ end Relatifs
 
 -- d)
 
-theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille X,
+theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille ι X,
   (∀ B ∈ F, is_boule B) ∧ U = ⋃ᵢ F := by
   let r (x : U) : ℝ := Exists.choose (h x.val x.prop)
   have r_prop : ∀ x, r x > 0 ∧ Bₒ (X := X) x (r x) ⊆ U := by
     intro x; exact Exists.choose_spec (h x.val x.prop)
-  let F : Famille X := ⟨U, x ↦ Bₒ x.val (r x)⟩
+  let F : Famille _ X := ⟨x ↦ Bₒ x.val (r x)⟩
   have F_is_boule : ∀ B ∈ F, is_boule B := by
     intro B hB; rcases hB with ⟨x, hx⟩; rw [←hx]; use x, r x
 --
-  sorry
-  --use F, F_is_boule; ext x; apply Iff.intro
-  --· case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
-  --             rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ
-  --             apply centre_in_boule; exact (r_prop xᵤ).left
-  --· case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩
-  --              rcases hU' with ⟨U'', hU''⟩; dsimp at hU''
-  --              apply (r_prop U'').right; rwa [←hU''] at x_in
+  use F, F_is_boule; ext x; apply Iff.intro
+  · case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
+               rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ
+               apply centre_in_boule; exact (r_prop xᵤ).left
+  · case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩
+                rcases hU' with ⟨U'', hU''⟩; dsimp at hU''
+                apply (r_prop U'').right; rwa [←hU''] at x_in
 
 -- Définition 1.10.
 
