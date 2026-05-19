@@ -1,6 +1,8 @@
 import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Set.Finite.Basic
 import Mathlib.Data.Set.Notation
+import TopoTER.Préliminaires
+import TopoTER.Chapitre1
 
 open Set
 
@@ -314,7 +316,7 @@ open Set.Notation
 
 -- lire l'intro de Mathlib.Data.Set.Subset
 
-instance toto (s : Set X) : EspTop s where
+instance induite (s : Set X) : EspTop s where
   est_ouvert := fun u ↦ ∃ v : Set X, est_ouvert v ∧ u = s ↓∩ v
   univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
   empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
@@ -364,6 +366,20 @@ est_ouvert v → est_ouvert u → est_ouvert (Subtype.val '' u) := by
   intro hv hu
   rcases hu with ⟨w, hw, ueq⟩
   simp [ueq, inter_ouvert hv hw]
+
+lemma vois_sub_vois {v : Set X} {u : Set v} {x : v} :
+est_ouvert v → est_vois x u → est_vois ↑x (Subtype.val '' u) := by
+  intro hv h
+  rcases h with ⟨w, x_w, ⟨W, W_ouv, W_eq⟩, w_u⟩
+  use w
+  constructor
+  · simp
+    exact x_w
+  · rw [W_eq]
+    simp only [Subtype.image_preimage_coe]
+    exact inter_ouvert hv W_ouv
+  · simp
+    exact w_u
 
 lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
   rintro hv u hu
@@ -424,18 +440,7 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
   specialize h' x
   rw [mem_setOf_eq] at h'
   specialize h' W
-  have Wsub_vois : est_vois (↑x) (Subtype.val '' W) := by
-    rcases W_vois with ⟨w, ⟨x_w, w_ouv, w_W⟩⟩
-    use w
-    constructor
-    · simp
-      exact x_w
-    · rcases w_ouv with ⟨A, hA⟩
-      rw [hA.2]
-      simp only [Subtype.image_preimage_coe]
-      exact inter_ouvert hv hA.1
-    · simp
-      exact w_W
+  have Wsub_vois : est_vois (↑x) (Subtype.val '' W) := vois_sub_vois hv W_vois
   specialize h' Wsub_vois
   rcases h' with ⟨y, ⟨y_W, y_U⟩⟩
   rcases y_W with ⟨z, z_W, rfl⟩
@@ -464,3 +469,12 @@ def topo_engendree (S : Set (Set X)) : EspTop X where
   empty_ouvert := _
   union_ouvert := _
   inter_ouvert := _
+
+open Metrique
+
+instance induite_metrique (s : EspaceMetrique X) : EspTop X where
+  est_ouvert := ouverte
+  univ_ouvert := ouverte_of_uni
+  empty_ouvert := ouverte_of_vide
+  union_ouvert := ouverte_of_union
+  inter_ouvert := ouverte_of_inter
