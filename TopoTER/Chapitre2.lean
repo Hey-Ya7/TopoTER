@@ -29,7 +29,7 @@ lemma iunion_ouvert {ι : Type*} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)
   est_ouvert (⋃ i, u i) := by
   let F : Famille X := ⟨ι, u⟩
   have eq : ⋃ᵢ F = ⋃ i, u i := by rfl
-  rw [←eq]; apply E.union_ouvert (F := F); intro A hA
+  rw [←eq]; apply union_ouvert; intro A hA
   rcases hA with ⟨i, hi⟩; rw [←hi]; exact h i
 
 lemma bunion_ouvert {ι : Type u_1} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I,
