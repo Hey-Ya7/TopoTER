@@ -128,25 +128,59 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
       by_contra _
       exact z_nadh z_adh
 
---def topo_engendree (S : Set (Set X)) : EspTop X where
---  est_ouvert := _
---  univ_ouvert := _
---  empty_ouvert := _
---  union_ouvert := _
---  inter_ouvert := _
-
 variable {X : Type*}
 
 open Metrique
 
+<<<<<<< HEAD
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam A ≤ diam B := by
   intro bornB A_B
   unfold diam
   dsimp
   split_ifs with hbdd hbd; sorry; sorry; sorry; sorry
+=======
+lemma sep_iff_diag_ferme :
+letI Δ : Set X := {x ∈ X | (x,x)}
+EspSepareT2 X ↔ est_ferme Δ
 
-theorem thm_baire [EspaceMetrique X] (F : ℕ → Partie X) : complet X →
+
+
+
+
+lemma diam_vide [EspaceMetrique X] (A : Partie X) : A = ∅ → diam A = 0 := sorry
+
+lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
+diam_bornee B → A ⊆ B → diam A ≤ diam B := by
+  intro bornB A_B
+  unfold diam_bornee at bornB
+  by_cases hA : A = ∅
+  · rw [diam_vide A hA]
+    rcases diam_nneg B with h | h
+    · exact h
+    · linarith
+  · unfold diam at bornB
+    dsimp at bornB
+    split_ifs at bornB with h
+    · unfold diam
+      rw [if_pos h]
+      dsimp
+      split_ifs with h'
+      · obtain ⟨x, hx⟩ := Set.nonempty_iff_ne_empty.mpr hA
+        apply csSup_le
+        · use 0
+          repeat use x; constructor; exact hx
+          exact self_dist x
+        · rintro d ⟨x, hx, y, hy, hxy⟩
+          apply le_csSup h
+          simp only [mem_setOf_eq]
+          use x
+          exact ⟨A_B hx, by use y; exact ⟨A_B hy, hxy⟩⟩
+      · linarith
+    · linarith
+>>>>>>> 88473a892ddc94b851d32b1115422a32838ea8ef
+
+theorem thm_beurre [EspaceMetrique X] (F : ℕ → Partie X) : complet X →
 (∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F (m)) ⊆ (F n)) →
 converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
   intro compl hFn lim
@@ -193,17 +227,26 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     · trans ε
       · change |diam (F M) - 0| ≤ ε at hN
         simp at hN
+<<<<<<< HEAD
         --rcases (diam_pos (F M)) with h | h
         --· linarith [abs_le.mp hN]
         --· contradiction
         sorry
+=======
+        rcases (diam_nneg (F M)) with h | h
+        · linarith [abs_le.mp hN]
+        · contradiction
+>>>>>>> 88473a892ddc94b851d32b1115422a32838ea8ef
       · exact ε_e
   specialize compl x x_cau
   rcases compl with ⟨l, hl⟩
+  have hF : ∀ n : ℕ, ∀ m : ℕ, m ≥ n → x m ∈ F n := by
+    intro n m hm
+    exact (hFn n).2.2 m hm (hx m)
   have lfn : l ∈ ⋂ n : ℕ, F n := sorry
-  have hdiam : ∀ m : ℕ, diam (⋂ n : ℕ, F n) ≤ diam (F m) := by
-    intro m
-    apply diam_crois
+  have hdiam : ∀ m : ℕ, diam (⋂ n : ℕ, F n) ≤ diam (F m) := by sorry
+    --intro m
+    --apply diam_crois
     --exact Set.iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
     sorry; sorry
   have diam_0 : diam (⋂ n : ℕ, F n) = 0 := sorry
