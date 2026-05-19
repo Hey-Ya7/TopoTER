@@ -139,14 +139,12 @@ variable {X : Type*}
 
 open Metrique
 
-lemma diam_pos [EspaceMetrique X] (A : Partie X) : diam A ≥ 0 ∨ diam A = -1 := sorry
-
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam A ≤ diam B := by
   intro bornB A_B
   unfold diam
   dsimp
-  split_ifs with hbdd hbd
+  split_ifs with hbdd hbd; sorry; sorry; sorry; sorry
 
 theorem thm_baire [EspaceMetrique X] (F : ℕ → Partie X) : complet X →
 (∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F (m)) ⊆ (F n)) →
@@ -195,9 +193,10 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     · trans ε
       · change |diam (F M) - 0| ≤ ε at hN
         simp at hN
-        rcases (diam_pos (F M)) with h | h
-        · linarith [abs_le.mp hN]
-        · contradiction
+        --rcases (diam_pos (F M)) with h | h
+        --· linarith [abs_le.mp hN]
+        --· contradiction
+        sorry
       · exact ε_e
   specialize compl x x_cau
   rcases compl with ⟨l, hl⟩
@@ -206,6 +205,6 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     intro m
     apply diam_crois
     --exact Set.iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
-    sorry
+    sorry; sorry
   have diam_0 : diam (⋂ n : ℕ, F n) = 0 := sorry
   sorry
