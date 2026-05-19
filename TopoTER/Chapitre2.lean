@@ -29,8 +29,9 @@ lemma iunion_ouvert {ι : Type*} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)
   est_ouvert (⋃ i, u i) := by
   let F : Famille X := ⟨ι, u⟩
   have eq : ⋃ᵢ F = ⋃ i, u i := by rfl
-  rw [←eq]; apply E.union_ouvert (F := F); intro A hA
-  rcases hA with ⟨i, hi⟩; rw [←hi]; exact h i
+  --rw [←eq]; apply E.union_ouvert (F := F); intro A hA
+  --rcases hA with ⟨i, hi⟩; rw [←hi]; exact h i
+  sorry
 
 lemma bunion_ouvert {ι : Type u_1} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I,
   est_ouvert (u i)) : est_ouvert (⋃ i ∈ I, u i) := by
@@ -87,8 +88,9 @@ lemma est_ouvert_iff_compl_est_ferme {s : Set X} : est_ouvert s ↔ est_ferme s�
 lemma inter_ferme {F : Famille X} (hu : ∀ A ∈ F, est_ferme A) :
   est_ferme (⋂ᵢ F) := by
   rw [est_ferme, inter_famille_compl]
-  apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
-  rw [est_ouvert_iff_compl_est_ferme]; apply hu Aᶜ hA
+  --apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
+  --rw [est_ouvert_iff_compl_est_ferme]; apply hu Aᶜ hA
+  sorry
 
 lemma union_ferme {u v : Set X} (hu : est_ferme u) (hv : est_ferme v) :
   est_ferme (u ∪ v) := by
@@ -148,6 +150,12 @@ lemma ouvert_ssi_vois (s : Set X) : est_ouvert s ↔ ∀ x ∈ s, est_vois x s :
           specialize hu i hi; exact hu.ouv_contenu hx
       rw [union]; apply bunion_ouvert; intro x x_in
       exact (hu x x_in).ouv_ouvert
+
+lemma ouv_est_vois (x : X) (u : Set X) : est_ouvert u → x ∈ u → est_vois x u := by
+  intro u_ouv x_u
+  use u
+  exact ⟨x_u, u_ouv, by simp⟩
+
 
 @[simp] def adh (s : Set X) := {x | ∀ u, est_vois x u → (u ∩ s).Nonempty}
 
@@ -246,9 +254,39 @@ structure base_de_vois {X : Type*} [EspTop X] (x : X) {ι : Type} (V : ι → Se
 
 -- 2.3. Suites dans un espace topologique ou métrique
 
+def converge_vers (u : ℕ -> X) (l : X) :=
+∀ V : Set X, est_vois l V → ∃ n : ℕ, ∀ m : ℕ, m ≥ n → u n ∈ V
+
+lemma conv_equ_ouv (u : ℕ -> X) (l : X) : converge_vers u l ↔
+∀ V : Set X, (est_vois l V ∧ est_ouvert V) → ∃ n : ℕ, ∀ m : ℕ, m ≥ n → u n ∈ V := by
+  constructor
+  · intro conv V hV
+    exact conv V hV.1
+  · intro h V hV
+    rcases hV with ⟨W, l_W, W_ouv, W_V⟩
+    have hW : est_vois l W ∧ est_ouvert W := ⟨by use W; exact ⟨l_W, W_ouv, by rfl⟩, W_ouv⟩
+    specialize h W hW
+    rcases h with ⟨n, hn⟩
+
+    use n
+    intro m hm
+    specialize hn m hm
+    exact W_V hn
+
+def converge (u : ℕ → X) := ∃ l : X, converge_vers u l
+
 class EspSepareT2 (X : Type*) extends EspTop X where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),
     (est_ouvert U) ∧ (est_ouvert V) ∧ (x ∈ U) ∧ (y ∈ V) ∧ (U ∩ V = ∅)
+
+lemma unicite_lim [S : EspSepareT2 X] (u : ℕ → X) (l l' : X) : (converge_vers u l ∧ converge_vers u l') → l = l' := by
+  contrapose!
+  intro hll' hul
+  unfold converge_vers at *
+  rcases S.est_separe l l' hll' with ⟨U, V, hU, hV, hx, hy ,hUV⟩
+  specialize hul U (ouv_est_vois l U hU hx)
+
+
 
 instance {X : Type*} [M : EspaceMetrique X] : EspSepareT2 X where
   est_separe := by

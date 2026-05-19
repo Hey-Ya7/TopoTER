@@ -1,6 +1,6 @@
 import TopoTER.Chapitre2
 
-open TER Set EspTop
+open TER Set EspTop Metrique
 
 variable {X Z : Type*} [EspTop X] [EspTop Z]
 variable {Y : Type*} [EspSepareT2 Y]
@@ -77,11 +77,11 @@ est_continu f → f '' (adh A) ⊆ adh (f '' A) := by
     exact mem_image_of_mem f hx'U
   · exact mem_image_of_mem f hx'A
 
-def unif_continu (f : X → Z)
+--def unif_continu (f : X → Z)
 
-def lipschitz (k : ℝ) (f : X → Y) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
+--def lipschitz (k : ℝ) (f : X → Y) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
 
-def k_lipschitz (f : X → Y) := ∃ k, lipschitz k f
+--def k_lipschitz (f : X → Y) := ∃ k, lipschitz k f
 
 open Set.Notation
 
@@ -99,4 +99,4 @@ instance toto (s : Set X) : EspTop s where
     constructor
     · exact inter_ouvert Uouv Vouv
     · rw [hU, hV]; simp
-edt
+--edt
