@@ -13,7 +13,7 @@ class EspTop (X : Type*) where
   univ_ouvert : est_ouvert Ω
   empty_ouvert : est_ouvert ∅
 --
-  union_ouvert {F : Famille X} (hu : ∀ A ∈ F, est_ouvert A) :
+  union_ouvert {F : Familleₓ X} (hu : ∀ A ∈ F, est_ouvert A) :
     est_ouvert (⋃ᵢ F)
 --
   inter_ouvert {u v : Set X} (hu : est_ouvert u) (hv : est_ouvert v) :
@@ -25,13 +25,14 @@ variable {X Y : Type*} [E : EspTop X] [EspTop Y]
 
 namespace EspTop
 
-lemma iunion_ouvert {ι : Type*} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
+lemma iunion_ouvert {ι : Type u_1} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
   let F : Famille X := ⟨ι, u⟩
   have eq : ⋃ᵢ F = ⋃ i, u i := by rfl
-  --rw [←eq]; apply E.union_ouvert (F := F); intro A hA
-  --rcases hA with ⟨i, hi⟩; rw [←hi]; exact h i
-  sorry
+  have hu : ∀ A ∈ F, est_ouvert A := by
+    intro A hA; rcases hA with ⟨i, hi⟩
+    rw [←hi]; exact h i
+  rw [←eq]; exact union_ouvert hu
 
 lemma bunion_ouvert {ι : Type u_1} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I,
   est_ouvert (u i)) : est_ouvert (⋃ i ∈ I, u i) := by
@@ -85,7 +86,7 @@ lemma est_ouvert_iff_compl_est_ferme {s : Set X} : est_ouvert s ↔ est_ferme s�
   rw [est_ferme, compl_empty]
   exact univ_ouvert
 
-lemma inter_ferme {F : Famille X} (hu : ∀ A ∈ F, est_ferme A) :
+lemma inter_ferme {F : Familleₓ X} (hu : ∀ A ∈ F, est_ferme A) :
   est_ferme (⋂ᵢ F) := by
   rw [est_ferme, inter_famille_compl]
   --apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
@@ -284,7 +285,8 @@ lemma unicite_lim [S : EspSepareT2 X] (u : ℕ → X) (l l' : X) : (converge_ver
   intro hll' hul
   unfold converge_vers at *
   rcases S.est_separe l l' hll' with ⟨U, V, hU, hV, hx, hy ,hUV⟩
-  specialize hul U (ouv_est_vois l U hU hx)
+  --specialize hul U (ouv_est_vois l U hU hx)
+  sorry
 
 
 

@@ -901,21 +901,20 @@ open Classical in
 noncomputable def diam (A : Partie X) := let S := {d(x, y) | (x ∈ A) (y ∈ A)};
   if BddAbove S then sSup S else -1
 
+@[simp] lemma diam_empty : diam (X := X) ∅ = 0 := by simp [diam]
+
 lemma diam_nneg (A : Partie X) : diam A ≥ 0 ∨ diam A = -1 := by
   let S := {d(x, y) | (x ∈ A) (y ∈ A)}
-  by_cases bdd : BddAbove S
-  · case pos => apply Or.inl; dsimp [diam]; rw [if_pos bdd]
-                by_cases nonempty : Set.Nonempty S
-                · case pos => rw [Set.nonempty_def] at nonempty
-                              rcases nonempty with ⟨d, hd⟩
-                              have ineq := le_csSup bdd hd
-                              rcases hd with ⟨x, hx, y, hy, eq⟩
-                              apply le_trans _ ineq; rw [←eq]
-                              exact M.is_dist.nneg x y
-                · case neg =>
-                    rw [Set.not_nonempty_iff_eq_empty] at nonempty
-                    refold_let S; rw [nonempty, Real.sSup_empty]
-  · case neg => apply Or.inr; dsimp [diam]; rw [if_neg bdd]
+  by_cases nonempty : Set.Nonempty A
+  · case pos => dsimp [diam]; by_cases bdd : BddAbove S
+                · case pos =>
+                    rcases nonempty with ⟨x, hx⟩; let d := d(x, x)
+                    have d_in : d ∈ S := by use x, hx, x, hx
+                    apply Or.inl; rw [if_pos bdd]
+                    apply le_trans (M.is_dist.nneg x x)
+                    exact le_csSup bdd d_in
+                · case neg => apply Or.inr; rw [if_neg bdd]
+  · case neg => apply Or.inl; simp_all [Set.not_nonempty_iff_eq_empty]
 
 def diam_bornee (A : Partie X) := diam A > -1
 
