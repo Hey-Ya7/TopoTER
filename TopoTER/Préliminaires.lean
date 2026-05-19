@@ -78,7 +78,7 @@ notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
 
 structure Famille (X : Type*) where
-  ι : Type u_1
+  ι : Type*
   u : ι → Partie X
 
 def SousFamille {X} (F : Famille X) (J : Set F.ι) : Famille X where

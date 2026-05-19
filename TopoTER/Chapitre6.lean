@@ -101,10 +101,6 @@ theorem bornee_of_compact [EspCompact X] : bornee X := by
     dsimp [C] at hx; rw [←hx]; unfold est_ouvert
     ; exact ouv_of_boule_ouv x 1
 
-def lipschitz (k : ℝ) (f : X → Y) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
-
-def k_lipschitz (f : X → Y) := ∃ k, lipschitz k f
-
 open Valuation VectorSpace EspaceNorme
 
 variable {K E : Type*} [ValuationField K] [GroupeNorme E] [V : EspaceVecNorme K E]

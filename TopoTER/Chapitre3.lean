@@ -2,8 +2,9 @@ import TopoTER.Chapitre2
 
 open TER Set EspTop
 
-variable {X : Type*} [EspTop X]
+variable {X Z : Type*} [EspTop X] [EspTop Z]
 variable {Y : Type*} [EspSepareT2 Y]
+variable {E F: Type*} [EspaceMetrique E] [EspaceMetrique E]
 
 def est_continu_point {X Y : Type*} [EspTop X] [EspTop Y] (f : X → Y) (x : X) : Prop :=
   ∀(V : Set Y), (est_vois (f x) V) → ∃(U : Set X), (est_vois x U) ∧  (f '' U ⊆ V)
@@ -76,6 +77,12 @@ est_continu f → f '' (adh A) ⊆ adh (f '' A) := by
     exact mem_image_of_mem f hx'U
   · exact mem_image_of_mem f hx'A
 
+def unif_continu (f : X → Z)
+
+def lipschitz (k : ℝ) (f : X → Y) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
+
+def k_lipschitz (f : X → Y) := ∃ k, lipschitz k f
+
 open Set.Notation
 
 -- lire l'intro de Mathlib.Data.Set.Subset
@@ -92,3 +99,4 @@ instance toto (s : Set X) : EspTop s where
     constructor
     · exact inter_ouvert Uouv Vouv
     · rw [hU, hV]; simp
+edt
