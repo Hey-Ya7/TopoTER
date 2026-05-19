@@ -844,11 +844,9 @@ end Relatifs
 
 -- Proposition 1.9.
 
-variable {ι : Type*}
-
 -- a)
 
-@[simp] theorem ouverte_of_union {F : Famille ι X} (hu : ∀ A ∈ F, ouverte A)
+@[simp] theorem ouverte_of_union {F : Famille X} (hu : ∀ A ∈ F, ouverte A)
   : ouverte (⋃ᵢ F) := by
   intro x hx; rcases hx with ⟨A, hA, x_in⟩
   rcases (hu A hA) x x_in with ⟨r, r_pos, hr⟩
@@ -880,12 +878,12 @@ variable {ι : Type*}
 
 -- d)
 
-theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille ι X,
+theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille X,
   (∀ B ∈ F, is_boule B) ∧ U = ⋃ᵢ F := by
   let r (x : U) : ℝ := Exists.choose (h x.val x.prop)
   have r_prop : ∀ x, r x > 0 ∧ Bₒ (X := X) x (r x) ⊆ U := by
     intro x; exact Exists.choose_spec (h x.val x.prop)
-  let F : Famille _ X := ⟨x ↦ Bₒ x.val (r x)⟩
+  let F : Famille X := ⟨U, x ↦ Bₒ x.val (r x)⟩
   have F_is_boule : ∀ B ∈ F, is_boule B := by
     intro B hB; rcases hB with ⟨x, hx⟩; rw [←hx]; use x, r x
 --
@@ -968,13 +966,15 @@ lemma bdd_iff_in_boule (A : Partie X) : Nonempty X ∧ dist_bornee A ↔
                 apply le_trans (ineq x a y); apply le_of_lt
                 rw [symm a y]; exact add_lt_add (in_B hx) (in_B hy)
 
+def bornee (X : Type*) [EspaceMetrique X] := dist_bornee_nneg (X := X) Ω
+
 -- Définition 1.11.
 
 def converges_to (u : ℕ → X) (l : X) := ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u n, l) ≤ ε
 
 def converges (u : ℕ → X) := ∃ l, converges_to u l
 
-def bornee (u : ℕ → X) := dist_bornee {u n | n}
+def seq_bornee (u : ℕ → X) := dist_bornee {u n | n}
 
 lemma converges_iff_c_converges (u : ℕ → X) (l : X) {C : ℝ} (C_pos : C > 0) :
   converges_to u l ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u n, l) ≤ C * ε := by
@@ -1019,11 +1019,11 @@ theorem conv_of_inv (u : ℕ → ℝ := n ↦ 1 / (n + 1)) : converges_to u 0 :=
 
 -- b)
 
-theorem bornee_of_conv (u : ℕ → X) (h : converges u) : bornee u := by
+theorem bornee_of_conv (u : ℕ → X) (h : converges u) : seq_bornee u := by
   rcases h with ⟨l, hl⟩; rcases hl 1 zero_lt_one with ⟨N, hN⟩
   have bdd : BddAbove {d(u n, l) | n : Fin N} := by
     apply SupReal.bddabove_of_fin_image
-  rcases bdd with ⟨M, hM⟩; unfold bornee
+  rcases bdd with ⟨M, hM⟩; unfold seq_bornee
   apply And.right; rw [bdd_iff_in_boule]
   let M' := max (M + 1) 2
   use l, M', lt_max_of_lt_right (zero_lt_two)
@@ -1060,7 +1060,7 @@ theorem cauchy_of_conv (u : ℕ → X) (h : converges u) : cauchy u := by
 
 -- b)
 
-theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : bornee u := by
+theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : seq_bornee u := by
   sorry
 
 -- c)

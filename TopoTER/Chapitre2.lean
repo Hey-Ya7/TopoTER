@@ -84,7 +84,13 @@ lemma est_ouvert_iff_compl_est_ferme {s : Set X} : est_ouvert s ↔ est_ferme s�
   rw [est_ferme, compl_empty]
   exact univ_ouvert
 
-lemma union_est_ferme {u v : Set X} (hu : est_ferme u) (hv : est_ferme v) :
+lemma inter_ferme {F : Famille X} (hu : ∀ A ∈ F, est_ferme A) :
+  est_ferme (⋂ᵢ F) := by
+  rw [est_ferme, inter_famille_compl]
+  apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
+  rw [est_ouvert_iff_compl_est_ferme]; apply hu Aᶜ hA
+
+lemma union_ferme {u v : Set X} (hu : est_ferme u) (hv : est_ferme v) :
   est_ferme (u ∪ v) := by
   rw [est_ferme, compl_union]
   apply inter_ouvert; repeat assumption
@@ -103,6 +109,19 @@ lemma union_fini_ferme' {ι : Type} {u : ι → Set X} [Finite ι]
   (h : ∀ i, est_ferme (u i)) : est_ferme (⋃ i, u i) := by
   rw [est_ferme, compl_iUnion]
   exact inter_fini_ouvert' h
+
+-- Exemple 2.2.
+
+-- a)
+
+open Metrique
+instance {X : Type*} [EspaceMetrique X] : EspTop X where
+  est_ouvert := A ↦ ouverte A
+  univ_ouvert := ouverte_of_uni
+  empty_ouvert := ouverte_of_vide
+
+  union_ouvert := ouverte_of_union
+  inter_ouvert := ouverte_of_inter
 
 -- 2.2. Intérieur, adhérence, voisinage
 
@@ -230,6 +249,24 @@ structure base_de_vois {X : Type*} [EspTop X] (x : X) {ι : Type} (V : ι → Se
 class EspSepareT2 (X : Type*) extends EspTop X where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),
     (est_ouvert U) ∧ (est_ouvert V) ∧ (x ∈ U) ∧ (y ∈ V) ∧ (U ∩ V = ∅)
+
+instance {X : Type*} [M : EspaceMetrique X] : EspSepareT2 X where
+  est_separe := by
+    intro x y h; let d := d(x, y) / 2
+    have d_pos : d > 0 := by
+      apply half_pos; apply lt_of_le_of_ne
+      · exact M.is_dist.nneg x y
+      · intro eq; apply h; rw [←M.is_dist.sep, eq]
+--
+    let B1 := Bₒ x d; let B2 := Bₒ y d
+    use B1, B2, ouv_of_boule_ouv x d, ouv_of_boule_ouv y d,
+            centre_in_boule x d_pos, centre_in_boule y d_pos
+    apply eq_empty_of_forall_notMem; intro z hz
+    have ineq₁ : d(z, x) < d := hz.left
+    have ineq₂ : d(z, y) < d := hz.right
+    have ineq₃ := M.is_dist.ineq x z y
+    rw [M.is_dist.symm] at ineq₁
+    unfold d at ineq₁; unfold d at ineq₂; linarith
 
 def dense (X : Type*) [EspTop X] (A : Set X) : Prop := adh A = univ
 
