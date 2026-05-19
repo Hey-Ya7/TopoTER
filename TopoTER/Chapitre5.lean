@@ -163,7 +163,7 @@ diam_bornee B → A ⊆ B → diam A ≤ diam B := by
       · linarith
     · linarith
 
-theorem thm_baire [EspaceMetrique X] (F : ℕ → Partie X) : complet X →
+theorem thm_beurre [EspaceMetrique X] (F : ℕ → Partie X) : complet X →
 (∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F (m)) ⊆ (F n)) →
 converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
   intro compl hFn lim

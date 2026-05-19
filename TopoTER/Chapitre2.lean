@@ -21,7 +21,7 @@ class EspTop (X : Type*) where
 
 attribute [simp] EspTop.univ_ouvert EspTop.empty_ouvert
 
-variable {X Y : Type*} [E : EspTop X] [EspTop Y]
+variable {X Y : Type*} [EspTop X] [EspTop Y]
 
 namespace EspTop
 
@@ -152,7 +152,7 @@ lemma ouvert_ssi_vois (s : Set X) : est_ouvert s ↔ ∀ x ∈ s, est_vois x s :
       rw [union]; apply bunion_ouvert; intro x x_in
       exact (hu x x_in).ouv_ouvert
 
-lemma ouv_est_vois (x : X) (u : Set X) : est_ouvert u → x ∈ u → est_vois x u := by
+lemma ouv_est_vois {x : X} {u : Set X} : est_ouvert u → x ∈ u → est_vois x u := by
   intro u_ouv x_u
   use u
   exact ⟨x_u, u_ouv, by simp⟩
@@ -256,10 +256,10 @@ structure base_de_vois {X : Type*} [EspTop X] (x : X) {ι : Type} (V : ι → Se
 -- 2.3. Suites dans un espace topologique ou métrique
 
 def converge_vers (u : ℕ -> X) (l : X) :=
-∀ V : Set X, est_vois l V → ∃ n : ℕ, ∀ m : ℕ, m ≥ n → u n ∈ V
+∀ V : Set X, est_vois l V → ∃ n : ℕ, ∀ m : ℕ, m ≥ n → u m ∈ V
 
 lemma conv_equ_ouv (u : ℕ -> X) (l : X) : converge_vers u l ↔
-∀ V : Set X, (est_vois l V ∧ est_ouvert V) → ∃ n : ℕ, ∀ m : ℕ, m ≥ n → u n ∈ V := by
+∀ V : Set X, (est_vois l V ∧ est_ouvert V) → ∃ n : ℕ, ∀ m : ℕ, m ≥ n → u m ∈ V := by
   constructor
   · intro conv V hV
     exact conv V hV.1
@@ -280,15 +280,30 @@ class EspSepareT2 (X : Type*) extends EspTop X where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),
     (est_ouvert U) ∧ (est_ouvert V) ∧ (x ∈ U) ∧ (y ∈ V) ∧ (U ∩ V = ∅)
 
-lemma unicite_lim [S : EspSepareT2 X] (u : ℕ → X) (l l' : X) : (converge_vers u l ∧ converge_vers u l') → l = l' := by
+variable {Z : Type*} [S : EspSepareT2 Z]
+
+lemma unicite_lim (u : ℕ → Z) (l l' : Z) :
+(converge_vers u l ∧ converge_vers u l') → l = l' := by
   contrapose!
   intro hll' hul
   unfold converge_vers at *
   rcases S.est_separe l l' hll' with ⟨U, V, hU, hV, hx, hy ,hUV⟩
-  --specialize hul U (ouv_est_vois l U hU hx)
-  sorry
-
-
+  specialize hul U (ouv_est_vois hU hx)
+  push_neg
+  use V
+  constructor
+  · exact ouv_est_vois hV hy
+  · rcases hul with ⟨N, hN⟩
+    intro n
+    let k := max N n
+    use k
+    constructor
+    · exact Nat.le_max_right N n
+    · specialize hN k (Nat.le_max_left N n)
+      intro h
+      have hk : u k ∈ U ∩ V := mem_inter hN h
+      have H : U ∩ V ≠ ∅ := ne_of_mem_of_not_mem' hk fun a ↦ a
+      contradiction
 
 instance {X : Type*} [M : EspaceMetrique X] : EspSepareT2 X where
   est_separe := by
