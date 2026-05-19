@@ -1,7 +1,6 @@
 import TopoTER.Chapitre2
 
-open TER Set EspTop
-open Metrique
+open TER Set EspTop Metrique
 
 variable {X Z : Type*} [EspTop X] [EspTop Z]
 variable {Y : Type*} [EspSepareT2 Y]
