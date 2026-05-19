@@ -139,6 +139,20 @@ variable {X : Type*}
 
 open Metrique
 
+lemma sep_iff_diag_ferme :
+letI Δ : Set X := {x ∈ X | (x,x)}
+EspSepareT2 X ↔ est_ferme Δ
+
+
+
+
+
+
+
+
+
+
+
 lemma diam_pos [EspaceMetrique X] (A : Partie X) : diam A ≥ 0 ∨ diam A = -1 := sorry
 
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
@@ -148,9 +162,9 @@ diam_bornee B → A ⊆ B → diam A ≤ diam B := by
   dsimp
   split_ifs with hbdd hbd
 
-theorem thm_baire [EspaceMetrique X] (F : ℕ → Partie X) : complet X →
-(∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F (m)) ⊆ (F n)) →
-converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
+  theorem thm_baire [EspaceMetrique X] (F : ℕ → Partie X) : complet X →
+  (∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F (m)) ⊆ (F n)) →
+  converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
   intro compl hFn lim
   have h : ∀ n : ℕ, ∃ x : X, x ∈ F n := fun n ↦ Set.nonempty_iff_ne_empty.mpr (hFn n).1
   choose x hx using h
@@ -202,9 +216,9 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
   specialize compl x x_cau
   rcases compl with ⟨l, hl⟩
   have lfn : l ∈ ⋂ n : ℕ, F n := sorry
-  have hdiam : ∀ m : ℕ, diam (⋂ n : ℕ, F n) ≤ diam (F m) := by
-    intro m
-    apply diam_crois
+  have hdiam : ∀ m : ℕ, diam (⋂ n : ℕ, F n) ≤ diam (F m) := by sorry
+    --intro m
+    --apply diam_crois
     --exact Set.iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
     sorry
   have diam_0 : diam (⋂ n : ℕ, F n) = 0 := sorry
