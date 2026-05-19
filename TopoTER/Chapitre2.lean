@@ -21,15 +21,15 @@ class EspTop (X : Type*) where
 
 attribute [simp] EspTop.univ_ouvert EspTop.empty_ouvert
 
-variable {X Y : Type*} [EspTop X] [EspTop Y]
+variable {X Y : Type*} [E : EspTop X] [EspTop Y]
 
 namespace EspTop
 
-lemma iunion_ouvert {ι : Type u_1} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
+lemma iunion_ouvert {ι : Type*} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
   let F : Famille X := ⟨ι, u⟩
   have eq : ⋃ᵢ F = ⋃ i, u i := by rfl
-  rw [←eq]; apply union_ouvert; intro A hA
+  rw [←eq]; apply E.union_ouvert (F := F); intro A hA
   rcases hA with ⟨i, hi⟩; rw [←hi]; exact h i
 
 lemma bunion_ouvert {ι : Type u_1} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I,

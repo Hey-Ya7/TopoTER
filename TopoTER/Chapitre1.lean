@@ -878,7 +878,7 @@ end Relatifs
 
 -- d)
 
-theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille X,
+theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Familleₓ X,
   (∀ B ∈ F, is_boule B) ∧ U = ⋃ᵢ F := by
   let r (x : U) : ℝ := Exists.choose (h x.val x.prop)
   have r_prop : ∀ x, r x > 0 ∧ Bₒ (X := X) x (r x) ⊆ U := by
@@ -900,6 +900,22 @@ theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille X,
 open Classical in
 noncomputable def diam (A : Partie X) := let S := {d(x, y) | (x ∈ A) (y ∈ A)};
   if BddAbove S then sSup S else -1
+
+lemma diam_nneg (A : Partie X) : diam A ≥ 0 ∨ diam A = -1 := by
+  let S := {d(x, y) | (x ∈ A) (y ∈ A)}
+  by_cases bdd : BddAbove S
+  · case pos => apply Or.inl; dsimp [diam]; rw [if_pos bdd]
+                by_cases nonempty : Set.Nonempty S
+                · case pos => rw [Set.nonempty_def] at nonempty
+                              rcases nonempty with ⟨d, hd⟩
+                              have ineq := le_csSup bdd hd
+                              rcases hd with ⟨x, hx, y, hy, eq⟩
+                              apply le_trans _ ineq; rw [←eq]
+                              exact M.is_dist.nneg x y
+                · case neg =>
+                    rw [Set.not_nonempty_iff_eq_empty] at nonempty
+                    refold_let S; rw [nonempty, Real.sSup_empty]
+  · case neg => apply Or.inr; dsimp [diam]; rw [if_neg bdd]
 
 def diam_bornee (A : Partie X) := diam A > -1
 
