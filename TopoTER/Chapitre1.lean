@@ -891,7 +891,7 @@ theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Familleₓ X
   · case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
                rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ
                apply centre_in_boule; exact (r_prop xᵤ).left
-  · case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩;
+  · case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩
                 rcases hU' with ⟨U'', hU''⟩; dsimp at hU''
                 apply (r_prop U'').right; rwa [←hU''] at x_in
 

@@ -162,6 +162,6 @@ instance toto (s : Set X) : EspTop s where
 def est_ouvert_elementaire (s : Set (X × X)) :=
   ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
 
-instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
-  est_ouvert := fun w ↦ (w = ⋂ i, u i) ∧ (∀ i, est_ouvert_elementaire (u i))
-  univ_ouvert :=
+--instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
+--  est_ouvert := fun w ↦ (w = ⋂ i, u i) ∧ (∀ i, est_ouvert_elementaire (u i))
+--  univ_ouvert :=

@@ -157,7 +157,6 @@ lemma ouv_est_vois {x : X} {u : Set X} : est_ouvert u → x ∈ u → est_vois x
   use u
   exact ⟨x_u, u_ouv, by simp⟩
 
-
 @[simp] def adh (s : Set X) := {x | ∀ u, est_vois x u → (u ∩ s).Nonempty}
 
 lemma contenu_adh (s : Set X) : s ⊆ adh s := by
@@ -268,13 +267,14 @@ lemma conv_equ_ouv (u : ℕ -> X) (l : X) : converge_vers u l ↔
     have hW : est_vois l W ∧ est_ouvert W := ⟨by use W; exact ⟨l_W, W_ouv, by rfl⟩, W_ouv⟩
     specialize h W hW
     rcases h with ⟨n, hn⟩
-
     use n
     intro m hm
     specialize hn m hm
     exact W_V hn
 
 def converge (u : ℕ → X) := ∃ l : X, converge_vers u l
+
+--lemma ferme_suite (F : Set X) : est_ferme F ↔ (∀ u : ℕ → F, ∃ l : F, converge_vers u l)
 
 class EspSepareT2 (X : Type*) extends EspTop X where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),

@@ -10,21 +10,21 @@ variable {X : Type*} [EspSepareT2 X]
 
 -- a)
 
-@[simp] def couvrement (F : Famille X) (A : Partie X) := A ⊆ ⋃ᵢ F
+@[simp] def couvrement (F : Familleₓ X) (A : Partie X) := A ⊆ ⋃ᵢ F
 
-@[simp] def sous_couvrement (F : Famille X) (J : Set F.ι) (A : Partie X) :=
+@[simp] def sous_couvrement (F : Familleₓ X) (J : Set F.ι) (A : Partie X) :=
   couvrement (SousFamille F J) A
 
-class EspCompact (X : Type*) extends EspSepareT2 X where
-  compact : ∀ C : Famille X, (∀ A ∈ C, est_ouvert A) →
+class EspCompact (X : Type*) [EspSepareT2 X] extends EspTop X where
+  compact : ∀ C : Familleₓ X, (∀ A ∈ C, est_ouvert A) →
     couvrement C Ω → ∃ J, J.Finite ∧ sous_couvrement C J Ω
 
 -- b)
 
-def est_compact_f (X : Type*) [EspSepareT2 X] := ∀ F : Famille X, (∀ A ∈ F,
+def est_compact_f (X : Type*) [EspSepareT2 X] := ∀ F : Familleₓ X, (∀ A ∈ F,
   est_ferme A) → ⋂ᵢ F = ∅ → ∃ J, J.Finite ∧ ⋂ᵢ (SousFamille F J) = ∅
 
-lemma comp_f_of_comp (X : Type*) [C : EspCompact X] : est_compact_f X := by
+lemma comp_f_of_comp [C : EspCompact X] : est_compact_f X := by
   intro F h₁ h₂
   have F_ouvert : ∀ A ∈ F`ᶜ, est_ouvert A := by
     intro A hA; rw [est_ouvert_iff_compl_est_ferme]
@@ -62,7 +62,7 @@ def est_compact (A : Partie X) := ∀ C : Famille X, (∀ P ∈ C, est_ouvert P)
 
 -- b)
 
-theorem compact_of_ferme {X : Type*} [EspCompact X] {A : Partie X} (h : est_ferme A)
+theorem compact_of_ferme [EspCompact X] {A : Partie X} (h : est_ferme A)
   : est_compact A := by sorry
 
 -- Théorème 6.5.
@@ -92,14 +92,40 @@ theorem comp_of_continu_image {X Y : Type*} [EspSepareT2 X] [EspSepareT2 Y]
 
 open Metrique
 
-variable {X Y : Type*} [EspaceMetrique X] [EspaceMetrique Y]
+variable {E F : Type*} [M₁ : EspaceMetrique E] [M₂ : EspaceMetrique F]
 
-theorem bornee_of_compact [EspCompact X] : bornee X := by
-  let C : Famille X := ⟨X, x ↦ Bₒ x 1⟩
+theorem bornee_of_compact [Cmp : EspCompact E] : bornee E := by
+  let C : Famille E := ⟨E, x ↦ Bₒ x 1⟩
   have C_ouvert : ∀ A ∈ C, est_ouvert A := by
     intro A hA; rcases hA with ⟨x, hx⟩
-    dsimp [C] at hx; rw [←hx]; unfold est_ouvert
-    ; exact ouv_of_boule_ouv x 1
+    dsimp [C] at hx; rw [←hx]; unfold est_ouvert;
+    exact ouv_of_boule_ouv x 1
+  have C_couvre : couvrement C Ω := by
+    intro x hx; rw [mem_union_famille]; use Bₒ x 1, (by use x)
+    exact centre_in_boule x zero_lt_one
+--
+  rcases Cmp.compact C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
+  let S := {d(x, y) | (x ∈ J) (y ∈ J)}
+  have bdd : BddAbove S := by
+    let f : C.ι × C.ι → ℝ := I ↦ d(I.1, I.2)
+    apply Set.Finite.bddAbove
+    apply Set.Finite.of_surjOn f (s := J ×ˢ J)
+    · intro s hs; rcases hs with ⟨x, hx, y, hy, hs⟩
+      use (x, y), (mem_prod.mp ⟨hx, hy⟩), hs
+    · exact Set.Finite.prod hJ hJ
+  rcases bdd with ⟨M, hM⟩; unfold bornee
+  rw [←bdd_iff_bdd_by_nneg]; use M + 2; intro x hx y hy
+--
+  rcases J_couvre hx with ⟨A, hA, x_in⟩; rcases hA with ⟨i, hi⟩
+  rcases J_couvre hy with ⟨B, hB, y_in⟩; rcases hB with ⟨j, hj⟩
+  dsimp [SousFamille, C] at hi; dsimp [SousFamille, C] at hj
+  have ineq₁ := M₁.is_dist.ineq x i.val y
+  have ineq₂ := M₁.is_dist.ineq i.val j.val y
+  have d_ij_in : d(i.val, j.val) ∈ S := by
+    use i.val, i.prop, j.val, j.prop
+  have ineq₃ := hM d_ij_in
+  rw [←hi] at x_in; dsimp at x_in; rw [←hj] at y_in
+  dsimp at y_in; rw [M₁.is_dist.symm] at y_in; linarith
 
 open Valuation VectorSpace EspaceNorme
 
