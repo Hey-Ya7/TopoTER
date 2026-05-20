@@ -2,8 +2,7 @@ import TopoTER.Chapitre4
 
 open TER Set EspTop
 
-variable {X : Type*} [EspTop X]
-variable {Y : Type*} [EspSepareT2 Y]
+variable {X Y : Type*} [EspTop X] [EspTop Y] [EspSepareT2 Y]
 
 def prop_baire {X : Type*} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
   dense X (u n) ∧ est_ouvert (u n)) → dense X (⋂ n : ℕ, u n)
@@ -133,12 +132,8 @@ variable {X : Type*}
 open Metrique
 
 --lemma sep_iff_diag_ferme :
-<<<<<<< HEAD
---letI Δ : Set X := {x ∈ X | (x,x)} EspSepareT2 X ↔ est_ferme Δ
-=======
 --letI Δ : Set X := {x ∈ X | (x,x)}
 --EspSepareT2 X ↔ est_ferme Δ
->>>>>>> refs/remotes/origin/master
 
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam A ≤ diam B := by
@@ -226,13 +221,6 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     intro n m hm
     exact (hFn n).2.2 m hm (hx m)
   have lfn : l ∈ ⋂ n : ℕ, F n := sorry
-<<<<<<< HEAD
-  have hdiam : ∀ m : ℕ, diam (⋂ n : ℕ, F n) ≤ diam (F m) := by sorry
-    --intro m
-    --apply diam_crois
-    --exact Set.iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
-  have diam_0 : diam (⋂ n : ℕ, F n) = 0 := sorry
-=======
   have mborn : ∃ m : ℕ, ∀ n : ℕ, n ≥ m → diam_bornee (F n) := by
     rcases lim 0.5 (by linarith) with ⟨N, hN⟩
     dsimp at hN
@@ -317,5 +305,4 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
     use x
     use (diam u)/4
     sorry
->>>>>>> refs/remotes/origin/master
   sorry

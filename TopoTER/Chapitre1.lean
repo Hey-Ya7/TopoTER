@@ -886,11 +886,7 @@ theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Familleₓ X
   let F : Famille X := ⟨U, x ↦ Bₒ x.val (r x)⟩
   have F_is_boule : ∀ B ∈ F, is_boule B := by
     intro B hB; rcases hB with ⟨x, hx⟩; rw [←hx]; use x, r x
-<<<<<<< HEAD
 --
-=======
-
->>>>>>> refs/remotes/origin/master
   use F, F_is_boule; ext x; apply Iff.intro
   · case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
                rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ

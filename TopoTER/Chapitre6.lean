@@ -4,7 +4,7 @@ open TER Set EspTop
 
 -- 6. Espaces topologiques compacts
 
-variable {X : Type*} [EspSepareT2 X]
+variable {X : Type*} [EspTop X] [EspSepareT2 X]
 
 -- 6.1. Compacité via les recouvrements
 
@@ -15,14 +15,14 @@ variable {X : Type*} [EspSepareT2 X]
 @[simp] def sous_couvrement (F : Familleₓ X) (J : Set F.ι) (A : Partie X) :=
   couvrement (SousFamille F J) A
 
-class EspCompact (X : Type*) [EspSepareT2 X] where
+class EspCompact (X : Type*) [EspTop X] [EspSepareT2 X] where
   compact : ∀ C : Familleₓ X, (∀ A ∈ C, est_ouvert A) → couvrement C Ω →
     ∃ J, J.Finite ∧ sous_couvrement C J Ω
 
 -- b)
 
-def est_compact_f (X : Type*) [EspSepareT2 X] := ∀ F : Familleₓ X, (∀ A ∈ F,
-  est_ferme A) → ⋂ᵢ F = ∅ → ∃ J, J.Finite ∧ ⋂ᵢ (SousFamille F J) = ∅
+def est_compact_f (X : Type*) [EspTop X] [EspSepareT2 X] := ∀ F : Familleₓ X,
+  (∀ A ∈ F, est_ferme A) → ⋂ᵢ F = ∅ → ∃ J, J.Finite ∧ ⋂ᵢ (SousFamille F J) = ∅
 
 lemma comp_f_of_comp [C : EspCompact X] : est_compact_f X := by
   intro F h₁ h₂
@@ -37,7 +37,7 @@ lemma comp_f_of_comp [C : EspCompact X] : est_compact_f X := by
   rw [←compl_of_sous_famille, ←inter_famille_compl] at J_couvre
   rwa [univ_subset_iff, compl_univ_iff] at J_couvre
 
-instance {X : Type*} [EspSepareT2 X] {h : est_compact_f X} : EspCompact X
+instance {h : est_compact_f X} : EspCompact X
   where compact := by {
     intro F h₁ h₂
     have F_ferme : ∀ A ∈ F`ᶜ, est_ferme A := by
@@ -59,6 +59,36 @@ def est_compact (A : Partie X) := ∀ C : Famille X, (∀ P ∈ C, est_ouvert P)
 -- Théorème 6.4.
 
 -- a)
+
+theorem ferme_of_compact {A : Partie X} (h : est_compact A) : est_ferme A := by
+  rw [est_ferme, ouvert_ssi_vois]; intro x hx
+  have sep_y : ∀ y ∈ A, ∃ U V, est_ouvert U ∧ est_ouvert V ∧ y ∈ U ∧ x ∈ V ∧
+    U ∩ V = ∅ := by
+    intro y hy; expose_names; apply inst_1.est_separe y x
+    intro eq; rw [eq] at hy; exact hx hy
+  choose! u v hu hv y_in x_in disj using sep_y
+--
+  let F : Famille X := ⟨A, y ↦ u y⟩
+  have F_ouvert : ∀ P ∈ F, est_ouvert P := by
+    intro P hP; rcases hP with ⟨y, hy⟩
+    rw [←hy]; exact hu y y.prop
+  have F_couvre : couvrement F A := by
+    intro y hy; rw [mem_union_famille]
+    use u y, (by use ⟨y, hy⟩); exact y_in y hy
+  rcases h F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
+--
+  let V' := ⋂ j ∈ J, v j; use V'; constructor
+  · simp only [V', mem_iInter]; intro j hj
+    exact x_in j j.prop
+  · unfold V'; apply inter_fini_ouvert (hI := hJ)
+    intro j hj; exact hv j j.prop
+  · intro z hz in_A; rcases J_couvre in_A with ⟨j, hj, z_in⟩
+    rcases hj with ⟨y, hy⟩; dsimp [SousFamille] at y hy
+    rw [←mem_empty_iff_false z, ←disj y y.val.prop]
+    apply And.intro
+    · dsimp [F] at hy; rwa [hy]
+    · rw [←hy] at z_in; rw [mem_iInter] at hz
+      apply hz y; use y.prop
 
 -- b)
 
