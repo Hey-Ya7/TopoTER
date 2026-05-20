@@ -77,42 +77,40 @@ notation "[" a "≤__<" "+∞]" => Interval₆ a
 notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
 
-structure Famille (X : Type*) where
-  ι : Type*
+structure Famille (ι X : Type*) where
   u : ι → Partie X
 
-abbrev Familleₓ (X : Type*) := Famille.{u_1, u_1} X
+namespace Famille
 
 variable {ι X : Type*}
 
-def SousFamille (F : Famille X) (J : Set F.ι) : Famille X where
-  ι := J
+def SousFamille (F : Famille ι X) (J : Set ι) : Famille J X where
   u := j ↦ F.u j
 
-def iUnion (F : Famille X) : Partie X := ⋃ i, F.u i
-def iInter (F : Famille X) : Partie X := ⋂ i, F.u i
-def Compl (F : Famille X) : Famille X := ⟨F.ι, i ↦ (F.u i)ᶜ⟩
+def iUnion (F : Famille ι X) : Partie X := ⋃ i, F.u i
+def iInter (F : Famille ι X) : Partie X := ⋂ i, F.u i
+def Compl (F : Famille ι X) : Famille ι X := ⟨i ↦ (F.u i)ᶜ⟩
 
 notation "⋃ᵢ " F : (max-10) => iUnion F
 notation "⋂ᵢ " F : (max-10) => iInter F
 notation : max F "`ᶜ" => Compl F
 
-instance : Membership (Partie X) (Famille X) where
-  mem := F ↦ A ↦ A ∈ Set.range fun i ↦ F.u i
+instance : Membership (Partie X) (Famille ι X) where
+  mem := F ↦ A ↦ A ∈ Set.range (i ↦ F.u i)
 
-lemma compl_compl_famille (F : Famille X) : (F`ᶜ)`ᶜ = F := by simp [Compl]
+lemma compl_compl_famille (F : Famille ι X) : (F`ᶜ)`ᶜ = F := by simp [Compl]
 
-lemma compl_of_sous_famille (F : Famille X) (J : Set F.ι) :
+lemma compl_of_sous_famille (F : Famille ι X) (J : Set ι) :
   (SousFamille F J)`ᶜ = SousFamille F`ᶜ J := by simp [SousFamille, Compl]
 
-lemma in_compl_famille (F : Famille X) (A : Partie X) : A ∈ F`ᶜ ↔ Aᶜ ∈ F := by
+lemma in_compl_famille (F : Famille ι X) (A : Partie X) : A ∈ F`ᶜ ↔ Aᶜ ∈ F := by
   apply Iff.intro
   · case mp => intro h; rcases h with ⟨i, hi⟩; dsimp [Compl] at hi
                rw [←hi, compl_compl]; use i
   · case mpr => intro h; rcases h with ⟨i, hi⟩; use i; dsimp [Compl]
                 dsimp [Compl] at hi; rw [hi, compl_compl]
 
-lemma mem_union_famille (F : Famille X) (x : X) : x ∈ ⋃ᵢ F ↔ ∃ A, A ∈ F ∧
+lemma mem_union_famille (F : Famille ι X) (x : X) : x ∈ ⋃ᵢ F ↔ ∃ A, A ∈ F ∧
   x ∈ A := by
   apply Iff.intro
   · case mp => intro h; rcases h with ⟨A, hA, x_in⟩
@@ -120,28 +118,30 @@ lemma mem_union_famille (F : Famille X) (x : X) : x ∈ ⋃ᵢ F ↔ ∃ A, A �
   · case mpr => intro h; rcases h with ⟨A, hA, x_in⟩
                 use A, hA, x_in
 
-lemma mem_inter_famille (F : Famille X) (x : X) : x ∈ ⋂ᵢ F ↔ ∀ A ∈ F,
+lemma mem_inter_famille (F : Famille ι X) (x : X) : x ∈ ⋂ᵢ F ↔ ∀ A ∈ F,
   x ∈ A := by
   unfold iInter; rw [Set.mem_iInter]; apply Iff.intro
   · case mp => intro h A hA; rcases hA with ⟨i, hi⟩
                rw [←hi]; exact h i
   · case mpr => intro h i; apply h; use i
 
-lemma subset_union_famille {F : Famille X} {A B : Partie X} (h₁ : A ⊆ B)
+lemma subset_union_famille {F : Famille ι X} {A B : Partie X} (h₁ : A ⊆ B)
   (h₂ : B ∈ F) : A ⊆ ⋃ᵢ F := by
   unfold iUnion; rcases h₂ with ⟨i, hi⟩; dsimp at hi
   apply Set.subset_iUnion_of_subset i; rwa [hi]
 
-lemma subset_inter_famille {F : Famille X} {A : Partie X} (h : ∀ B ∈ F,
+lemma subset_inter_famille {F : Famille ι X} {A : Partie X} (h : ∀ B ∈ F,
   A ⊆ B) : A ⊆ ⋂ᵢ F := by
   unfold iInter; apply Set.subset_iInter
   intro i; apply h; use i
 
-lemma union_famille_compl (F : Famille X) : (⋃ᵢ F)ᶜ = ⋂ᵢ F`ᶜ := by
+lemma union_famille_compl (F : Famille ι X) : (⋃ᵢ F)ᶜ = ⋂ᵢ F`ᶜ := by
   simp [iUnion, iInter, Compl]
 
-lemma inter_famille_compl (F : Famille X) : (⋂ᵢ F)ᶜ = ⋃ᵢ F`ᶜ := by
+lemma inter_famille_compl (F : Famille ι X) : (⋂ᵢ F)ᶜ = ⋃ᵢ F`ᶜ := by
   simp [iUnion, iInter, Compl]
+
+end Famille
 
 open Real Complex
 namespace SupReal

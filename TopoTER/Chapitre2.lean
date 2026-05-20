@@ -13,7 +13,7 @@ class EspTop (X : Type*) where
   univ_ouvert : est_ouvert Ω
   empty_ouvert : est_ouvert ∅
 --
-  union_ouvert {F : Familleₓ X} (hu : ∀ A ∈ F, est_ouvert A) :
+  union_ouvert {ι : Type u_1} {F : Famille ι X} (hu : ∀ A ∈ F, est_ouvert A) :
     est_ouvert (⋃ᵢ F)
 --
   inter_ouvert {u v : Set X} (hu : est_ouvert u) (hv : est_ouvert v) :
@@ -27,12 +27,12 @@ namespace EspTop
 
 lemma iunion_ouvert {ι : Type u_1} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
-  let F : Famille X := ⟨ι, u⟩
+  let F : Famille ι X := ⟨u⟩
   have eq : ⋃ᵢ F = ⋃ i, u i := by rfl
   have hu : ∀ A ∈ F, est_ouvert A := by
     intro A hA; rcases hA with ⟨i, hi⟩
     rw [←hi]; exact h i
-  rw [←eq]; exact union_ouvert hu
+  rw [←eq]; exact union_ouvert (ι := ι) hu
 
 lemma bunion_ouvert {ι : Type u_1} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I,
   est_ouvert (u i)) : est_ouvert (⋃ i ∈ I, u i) := by
@@ -86,12 +86,12 @@ lemma est_ouvert_iff_compl_est_ferme {s : Set X} : est_ouvert s ↔ est_ferme s�
   rw [est_ferme, compl_empty]
   exact univ_ouvert
 
-lemma inter_ferme {F : Familleₓ X} (hu : ∀ A ∈ F, est_ferme A) :
+open Famille in
+lemma inter_ferme {ι : Type u_1} {F : Famille ι X} (hu : ∀ A ∈ F, est_ferme A) :
   est_ferme (⋂ᵢ F) := by
   rw [est_ferme, inter_famille_compl]
-  --apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
-  --rw [est_ouvert_iff_compl_est_ferme]; apply hu Aᶜ hA
-  sorry
+  apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
+  rw [est_ouvert_iff_compl_est_ferme]; apply hu Aᶜ hA
 
 lemma union_ferme {u v : Set X} (hu : est_ferme u) (hv : est_ferme v) :
   est_ferme (u ∪ v) := by
@@ -343,58 +343,5 @@ dense X s ↔ ∀ V, est_ouvert V → V.Nonempty → (V ∩ s).Nonempty := by
       have v_ne : v.Nonempty := by use x
       specialize h v v_ouv v_ne
       exact Nonempty.mono (inter_subset_inter_left s v_in_u) h
-
-variable {E : Type*} [EspTop E]
-
-def val_adh (u : ℕ → E) (x : E) : Prop :=
- ∀(V : Set E), est_vois x V → ∀ N : ℕ, ∃ n : ℕ, n ≥ N ∧ (u n) ∈ V
-
-lemma val_adh_inter (u : ℕ → E) :
-let X := fun (k : ℕ) ↦ {x : E | ∃ n ≥ k, u n = x}
-{x : E | val_adh u x} = ⋂ n : ℕ, adh (X n) := by
-  intro X
-  ext x
-  constructor
-  · intro hx
-    rw[Set.mem_iInter]
-    intro i
-    rw[Set.mem_setOf] at hx; unfold val_adh at hx
-    unfold adh
-    rw[Set.mem_setOf]
-    intro V hVVois
-    specialize hx V hVVois
-    specialize hx i
-    rcases hx with ⟨n, ⟨hni, hnV⟩⟩
-    --rw[nonempty_iff_empty_ne]
-    have h : u n ∈ X i := by
-      rw[Set.mem_setOf]
-      use n
-    apply inter_nonempty.mpr
-    use u n
-  · intro hx
-    rw[Set.mem_setOf]; unfold val_adh
-    intro V hV m
-    rw[Set.mem_iInter] at hx
-    specialize hx m
-    unfold adh at hx
-    rw[Set.mem_setOf] at hx
-    specialize hx V hV
-    rw[Set.nonempty_def] at hx
-    rcases hx with ⟨y, ⟨hyVn, hyXm⟩⟩
-    rw[Set.mem_setOf] at hyXm
-    rcases hyXm with ⟨n, ⟨hnm, huny⟩⟩
-    use n
-    constructor
-    apply hnm
-    exact mem_of_eq_of_mem huny hyVn
-
-
-theorem val_adh_iff_extraite_conv (u : ℕ → X) (x : X) : val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by sorry
-  --constructor
-  --intro hvadhx
-  --unfold val_adh at hvadhx
-  --have h_choix : ∀ (n : ℕ)(N : ℕ), ∃ m : ℕ, m ≥ N ∧ EspaceMetrique.d (u m) x < 1/(n+1) := by
-
-
 
 end EspTop
