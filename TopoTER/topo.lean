@@ -335,6 +335,35 @@ instance induite (s : Set X) : EspTop s where
     · exact inter_ouvert Uouv Vouv
     · rw [hU, hV]; simp
 
+def converge_vers (u : ℕ -> X) (l : X) :=
+∀ V : Set X, est_vois l V → ∃ n : ℕ, ∀ m : ℕ, m ≥ n → u m ∈ V
+
+lemma conv_equ_ouv (u : ℕ -> X) (l : X) : converge_vers u l ↔
+∀ V : Set X, (est_vois l V ∧ est_ouvert V) → ∃ n : ℕ, ∀ m : ℕ, m ≥ n → u m ∈ V := by
+  constructor
+  · intro conv V hV
+    exact conv V hV.1
+  · intro h V hV
+    rcases hV with ⟨W, l_W, W_ouv, W_V⟩
+    have hW : est_vois l W ∧ est_ouvert W := ⟨by use W; exact ⟨l_W, W_ouv, by rfl⟩, W_ouv⟩
+    specialize h W hW
+    rcases h with ⟨n, hn⟩
+    use n
+    intro m hm
+    specialize hn m hm
+    exact W_V hn
+
+def converge (u : ℕ → X) := ∃ l : X, converge_vers u l
+
+def limite (u : ℕ → X) := {l : X | converge_vers u l}
+
+lemma ferme_suite (F : Set X) :
+est_ferme F ↔ (∀ u : ℕ → X, (∀ n : ℕ, u n ∈ F) →  converge u → limite u ⊆ F) := by
+  constructor
+  · intro F_fer u u_F u_conv
+
+
+
 def dense (X : Type) [EspTop X] (A : Set X) : Prop := adh A = univ
 
 lemma dense_iff_inter_ouvert_nonempty (s : Set X) :

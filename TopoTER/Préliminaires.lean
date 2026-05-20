@@ -78,7 +78,7 @@ notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
 
 structure Famille (X : Type u) where
-  ι : Type u
+  ι : Type*
   u : ι → Partie X
 
 abbrev Familleₓ (X : Type*) := Famille.{u_1, u_1} X
