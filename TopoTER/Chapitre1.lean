@@ -1082,6 +1082,37 @@ theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : seq_bornee u := by
 
 def extraction (φ : ℕ → ℕ) := ∀ m n, m < n → φ m < φ n
 
+lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1) := by
+  constructor
+  · intro hφ
+    unfold extraction at hφ
+    intro n
+    specialize hφ n (n+1) (by linarith)
+    exact hφ
+  · intro h
+    unfold extraction
+    intro m n hlt
+    rw[Nat.lt_iff_add_one_le] at hlt
+    induction n
+    · case zero =>
+        exfalso;
+        linarith
+    · case succ n hn =>
+        by_cases h1 : m+1 = n+1
+        · rw[←h1]
+          specialize h m
+          exact h
+        · have m_lt_n : m < n := by
+            push_neg at h1
+            rw[lt_iff_le_and_ne]
+            exact ⟨(by linarith), Nat.add_one_ne_add_one_iff.mp h1⟩
+          rw[Nat.lt_iff_add_one_le] at m_lt_n
+          have hφmn : φ m < φ n := by apply hn m_lt_n
+          trans φ n
+          · exact hφmn
+          · specialize h n; exact h
+
+
 lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
   intro n; induction n
   · case zero => apply zero_le

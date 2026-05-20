@@ -357,13 +357,6 @@ def converge (u : ℕ → X) := ∃ l : X, converge_vers u l
 
 def limite (u : ℕ → X) := {l : X | converge_vers u l}
 
-lemma ferme_suite (F : Set X) :
-est_ferme F ↔ (∀ u : ℕ → X, (∀ n : ℕ, u n ∈ F) →  converge u → limite u ⊆ F) := by
-  constructor
-  · intro F_fer u u_F u_conv
-
-
-
 def dense (X : Type) [EspTop X] (A : Set X) : Prop := adh A = univ
 
 lemma dense_iff_inter_ouvert_nonempty (s : Set X) :

@@ -135,6 +135,17 @@ open Metrique
 --letI Δ : Set X := {x ∈ X | (x,x)}
 --EspSepareT2 X ↔ est_ferme Δ
 
+lemma diam_gt_0 [EspaceMetrique X] {A : Partie X} :
+(A = ∅ ∨ ∃ x : X, A = {x}) ↔ diam A = 0 := by
+  constructor
+  · intro h
+    rcases h with h | ⟨x, hx⟩
+    · subst A
+      exact diam_empty
+    · unfold diam
+      sorry
+  · sorry
+
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam A ≤ diam B := by
   intro bornB A_B
@@ -301,8 +312,9 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
     specialize W_ouv n
     rw [ouvert_ssi_vois] at W_ouv
     rcases W_ne n with ⟨x, hx⟩
-    rcases W_ouv x hx with ⟨u, hu⟩
+    rcases W_ouv x hx with ⟨w, hw⟩
     use x
-    use (diam u)/4
+    use (diam w)/4
+
     sorry
   sorry
