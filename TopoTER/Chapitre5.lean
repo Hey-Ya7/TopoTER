@@ -133,7 +133,12 @@ variable {X : Type*}
 open Metrique
 
 --lemma sep_iff_diag_ferme :
+<<<<<<< HEAD
 --letI Δ : Set X := {x ∈ X | (x,x)} EspSepareT2 X ↔ est_ferme Δ
+=======
+--letI Δ : Set X := {x ∈ X | (x,x)}
+--EspSepareT2 X ↔ est_ferme Δ
+>>>>>>> refs/remotes/origin/master
 
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam A ≤ diam B := by
@@ -165,7 +170,7 @@ diam_bornee B → A ⊆ B → diam A ≤ diam B := by
     · linarith
 
 theorem thm_beurre [EspaceMetrique X] (F : ℕ → Partie X) : complet X →
-(∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F (m)) ⊆ (F n)) →
+(∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F m) ⊆ (F n)) →
 converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
   intro compl hFn lim
   have h : ∀ n : ℕ, ∃ x : X, x ∈ F n := fun n ↦ Set.nonempty_iff_ne_empty.mpr (hFn n).1
@@ -221,9 +226,96 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     intro n m hm
     exact (hFn n).2.2 m hm (hx m)
   have lfn : l ∈ ⋂ n : ℕ, F n := sorry
+<<<<<<< HEAD
   have hdiam : ∀ m : ℕ, diam (⋂ n : ℕ, F n) ≤ diam (F m) := by sorry
     --intro m
     --apply diam_crois
     --exact Set.iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
   have diam_0 : diam (⋂ n : ℕ, F n) = 0 := sorry
+=======
+  have mborn : ∃ m : ℕ, ∀ n : ℕ, n ≥ m → diam_bornee (F n) := by
+    rcases lim 0.5 (by linarith) with ⟨N, hN⟩
+    dsimp at hN
+    use N
+    intro n hn
+    unfold diam_bornee
+    specialize hN n hn
+    change |(diam (F n)) - 0| ≤ 0.5 at hN
+    linarith [abs_le.mp hN]
+  rcases mborn with ⟨N, hN⟩
+  have hdiam : ∀ m : ℕ, m ≥ N → diam (⋂ n : ℕ, F n) ≤ diam (F m) := by
+    intro m hm
+    apply diam_crois
+    · exact hN m hm
+    · exact iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
+  have diam_0 : ∀ ε > 0, diam (⋂ n : ℕ, F n) ≤ ε := by
+    intro ε ε_pos
+    rcases lim ε ε_pos with ⟨M, hM⟩
+    change ∀ n ≥ M, |(diam (F n)) - 0| ≤ ε at hM
+    specialize hdiam (max M N) (by simp)
+    specialize hM (max M N) (by simp)
+    trans diam (F (max M N))
+    · exact hdiam
+    · linarith [abs_le.mp hM]
+  have diam_ge0 : diam (⋂ n : ℕ, F n) ≥ 0 := by
+    rcases diam_nneg (⋂ n : ℕ, F n) with h | h
+    · exact h
+    · sorry
+  have diam_0 : diam (⋂ n : ℕ, F n) = 0 := by
+    by_contra! h
+    sorry
+  sorry
+
+lemma h_split : Set.Icc 1 (n + 1) = insert (n + 1) (Set.Icc 1 n) := by
+  ext x
+  simp only [mem_Icc, mem_insert_iff]
+  constructor
+  · rintro ⟨h1, h2⟩
+    by_cases! h : 1 ≤ x ∧ x ≤ n
+    · right
+      exact h
+    · left
+      have h := h h1
+      linarith
+  intro h
+  rcases h with h | h
+  repeat constructor; repeat linarith
+
+theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
+  intro X_compl U hU
+  rw [dense_iff_inter_ouvert_nonempty]
+  intro V V_ouv V_ne
+  let W : ℕ → Partie X := fun n ↦ V ∩ (⋂ k ∈ Set.Icc 1 n, U k)
+  have W_ouv : ∀ n : ℕ, est_ouvert (W n) := by
+    intro n
+    unfold W
+    apply inter_ouvert V_ouv
+    apply inter_fini_ouvert
+    intro k _
+    exact (hU k).2
+  have W_ne : ∀ n : ℕ, (W n).Nonempty := by
+    unfold W
+    intro n
+    induction n with
+    | zero =>
+      simp
+      exact V_ne
+    | succ n hr =>
+      rw [h_split, biInter_insert]
+      rw [Set.inter_comm (U (n+1)), ← Set.inter_assoc]
+      change ((W n) ∩ U (n + 1)).Nonempty
+      rcases hU (n + 1) with ⟨U_dens, U_ouv⟩
+      rw [dense_iff_inter_ouvert_nonempty] at U_dens
+      exact U_dens (W n) (W_ouv n) hr
+
+  have hyp : ∀ n : ℕ, ∃ c : X, ∃ r > 0, boule_fermee c r ⊆ W n := by
+    intro n
+    specialize W_ouv n
+    rw [ouvert_ssi_vois] at W_ouv
+    rcases W_ne n with ⟨x, hx⟩
+    rcases W_ouv x hx with ⟨u, hu⟩
+    use x
+    use (diam u)/4
+    sorry
+>>>>>>> refs/remotes/origin/master
   sorry

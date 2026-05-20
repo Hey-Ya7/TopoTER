@@ -4,7 +4,11 @@ open TER Set EspTop Metrique
 
 variable {X Z : Type*} [EspTop X] [EspTop Z]
 variable {Y : Type*} [EspSepareT2 Y]
+<<<<<<< HEAD
 variable {E F : Type*} [EspaceMetrique E] [EspaceMetrique F]
+=======
+variable {E F: Type*} [EspaceMetrique E] [EspaceMetrique F]
+>>>>>>> refs/remotes/origin/master
 
 def est_continu_point {X Y : Type*} [EspTop X] [EspTop Y] (f : X → Y) (x : X) : Prop :=
   ∀(V : Set Y), (est_vois (f x) V) → ∃(U : Set X), (est_vois x U) ∧  (f '' U ⊆ V)
@@ -77,10 +81,17 @@ est_continu f → f '' (adh A) ⊆ adh (f '' A) := by
     exact mem_image_of_mem f hx'U
   · exact mem_image_of_mem f hx'A
 
+<<<<<<< HEAD
 def lipschitz (k : ℝ) (f : E → F) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
 
 def unif_continu (f : E → F) := ∀ ε > 0, ∃ δ > 0, ∀(x y : E), d(x, y) ≤ δ → d(f x, f y) ≤ ε
 
+=======
+def unif_continu (f : E → F) := ∀ ε > 0, ∃ δ > 0, ∀(x y : E), d(x, y) ≤ δ → d(f x, f y) ≤ ε
+
+def lipschitz (k : ℝ) (f : E → F) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
+
+>>>>>>> refs/remotes/origin/master
 def k_lipschitz (f : E → F) := ∃ k, lipschitz k f
 
 open Set.Notation
@@ -103,6 +114,7 @@ instance toto (s : Set X) : EspTop s where
 def est_ouvert_elementaire (s : Set (X × X)) :=
   ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
 
+<<<<<<< HEAD
 instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
   est_ouvert := fun w ↦ (w = ⋂ i, u i) ∧ (∀ i, est_ouvert_elementaire (u i))
   univ_ouvert := sorry
@@ -110,3 +122,8 @@ instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
 
   union_ouvert := sorry
   inter_ouvert := sorry
+=======
+--instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
+--  est_ouvert := fun w ↦ (w = ⋂ i, u i) ∧ (∀ i, est_ouvert_elementaire (u i))
+--  univ_ouvert :=
+>>>>>>> refs/remotes/origin/master

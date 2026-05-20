@@ -77,7 +77,11 @@ notation "[" a "≤__<" "+∞]" => Interval₆ a
 notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
 
+<<<<<<< HEAD
 structure Famille (X : Type*) where
+=======
+structure Famille (X : Type u) where
+>>>>>>> refs/remotes/origin/master
   ι : Type*
   u : ι → Partie X
 
