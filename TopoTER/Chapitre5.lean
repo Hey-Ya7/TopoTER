@@ -220,10 +220,21 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     intro n m hm
     exact (hFn n).2.2 m hm (hx m)
   have lfn : l ∈ ⋂ n : ℕ, F n := sorry
-  have hdiam : ∀ m : ℕ, diam (⋂ n : ℕ, F n) ≤ diam (F m) := by
-    intro m
+  have mborn : ∃ m : ℕ, ∀ n : ℕ, n ≥ m → diam_bornee (F n) := by
+    rcases lim 0.5 (by linarith) with ⟨N, hN⟩
+    dsimp at hN
+    use N
+    intro n hn
+    unfold diam_bornee
+    specialize hN n hn
+    change |(diam (F n)) - 0| ≤ 0.5 at hN
+    linarith [abs_le.mp hN]
+  rcases mborn with ⟨N, hN⟩
+  have hdiam : ∀ m : ℕ, m ≥ N → diam (⋂ n : ℕ, F n) ≤ diam (F m) := by
+    intro m hm
     apply diam_crois
-    --exact Set.iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
+    · exact hN m hm
+    · exact iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
+  have diam_0 : diam (⋂ n : ℕ, F n) = 0 :=
     sorry
-  have diam_0 : diam (⋂ n : ℕ, F n) = 0 := sorry
   sorry
