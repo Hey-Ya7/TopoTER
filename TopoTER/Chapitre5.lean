@@ -9,7 +9,8 @@ def prop_baire {X : Type*} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
 
 def baire (X : Type*) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
 
-lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire v := by
+lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite v)
+  := by
   rintro hv u hu
   let U : ℕ -> Set X := fun n ↦ (u n) ∪ ((adh v)ᶜ)
 
@@ -31,7 +32,7 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire v := by
     have W_vois : est_vois x W := by -- ⟨W, hx, W_ouv, by simp⟩
       use W
       exact ⟨hx, W_ouv, by simp⟩
-    let W_sub : Set v := Subtype.val ⁻¹' W
+    let W_sub : Set (Induite v) := Subtype.val ⁻¹' W
     have Ws_ouv : est_ouvert W_sub := by use W
     rcases (hu n) with ⟨u_dens, u_ouv⟩
     rw [dense_iff_inter_ouvert_nonempty] at u_dens

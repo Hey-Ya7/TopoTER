@@ -147,7 +147,7 @@ open Set.Notation
 
 -- lire l'intro de Mathlib.Data.Set.Subset
 
-instance {s : Partie X} : EspTop s where
+instance {s : Partie X} : EspTop (Induite s) where
   est_ouvert := fun u ↦ ∃ v, est_ouvert v ∧ u = s ↓∩ v
   univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
   empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
