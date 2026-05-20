@@ -1095,7 +1095,6 @@ lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1
     rw[Nat.lt_iff_add_one_le] at hlt
     induction n
     · case zero =>
-        exfalso;
         linarith
     · case succ n hn =>
         by_cases h1 : m+1 = n+1
@@ -1118,6 +1117,14 @@ lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := 
   · case zero => apply zero_le
   · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
                       apply lt_of_le_of_lt hk; apply h; linarith
+
+lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N, φ n ≥ A := by
+  intro A
+  use A
+  intro n hn
+  trans n
+  · exact n_le_extr_n h n
+  · exact hn
 
 theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
   (hφ : extraction φ) (conv : converges (u ∘ φ)) : converges u := by

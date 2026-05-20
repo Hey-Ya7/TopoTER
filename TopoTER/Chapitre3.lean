@@ -146,12 +146,18 @@ open Set.Notation
 
 -- lire l'intro de Mathlib.Data.Set.Subset
 
-instance toto (s : Set X) : EspTop s where
+instance induite (s : Set X) : EspTop s where
   est_ouvert := fun u ↦ ∃ v : Set X, est_ouvert v ∧ u = s ↓∩ v
   univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
   empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
   union_ouvert := by
-    intro F h; sorry
+    intro I u h
+    choose v hv using h
+    use ⋃ i, v i
+    constructor
+    · exact union_ouvert (fun i ↦ (hv i).1)
+    · ext x
+      simp [hv]
   inter_ouvert := by
     rintro u v ⟨U, ⟨Uouv, hU⟩⟩ ⟨V, ⟨Vouv, hV⟩⟩
     use U ∩ V
