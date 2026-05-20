@@ -9,13 +9,12 @@ def prop_baire {X : Type*} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
 
 def baire (X : Type*) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
 
-lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
+lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire v := by
   rintro hv u hu
   let U : ℕ -> Set X := fun n ↦ (u n) ∪ ((adh v)ᶜ)
 
   have Uouv : ∀ (n : ℕ), est_ouvert (U n) := by
-    intro n
-    unfold U
+    intro n; unfold U
     --rw [hU n]
     apply union_est_ouvert
     · have h : est_ouvert (u n) := (hu n).2
@@ -79,9 +78,9 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
         · exact hx
         · right
           exact x_adh
-  unfold baire prop_baire at h
+  unfold baire prop_baire at hb
   have h' : dense X (⋂ n, U n) := by
-    apply h
+    apply hb
     intro n
     exact ⟨Udens n, Uouv n⟩
   unfold dense adh at h'
