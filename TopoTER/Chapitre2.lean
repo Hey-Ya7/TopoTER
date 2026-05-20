@@ -13,7 +13,7 @@ class EspTop (X : Type*) where
   univ_ouvert : est_ouvert Ω
   empty_ouvert : est_ouvert ∅
 --
-  union_ouvert {F : Familleₓ X} (hu : ∀ A ∈ F, est_ouvert A) :
+  union_ouvert {ι : Type u_1} {F : Famille ι X} (hu : ∀ A ∈ F, est_ouvert A) :
     est_ouvert (⋃ᵢ F)
 --
   inter_ouvert {u v : Set X} (hu : est_ouvert u) (hv : est_ouvert v) :
@@ -27,12 +27,12 @@ namespace EspTop
 
 lemma iunion_ouvert {ι : Type u_1} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
-  let F : Famille X := ⟨ι, u⟩
+  let F : Famille ι X := ⟨u⟩
   have eq : ⋃ᵢ F = ⋃ i, u i := by rfl
   have hu : ∀ A ∈ F, est_ouvert A := by
     intro A hA; rcases hA with ⟨i, hi⟩
     rw [←hi]; exact h i
-  rw [←eq]; exact union_ouvert hu
+  rw [←eq]; exact union_ouvert (ι := ι) hu
 
 lemma bunion_ouvert {ι : Type u_1} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I,
   est_ouvert (u i)) : est_ouvert (⋃ i ∈ I, u i) := by
@@ -57,7 +57,7 @@ lemma union_est_ouvert (u v : Set X) (hu : est_ouvert u) (hv : est_ouvert v) :
   rw [←union_F]; apply bunion_ouvert; intro s hs
   cases hs; repeat simp_all
 
-lemma inter_fini_ouvert {ι : Type} {u : ι → Set X} {I : Set ι} [hI : Finite I]
+lemma inter_fini_ouvert {ι : Type*} {u : ι → Set X} {I : Set ι} [hI : Finite I]
   (h : ∀ i ∈ I, est_ouvert (u i)) : est_ouvert (⋂ i ∈ I, u i) := by
   induction I, hI using Set.Finite.induction_on with
   | empty => simp
@@ -68,7 +68,7 @@ lemma inter_fini_ouvert {ι : Type} {u : ι → Set X} {I : Set ι} [hI : Finite
       · apply H; intro i hi; apply h
         exact mem_insert_of_mem x hi
 
-lemma inter_fini_ouvert' {ι : Type} {u : ι → Set X} [Finite ι] (h : ∀ i,
+lemma inter_fini_ouvert' {ι : Type*} {u : ι → Set X} [Finite ι] (h : ∀ i,
   est_ouvert (u i)) : est_ouvert (⋂ i, u i) := by
   have eq : ⋂ i ∈ Ω, u i = ⋂ i, u i := by simp
   rw [←eq]; apply inter_fini_ouvert (I := Ω); intro i hi; exact h i
@@ -86,12 +86,12 @@ lemma est_ouvert_iff_compl_est_ferme {s : Set X} : est_ouvert s ↔ est_ferme s�
   rw [est_ferme, compl_empty]
   exact univ_ouvert
 
-lemma inter_ferme {F : Familleₓ X} (hu : ∀ A ∈ F, est_ferme A) :
+open Famille in
+lemma inter_ferme {ι : Type u_1} {F : Famille ι X} (hu : ∀ A ∈ F, est_ferme A) :
   est_ferme (⋂ᵢ F) := by
   rw [est_ferme, inter_famille_compl]
-  --apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
-  --rw [est_ouvert_iff_compl_est_ferme]; apply hu Aᶜ hA
-  sorry
+  apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
+  rw [est_ouvert_iff_compl_est_ferme]; apply hu Aᶜ hA
 
 lemma union_ferme {u v : Set X} (hu : est_ferme u) (hv : est_ferme v) :
   est_ferme (u ∪ v) := by
@@ -276,11 +276,29 @@ def converge (u : ℕ → X) := ∃ l : X, converge_vers u l
 
 --lemma ferme_suite (F : Set X) : est_ferme F ↔ (∀ u : ℕ → F, ∃ l : F, converge_vers u l)
 
-class EspSepareT2 (X : Type*) extends EspTop X where
+class EspSepareT2 (X : Type*) [EspTop X] where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),
     (est_ouvert U) ∧ (est_ouvert V) ∧ (x ∈ U) ∧ (y ∈ V) ∧ (U ∩ V = ∅)
 
-variable {Z : Type*} [S : EspSepareT2 Z]
+variable {Z : Type*} [EspTop Z] [S : EspSepareT2 Z]
+
+instance {X : Type*} [M : EspaceMetrique X] : EspSepareT2 X where
+  est_separe := by
+    intro x y h; let d := d(x, y) / 2
+    have d_pos : d > 0 := by
+      apply half_pos; apply lt_of_le_of_ne
+      · exact M.is_dist.nneg x y
+      · intro eq; apply h; rw [←M.is_dist.sep, eq]
+--
+    let B1 := Bₒ x d; let B2 := Bₒ y d
+    use B1, B2, ouv_of_boule_ouv x d, ouv_of_boule_ouv y d,
+            centre_in_boule x d_pos, centre_in_boule y d_pos
+    apply eq_empty_of_forall_notMem; intro z hz
+    have ineq₁ : d(z, x) < d := hz.left
+    have ineq₂ : d(z, y) < d := hz.right
+    have ineq₃ := M.is_dist.ineq x z y
+    rw [M.is_dist.symm] at ineq₁
+    unfold d at ineq₁; unfold d at ineq₂; linarith
 
 lemma unicite_lim (u : ℕ → Z) (l l' : Z) :
 (converge_vers u l ∧ converge_vers u l') → l = l' := by
@@ -304,24 +322,6 @@ lemma unicite_lim (u : ℕ → Z) (l l' : Z) :
       have hk : u k ∈ U ∩ V := mem_inter hN h
       have H : U ∩ V ≠ ∅ := ne_of_mem_of_not_mem' hk fun a ↦ a
       contradiction
-
-instance {X : Type*} [M : EspaceMetrique X] : EspSepareT2 X where
-  est_separe := by
-    intro x y h; let d := d(x, y) / 2
-    have d_pos : d > 0 := by
-      apply half_pos; apply lt_of_le_of_ne
-      · exact M.is_dist.nneg x y
-      · intro eq; apply h; rw [←M.is_dist.sep, eq]
---
-    let B1 := Bₒ x d; let B2 := Bₒ y d
-    use B1, B2, ouv_of_boule_ouv x d, ouv_of_boule_ouv y d,
-            centre_in_boule x d_pos, centre_in_boule y d_pos
-    apply eq_empty_of_forall_notMem; intro z hz
-    have ineq₁ : d(z, x) < d := hz.left
-    have ineq₂ : d(z, y) < d := hz.right
-    have ineq₃ := M.is_dist.ineq x z y
-    rw [M.is_dist.symm] at ineq₁
-    unfold d at ineq₁; unfold d at ineq₂; linarith
 
 def dense (X : Type*) [EspTop X] (A : Set X) : Prop := adh A = univ
 

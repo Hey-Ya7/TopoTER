@@ -2,21 +2,20 @@ import TopoTER.Chapitre4
 
 open TER Set EspTop
 
-variable {X : Type*} [EspTop X]
-variable {Y : Type*} [EspSepareT2 Y]
+variable {X Y : Type*} [EspTop X] [EspTop Y] [EspSepareT2 Y]
 
 def prop_baire {X : Type*} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
   dense X (u n) ∧ est_ouvert (u n)) → dense X (⋂ n : ℕ, u n)
 
 def baire (X : Type*) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
 
-lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
+lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite v)
+  := by
   rintro hv u hu
   let U : ℕ -> Set X := fun n ↦ (u n) ∪ ((adh v)ᶜ)
 
   have Uouv : ∀ (n : ℕ), est_ouvert (U n) := by
-    intro n
-    unfold U
+    intro n; unfold U
     --rw [hU n]
     apply union_est_ouvert
     · have h : est_ouvert (u n) := (hu n).2
@@ -33,7 +32,7 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
     have W_vois : est_vois x W := by -- ⟨W, hx, W_ouv, by simp⟩
       use W
       exact ⟨hx, W_ouv, by simp⟩
-    let W_sub : Set v := Subtype.val ⁻¹' W
+    let W_sub : Set (Induite v) := Subtype.val ⁻¹' W
     have Ws_ouv : est_ouvert W_sub := by use W
     rcases (hu n) with ⟨u_dens, u_ouv⟩
     rw [dense_iff_inter_ouvert_nonempty] at u_dens
@@ -80,9 +79,9 @@ lemma baire_ouvert (h : baire X) (v : Set X) : est_ouvert v → baire v := by
         · exact hx
         · right
           exact x_adh
-  unfold baire prop_baire at h
+  unfold baire prop_baire at hb
   have h' : dense X (⋂ n, U n) := by
-    apply h
+    apply hb
     intro n
     exact ⟨Udens n, Uouv n⟩
   unfold dense adh at h'
