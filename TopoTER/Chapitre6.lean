@@ -15,9 +15,9 @@ variable {X : Type*} [EspSepareT2 X]
 @[simp] def sous_couvrement (F : Familleₓ X) (J : Set F.ι) (A : Partie X) :=
   couvrement (SousFamille F J) A
 
-class EspCompact (X : Type*) [EspSepareT2 X] extends EspTop X where
-  compact : ∀ C : Familleₓ X, (∀ A ∈ C, est_ouvert A) →
-    couvrement C Ω → ∃ J, J.Finite ∧ sous_couvrement C J Ω
+class EspCompact (X : Type*) [EspSepareT2 X] where
+  compact : ∀ C : Familleₓ X, (∀ A ∈ C, est_ouvert A) → couvrement C Ω →
+    ∃ J, J.Finite ∧ sous_couvrement C J Ω
 
 -- b)
 

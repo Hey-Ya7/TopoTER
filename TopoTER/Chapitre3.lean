@@ -1,19 +1,10 @@
 import TopoTER.Chapitre2
 
-<<<<<<< HEAD
-open TER Set EspTop
-open Metrique
-
-variable {X Z : Type*} [EspTop X] [EspTop Z]
-variable {Y : Type*} [EspSepareT2 Y]
-variable {E F : Type*} [EspaceMetrique E] [EspaceMetrique F]
-=======
 open TER Set EspTop Metrique
 
 variable {X Z : Type*} [EspTop X] [EspTop Z]
 variable {Y : Type*} [EspSepareT2 Y]
-variable {E F: Type*} [EspaceMetrique E] [EspaceMetrique F]
->>>>>>> 88473a892ddc94b851d32b1115422a32838ea8ef
+variable {E F : Type*} [EspaceMetrique E] [EspaceMetrique F]
 
 def est_continu_point {X Y : Type*} [EspTop X] [EspTop Y] (f : X → Y) (x : X) : Prop :=
   ∀(V : Set Y), (est_vois (f x) V) → ∃(U : Set X), (est_vois x U) ∧  (f '' U ⊆ V)
@@ -86,15 +77,10 @@ est_continu f → f '' (adh A) ⊆ adh (f '' A) := by
     exact mem_image_of_mem f hx'U
   · exact mem_image_of_mem f hx'A
 
-<<<<<<< HEAD
 def lipschitz (k : ℝ) (f : E → F) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
 
-=======
 def unif_continu (f : E → F) := ∀ ε > 0, ∃ δ > 0, ∀(x y : E), d(x, y) ≤ δ → d(f x, f y) ≤ ε
 
-def lipschitz (k : ℝ) (f : E → F) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
-
->>>>>>> 88473a892ddc94b851d32b1115422a32838ea8ef
 def k_lipschitz (f : E → F) := ∃ k, lipschitz k f
 
 open Set.Notation
@@ -113,13 +99,14 @@ instance toto (s : Set X) : EspTop s where
     constructor
     · exact inter_ouvert Uouv Vouv
     · rw [hU, hV]; simp
-<<<<<<< HEAD
-=======
 
 def est_ouvert_elementaire (s : Set (X × X)) :=
   ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
 
 instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
   est_ouvert := fun w ↦ (w = ⋂ i, u i) ∧ (∀ i, est_ouvert_elementaire (u i))
-  univ_ouvert :=
->>>>>>> 88473a892ddc94b851d32b1115422a32838ea8ef
+  univ_ouvert := sorry
+  empty_ouvert := sorry
+
+  union_ouvert := sorry
+  inter_ouvert := sorry
