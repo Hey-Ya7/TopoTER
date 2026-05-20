@@ -132,6 +132,14 @@ variable {X : Type*}
 
 open Metrique
 
+lemma sep_iff_diag_ferme :
+letI Δ : Set X := {x ∈ X | (x,x)}
+EspSepareT2 X ↔ est_ferme Δ
+
+
+
+
+
 lemma diam_vide [EspaceMetrique X] (A : Partie X) : A = ∅ → diam A = 0 := sorry
 
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :

@@ -77,8 +77,8 @@ notation "[" a "≤__<" "+∞]" => Interval₆ a
 notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
 
-structure Famille (X : Type*) where
-  ι : Type*
+structure Famille (X : Type u) where
+  ι : Type u
   u : ι → Partie X
 
 abbrev Familleₓ (X : Type*) := Famille.{u_1, u_1} X
@@ -149,7 +149,7 @@ namespace SupReal
 @[simp] instance : HSMul ℝ (Set ℝ) (Set ℝ) where
   hSMul := r ↦ S ↦ {r * s | s ∈ S}
 
-theorem image_of_fin {α} {n : ℕ} (f : Fin n → α) : Finite {f i | i} := by
+theorem image_of_fin {α J : Type*} (f : J → α) [Finite J] : Finite {f i | i} := by
   apply Set.Finite.of_surjOn f (s := Set.univ)
   · intro x hx; rcases hx with ⟨i, hi⟩; use i, by simp
   · apply Set.finite_univ
