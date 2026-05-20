@@ -24,6 +24,8 @@ macro_rules (kind := for_all)
 abbrev Ω {α} : Set α := Set.univ
 notation "Partie " X => Set X
 
+def Induite {X : Type*} (A : Partie X) : Partie X := A
+
 abbrev Z : Partie ℝ := {k | k : ℤ}
 abbrev Q : Partie ℝ := {q | q : ℚ}
 abbrev R : Partie ℝ := Ω

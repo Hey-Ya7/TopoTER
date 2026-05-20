@@ -175,7 +175,6 @@ end Discrete
 
 -- 5.
 
-def Induite (A : Partie X) : Partie X := A
 def induite_dist (A : Partie X) : A → A → ℝ := x ↦ y ↦ d(x.val, y.val)
 
 lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
