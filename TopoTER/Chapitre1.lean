@@ -886,13 +886,14 @@ theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Familleₓ X
   let F : Famille X := ⟨U, x ↦ Bₒ x.val (r x)⟩
   have F_is_boule : ∀ B ∈ F, is_boule B := by
     intro B hB; rcases hB with ⟨x, hx⟩; rw [←hx]; use x, r x
---
---  use F, F_is_boule; ext x; apply Iff.intro
---  · case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
---               rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ
---               apply centre_in_boule; exact (r_prop xᵤ).left
---  · case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩ --               rcases hU' with ⟨U'', hU''⟩; dsimp at hU''
---               apply (r_prop U'').right; rwa [←hU''] at x_in
+
+  use F, F_is_boule; ext x; apply Iff.intro
+  · case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
+               rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ
+               apply centre_in_boule; exact (r_prop xᵤ).left
+  · case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩;
+                rcases hU' with ⟨U'', hU''⟩; dsimp at hU''
+                apply (r_prop U'').right; rwa [←hU''] at x_in
 
 -- Définition 1.10.
 
@@ -1080,6 +1081,37 @@ theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : seq_bornee u := by
 -- c)
 
 def extraction (φ : ℕ → ℕ) := ∀ m n, m < n → φ m < φ n
+
+lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1) := by
+  constructor
+  · intro hφ
+    unfold extraction at hφ
+    intro n
+    specialize hφ n (n+1) (by linarith)
+    exact hφ
+  · intro h
+    unfold extraction
+    intro m n hlt
+    rw[Nat.lt_iff_add_one_le] at hlt
+    induction n
+    · case zero =>
+        exfalso;
+        linarith
+    · case succ n hn =>
+        by_cases h1 : m+1 = n+1
+        · rw[←h1]
+          specialize h m
+          exact h
+        · have m_lt_n : m < n := by
+            push_neg at h1
+            rw[lt_iff_le_and_ne]
+            exact ⟨(by linarith), Nat.add_one_ne_add_one_iff.mp h1⟩
+          rw[Nat.lt_iff_add_one_le] at m_lt_n
+          have hφmn : φ m < φ n := by apply hn m_lt_n
+          trans φ n
+          · exact hφmn
+          · specialize h n; exact h
+
 
 lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
   intro n; induction n

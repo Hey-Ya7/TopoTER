@@ -344,4 +344,57 @@ dense X s ↔ ∀ V, est_ouvert V → V.Nonempty → (V ∩ s).Nonempty := by
       specialize h v v_ouv v_ne
       exact Nonempty.mono (inter_subset_inter_left s v_in_u) h
 
+variable {E : Type*} [EspTop E]
+
+def val_adh (u : ℕ → E) (x : E) : Prop :=
+ ∀(V : Set E), est_vois x V → ∀ N : ℕ, ∃ n : ℕ, n ≥ N ∧ (u n) ∈ V
+
+lemma val_adh_inter (u : ℕ → E) :
+let X := fun (k : ℕ) ↦ {x : E | ∃ n ≥ k, u n = x}
+{x : E | val_adh u x} = ⋂ n : ℕ, adh (X n) := by
+  intro X
+  ext x
+  constructor
+  · intro hx
+    rw[Set.mem_iInter]
+    intro i
+    rw[Set.mem_setOf] at hx; unfold val_adh at hx
+    unfold adh
+    rw[Set.mem_setOf]
+    intro V hVVois
+    specialize hx V hVVois
+    specialize hx i
+    rcases hx with ⟨n, ⟨hni, hnV⟩⟩
+    --rw[nonempty_iff_empty_ne]
+    have h : u n ∈ X i := by
+      rw[Set.mem_setOf]
+      use n
+    apply inter_nonempty.mpr
+    use u n
+  · intro hx
+    rw[Set.mem_setOf]; unfold val_adh
+    intro V hV m
+    rw[Set.mem_iInter] at hx
+    specialize hx m
+    unfold adh at hx
+    rw[Set.mem_setOf] at hx
+    specialize hx V hV
+    rw[Set.nonempty_def] at hx
+    rcases hx with ⟨y, ⟨hyVn, hyXm⟩⟩
+    rw[Set.mem_setOf] at hyXm
+    rcases hyXm with ⟨n, ⟨hnm, huny⟩⟩
+    use n
+    constructor
+    apply hnm
+    exact mem_of_eq_of_mem huny hyVn
+
+
+theorem val_adh_iff_extraite_conv (u : ℕ → X) (x : X) : val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by sorry
+  --constructor
+  --intro hvadhx
+  --unfold val_adh at hvadhx
+  --have h_choix : ∀ (n : ℕ)(N : ℕ), ∃ m : ℕ, m ≥ N ∧ EspaceMetrique.d (u m) x < 1/(n+1) := by
+
+
+
 end EspTop
