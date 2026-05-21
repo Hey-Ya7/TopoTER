@@ -2,9 +2,8 @@ import TopoTER.Chapitre2
 
 open TER Set EspTop Metrique
 
-variable {X Z : Type*} [EspTop X] [EspTop Z]
-variable {Y : Type*} [EspSepareT2 Y]
-variable {E F: Type*} [EspaceMetrique E] [EspaceMetrique F]
+variable {X Y Z : Type*} [EspTop X] [EspTop Y] [EspTop Z] [EspSepareT2 Y]
+variable {E F : Type*} [M : EspaceMetrique E] [EspaceMetrique F]
 
 def est_continu_point {X Y : Type*} [EspTop X] [EspTop Y] (f : X → Y) (x : X) : Prop :=
   ∀(V : Set Y), (est_vois (f x) V) → ∃(U : Set X), (est_vois x U) ∧  (f '' U ⊆ V)
@@ -60,8 +59,9 @@ est_continu f ↔ ∀ (F : Set Y), est_ferme F → est_ferme (f ⁻¹' F) := by
   rw[continu_iff_preim_ouv]
   exact continu_ouv_ferm f
 
-lemma continu_im_adh_in_adh_im (f : X → Y) (A : Set X) :
-est_continu f → f '' (adh A) ⊆ adh (f '' A) := by
+omit [EspSepareT2 Y] in
+lemma continu_im_adh_in_adh_im (f : X → Y) (A : Set X) : est_continu f →
+  f '' (adh A) ⊆ adh (f '' A) := by
   intro h y hy V hV
   rw [mem_image] at hy
   rcases hy with ⟨x, ⟨hx, yeqfx⟩⟩
@@ -77,28 +77,93 @@ est_continu f → f '' (adh A) ⊆ adh (f '' A) := by
     exact mem_image_of_mem f hx'U
   · exact mem_image_of_mem f hx'A
 
-def unif_continu (f : E → F) := ∀ ε > 0, ∃ δ > 0, ∀(x y : E), d(x, y) ≤ δ → d(f x, f y) ≤ ε
+def unif_continu (f : E → F) := ∀ ε > 0, ∃ δ > 0, ∀ x y : E, d(x, y) ≤ δ
+  → d(f x, f y) ≤ ε
 
 def lipschitz (k : ℝ) (f : E → F) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
 
-def k_lipschitz (f : E → F) := ∃ k, lipschitz k f
+def k_lipschitz (f : E → F) := ∃ k > 0, lipschitz k f
+
+lemma unif_continu_cont (f : E → F) : unif_continu f → est_continu f := by
+  intro hucf
+  unfold est_continu
+  unfold unif_continu at hucf
+  intro x G hG
+  rcases hG with ⟨V, hxV, Vouv, V_G⟩
+  specialize Vouv (f x) hxV
+  rcases Vouv with ⟨r , ⟨hr_pos, hBr⟩⟩
+  let ε : ℝ := r/3
+  have ε_pos : ε > 0 :=
+  calc
+    ε = r/3 := by rfl
+    _ > 0 := by linarith
+  specialize hucf ε ε_pos
+  rcases hucf with ⟨δ, ⟨hδ_pos, hf⟩⟩
+  use Bₒ x (δ/2)
+  constructor
+  · apply ouv_est_vois (ouv_of_boule_ouv x (δ/2)) (centre_in_boule x (by linarith))
+  · rw [Set.image_subset_iff]
+    intro y hyB
+--
+    have y_dist : d(x, y) ≤ δ := by
+      simp only [boule_ouverte] at hyB
+      rw[Set.mem_setOf] at hyB
+      trans δ/2
+      · rw [EspaceMetrique.is_dist.symm x y];
+        exact le_of_lt hyB
+      · linarith
+    specialize hf x y y_dist
+--
+    have fy_in_boule : (f y) ∈ Bₒ (f x) r := by
+      dsimp; expose_names; apply lt_of_le_of_lt
+      · rw [inst.is_dist.symm (f y) (f x)]
+      · calc _ ≤ ε := hf
+             _ = r / 3 := by rfl
+             _  < r := by linarith
+    rw [Set.mem_preimage]
+    exact mem_preimage.mp (V_G (hBr fy_in_boule))
+
+lemma lip_continu (f : E → F) : k_lipschitz f → unif_continu f := by
+  unfold k_lipschitz unif_continu
+  rintro hlip ε ε_pos
+  rcases hlip with ⟨k, hk_pos, hk⟩
+  unfold lipschitz at hk
+  use ε / (2*k)
+  constructor
+  · calc
+      ε / (2*k) = ε/2 * 1/k := by ring
+      _ > 0 := by apply mul_pos (by linarith)
+                  exact inv_pos_of_pos hk_pos
+  intro x y hxy
+  let df := d(f x, f y); let d := d(x, y)
+  refold_let df d
+  calc df ≤ k * d := by exact hk x y
+        _ ≤ k * (ε/(2*k)) := by apply mul_le_mul_of_nonneg_left hxy
+                                exact le_of_lt hk_pos
+        _ = ε/2 := by field
+        _ ≤ ε := by linarith
 
 open Set.Notation
 
 -- lire l'intro de Mathlib.Data.Set.Subset
 
-instance toto (s : Set X) : EspTop s where
-  est_ouvert := fun u ↦ ∃ v : Set X, est_ouvert v ∧ u = s ↓∩ v
+instance {s : Partie X} : EspTop (Induite s) where
+  est_ouvert := fun u ↦ ∃ v, est_ouvert v ∧ u = s ↓∩ v
   univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
   empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
+--
   union_ouvert := by
-    intro F h; sorry
+    intro ι F h; choose! u h_ouv h_int using h
+    use ⋃ i, u (F.u i); apply And.intro
+    · apply iunion_ouvert; intro i; apply h_ouv; use i
+    · rw [preimage_iUnion]; dsimp [Famille.iUnion]
+      congr; ext i x; nth_rw 1 [h_int (F.u i)]; use i
+--
   inter_ouvert := by
     rintro u v ⟨U, ⟨Uouv, hU⟩⟩ ⟨V, ⟨Vouv, hV⟩⟩
-    use U ∩ V
-    constructor
+    use U ∩ V; constructor
     · exact inter_ouvert Uouv Vouv
-    · rw [hU, hV]; simp
+    · simp [hU, hV]
 
 def est_ouvert_elementaire (s : Set (X × X)) :=
   ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)

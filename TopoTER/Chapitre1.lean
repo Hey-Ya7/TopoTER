@@ -175,7 +175,6 @@ end Discrete
 
 -- 5.
 
-def Induite (A : Partie X) : Partie X := A
 def induite_dist (A : Partie X) : A → A → ℝ := x ↦ y ↦ d(x.val, y.val)
 
 lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
@@ -870,8 +869,9 @@ end Relatifs
 
 -- a)
 
-@[simp] theorem ouverte_of_union {F : Famille X} (hu : ∀ A ∈ F, ouverte A)
-  : ouverte (⋃ᵢ F) := by
+open Famille in
+@[simp] theorem ouverte_of_union {ι : Type*} {F : Famille ι X} (hu : ∀ A ∈ F,
+  ouverte A) : ouverte (⋃ᵢ F) := by
   intro x hx; rcases hx with ⟨A, hA, x_in⟩
   rcases (hu A hA) x x_in with ⟨r, r_pos, hr⟩
   use r, r_pos; exact subset_union_famille hr hA
@@ -900,18 +900,29 @@ end Relatifs
   rcases M.is_dist with ⟨nneg, sep, symm, ineq⟩
   apply lt_of_le_of_lt (ineq y x a); apply add_lt_add_left; exact hy
 
+@[simp] theorem fermee_of_boule_f (a : X) (r : ℝ) : fermee (Bf a r) := by
+  intro x hx; let r' := d(x, a) - r
+  have hr : r < d(x, a) := by simp_all
+  have r'_pos : r' > 0 := sub_pos_of_lt hr
+  use r', r'_pos; intro y hy; dsimp; rw [←sub_add_cancel r d(x, a)]
+  suffices h : r < d(y, a) by simp_all
+  have r_lt : r < d(x, a) - d(x, y) := by
+    rw [lt_sub_comm]; rwa [M.is_dist.symm]
+  rw [M.is_dist.symm]; exact lt_of_lt_of_le r_lt (sub_ineq x a y)
+
 -- d)
 
-theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Familleₓ X,
-  (∀ B ∈ F, is_boule B) ∧ U = ⋃ᵢ F := by
+open Famille in
+theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ ι : Type u_1,
+  ∃ F : Famille ι X, (∀ B ∈ F, is_boule B) ∧ U = ⋃ᵢ F := by
   let r (x : U) : ℝ := Exists.choose (h x.val x.prop)
   have r_prop : ∀ x, r x > 0 ∧ Bₒ (X := X) x (r x) ⊆ U := by
     intro x; exact Exists.choose_spec (h x.val x.prop)
-  let F : Famille X := ⟨U, x ↦ Bₒ x.val (r x)⟩
+  let F : Famille U X := ⟨x ↦ Bₒ x.val (r x)⟩
   have F_is_boule : ∀ B ∈ F, is_boule B := by
     intro B hB; rcases hB with ⟨x, hx⟩; rw [←hx]; use x, r x
-
-  use F, F_is_boule; ext x; apply Iff.intro
+--
+  use U, F, F_is_boule; ext x; apply Iff.intro
   · case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
                rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ
                apply centre_in_boule; exact (r_prop xᵤ).left
@@ -1106,11 +1117,38 @@ theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : seq_bornee u := by
 
 def extraction (φ : ℕ → ℕ) := ∀ m n, m < n → φ m < φ n
 
+lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1) := by
+  constructor
+  · intro hφ; unfold extraction at hφ; intro n
+    specialize hφ n (n+1) (by linarith); exact hφ
+  · intro h; unfold extraction
+    intro m n hlt; rw [Nat.lt_iff_add_one_le] at hlt
+    induction n
+    · case zero => linarith
+    · case succ n hn =>
+        by_cases h1 : m+1 = n+1
+        · rw [←h1]; specialize h m; exact h
+        · have m_lt_n : m < n := by
+            push_neg at h1; rw [lt_iff_le_and_ne]
+            apply And.intro (by linarith)
+            rwa [←Nat.add_one_ne_add_one_iff]
+          rw [Nat.lt_iff_add_one_le] at m_lt_n
+          have hφmn : φ m < φ n := hn m_lt_n
+          apply lt_trans hφmn (h n)
+
 lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
   intro n; induction n
   · case zero => apply zero_le
   · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
                       apply lt_of_le_of_lt hk; apply h; linarith
+
+lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N, φ n ≥ A := by
+  intro A
+  use A
+  intro n hn
+  trans n
+  · exact n_le_extr_n h n
+  · exact hn
 
 theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
   (hφ : extraction φ) (conv : converges (u ∘ φ)) : converges u := by
