@@ -611,6 +611,30 @@ lemma centre_in_boule (a : X) {r : ℝ} (hr : r > 0) : a ∈ Bₒ a r := by
 lemma boule_in_boule_f (a : X) {r : ℝ} (_ : r > 0) : Bₒ a r ⊆ Bf a r := by
   intro x x_in; dsimp; dsimp at x_in; linarith
 
+lemma boule_in_boule_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
+R ≥ r → Bₒ a r ⊆ Bₒ a R := by
+  intro h x hx
+  simp at *
+  linarith
+
+lemma boule_in_boule_f_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
+R ≥ r → Bₒ a r ⊆ Bf a R := by
+  intro h x hx
+  simp at *
+  linarith
+
+lemma boule_f_in_boule_f_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
+R ≥ r → Bf a r ⊆ Bf a R := by
+  intro h x hx
+  simp at *
+  linarith
+
+lemma boule_f_in_boule_gt (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
+R > r → Bf a r ⊆ Bₒ a R := by
+  intro h x hx
+  simp at *
+  linarith
+
 -- Définition 1.7.
 
 def ouverte (A : Partie X) := ∀ x ∈ A, ∃ r > 0, Bₒ x r ⊆ A
