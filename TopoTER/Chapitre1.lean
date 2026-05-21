@@ -613,26 +613,22 @@ lemma boule_in_boule_f (a : X) {r : ℝ} (_ : r > 0) : Bₒ a r ⊆ Bf a r := by
 lemma boule_in_boule_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
 R ≥ r → Bₒ a r ⊆ Bₒ a R := by
   intro h x hx
-  simp at *
-  linarith
+  simp at *; linarith
 
 lemma boule_in_boule_f_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
 R ≥ r → Bₒ a r ⊆ Bf a R := by
   intro h x hx
-  simp at *
-  linarith
+  simp at *; linarith
 
 lemma boule_f_in_boule_f_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
 R ≥ r → Bf a r ⊆ Bf a R := by
   intro h x hx
-  simp at *
-  linarith
+  simp at *; linarith
 
 lemma boule_f_in_boule_gt (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
 R > r → Bf a r ⊆ Bₒ a R := by
   intro h x hx
-  simp at *
-  linarith
+  simp at *; linarith
 
 -- Définition 1.7.
 
@@ -831,13 +827,13 @@ example : let S := [0 ≤__< 1]; ¬ ouverte S ∧ ¬ fermee S := by
 
 section Relatifs
 
---lemma ouverte_of_self_ind (A : Partie X) : ouverte (A : Partie Induite A)
---  := by rw [self_induite]; exact ouverte_of_uni
+lemma ouverte_of_self_ind (A : Partie X) : ouverte (A : Partie Induite A)
+  := by rw [self_induite]; exact ouverte_of_uni
 
 def S : Partie ℝ := [0 ≤__< 1]
 abbrev Sᵢ : Partie ℝ := Induite S
 
---example : ouverte (S : Partie Sᵢ) := ouverte_of_self_ind S
+example : ouverte (S : Partie Sᵢ) := ouverte_of_self_ind S
 example : ¬ ouverte (S : Partie ℝ) := Ico_pas_ouverte zero_lt_one
 
 lemma in_Z_induite : ∀ n : ℕ, ↑n ∈ Z := by
@@ -846,7 +842,7 @@ lemma in_Z_induite : ∀ n : ℕ, ↑n ∈ Z := by
 instance {n : ℕ} : OfNat Z_induite n where
   ofNat := ⟨n, in_Z_induite n⟩
 
---example : Bₒ (0 : Z_induite) (1/2) = {0} := boule_in_Z_induite 0
+example : Bₒ (0 : Z_induite) (1/2) = {0} := boule_in_Z_induite 0
 
 example : Infinite (Bₒ (0 : ℝ) (1/2)) := by
   let B := Bₒ (0 : ℝ) (1/2)
@@ -1064,8 +1060,17 @@ theorem lim_iff_lim_vois (u : ℕ → X) (l : X) : converges_to u l ↔
 
 -- a)
 
-theorem conv_of_inv (u : ℕ → ℝ := n ↦ 1 / (n + 1)) : converges_to u 0 := by
-  intro ε ε_pos; sorry
+theorem conv_of_inv : let u : ℕ → ℝ := n ↦ 1 / (n + 1); converges_to u 0 := by
+  intro u ε ε_pos
+  have arch := Real.instArchimedean.arch 1 ε_pos
+  rcases arch with ⟨N, hN⟩; use N; intro n hn
+  dsimp [instEspaceMetriqueReal]
+  have u_n_pos : 0 < 1 / ((n : ℝ) + 1) := by
+    apply div_pos (zero_lt_one); linarith
+  rw [sub_zero, abs_of_pos u_n_pos, div_le_iff₀ (by linarith)]
+  apply le_trans hN; rw [nsmul_eq_mul, mul_comm]
+  apply mul_le_mul_of_nonneg_left _ (by linarith)
+  apply le_trans (b := (n : ℝ)) _ (by linarith); rwa [Nat.cast_le]
 
 -- b)
 
@@ -1142,9 +1147,9 @@ lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := 
   · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
                       apply lt_of_le_of_lt hk; apply h; linarith
 
-lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N, φ n ≥ A := by
-  intro A
-  use A
+lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N,
+  φ n ≥ A := by
+  intro A; use A
   intro n hn
   trans n
   · exact n_le_extr_n h n

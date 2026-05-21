@@ -48,7 +48,6 @@ instance {h : est_compact_f.{_, u} X} : EspCompact.{_, u} X
       rw [in_compl_famille] at hA; exact h₁ Aᶜ hA
     have F_inter : ⋂ᵢ F`ᶜ = ∅ := by
       simp_all [←union_famille_compl]
---
     rcases h ι F`ᶜ F_ferme F_inter with ⟨J, hJ, J_inter⟩; use J, hJ
     rw [←compl_of_sous_famille, ←union_famille_compl] at J_inter
     dsimp; rwa [univ_subset_iff, ←compl_empty_iff]
