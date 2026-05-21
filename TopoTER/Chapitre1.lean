@@ -187,16 +187,16 @@ lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
 
 variable {A : Partie X}
 
-instance : EspaceMetrique (Induite A) where
-  d := induite_dist A
-  is_dist := dist_of_induite A
+--instance : EspaceMetrique (Induite A) where
+--  d := induite_dist A
+--  is_dist := dist_of_induite A
 
-instance : Coe (Partie X) (Partie Induite A) where
-  coe := S ↦ {x | (x : X) ∈ S}
+--instance : Coe (Partie X) (Partie Induite A) where
+--  coe := S ↦ {x | (x : X) ∈ S}
 
-omit M in
-@[simp] lemma self_induite : (A : Partie Induite A) = Ω := by
-  ext x; unfold Induite; simp
+--omit M in
+--@[simp] lemma self_induite : (A : Partie Induite A) = Ω := by
+--  ext x; unfold Induite; simp
 
 end Metrique
 
@@ -610,6 +610,30 @@ lemma centre_in_boule (a : X) {r : ℝ} (hr : r > 0) : a ∈ Bₒ a r := by
 lemma boule_in_boule_f (a : X) {r : ℝ} (_ : r > 0) : Bₒ a r ⊆ Bf a r := by
   intro x x_in; dsimp; dsimp at x_in; linarith
 
+lemma boule_in_boule_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
+R ≥ r → Bₒ a r ⊆ Bₒ a R := by
+  intro h x hx
+  simp at *
+  linarith
+
+lemma boule_in_boule_f_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
+R ≥ r → Bₒ a r ⊆ Bf a R := by
+  intro h x hx
+  simp at *
+  linarith
+
+lemma boule_f_in_boule_f_ge (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
+R ≥ r → Bf a r ⊆ Bf a R := by
+  intro h x hx
+  simp at *
+  linarith
+
+lemma boule_f_in_boule_gt (a : X) {r R : ℝ} (_ : r > 0) (_ : R > 0) :
+R > r → Bf a r ⊆ Bₒ a R := by
+  intro h x hx
+  simp at *
+  linarith
+
 -- Définition 1.7.
 
 def ouverte (A : Partie X) := ∀ x ∈ A, ∃ r > 0, Bₒ x r ⊆ A
@@ -639,20 +663,20 @@ def fermee (A : Partie X) := ouverte (Ω \ A)
 
 abbrev Z_induite : Partie ℝ := Induite Z
 
-lemma boule_in_Z_induite : ∀ x : Z_induite, Bₒ x (1/2) = {x} := by
-  intro k; ext x; apply Iff.intro
-  · case mp => intro h; rw [Set.mem_singleton_iff]
-               dsimp [EspaceMetrique.d, induite_dist] at h
-               apply Z_eq_of_sub_lt_one; linarith
-  · case mpr => intro h; rw [Set.mem_singleton_iff] at h
-                rw [h]; apply centre_in_boule; linarith
+--lemma boule_in_Z_induite : ∀ x : Z_induite, Bₒ x (1/2) = {x} := by
+--  intro k; ext x; apply Iff.intro
+--  · case mp => intro h; rw [Set.mem_singleton_iff]
+--               dsimp [EspaceMetrique.d, induite_dist] at h
+--               apply Z_eq_of_sub_lt_one; linarith
+--  · case mpr => intro h; rw [Set.mem_singleton_iff] at h
+--                rw [h]; apply centre_in_boule; linarith
 
-lemma ouverte_of_Z_induite (A : Partie Z_induite) : ouverte A := by
-  intro x x_in; use (1 / 2), by linarith
-  rwa [boule_in_Z_induite, Set.singleton_subset_iff]
+--lemma ouverte_of_Z_induite (A : Partie Z_induite) : ouverte A := by
+ -- intro x x_in; use (1 / 2), by linarith
+  --rwa [boule_in_Z_induite, Set.singleton_subset_iff]
 
-lemma fermee_of_Z_induite (A : Partie Z_induite) : fermee A := by
-  apply ouverte_of_Z_induite
+--lemma fermee_of_Z_induite (A : Partie Z_induite) : fermee A := by
+--  apply ouverte_of_Z_induite
 
 -- b)
 
@@ -807,13 +831,13 @@ example : let S := [0 ≤__< 1]; ¬ ouverte S ∧ ¬ fermee S := by
 
 section Relatifs
 
-lemma ouverte_of_self_ind (A : Partie X) : ouverte (A : Partie Induite A)
-  := by rw [self_induite]; exact ouverte_of_uni
+--lemma ouverte_of_self_ind (A : Partie X) : ouverte (A : Partie Induite A)
+--  := by rw [self_induite]; exact ouverte_of_uni
 
 def S : Partie ℝ := [0 ≤__< 1]
 abbrev Sᵢ : Partie ℝ := Induite S
 
-example : ouverte (S : Partie Sᵢ) := ouverte_of_self_ind S
+--example : ouverte (S : Partie Sᵢ) := ouverte_of_self_ind S
 example : ¬ ouverte (S : Partie ℝ) := Ico_pas_ouverte zero_lt_one
 
 lemma in_Z_induite : ∀ n : ℕ, ↑n ∈ Z := by
@@ -822,7 +846,7 @@ lemma in_Z_induite : ∀ n : ℕ, ↑n ∈ Z := by
 instance {n : ℕ} : OfNat Z_induite n where
   ofNat := ⟨n, in_Z_induite n⟩
 
-example : Bₒ (0 : Z_induite) (1/2) = {0} := boule_in_Z_induite 0
+--example : Bₒ (0 : Z_induite) (1/2) = {0} := boule_in_Z_induite 0
 
 example : Infinite (Bₒ (0 : ℝ) (1/2)) := by
   let B := Bₒ (0 : ℝ) (1/2)
@@ -1117,6 +1141,14 @@ lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := 
   · case zero => apply zero_le
   · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
                       apply lt_of_le_of_lt hk; apply h; linarith
+
+lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N, φ n ≥ A := by
+  intro A
+  use A
+  intro n hn
+  trans n
+  · exact n_le_extr_n h n
+  · exact hn
 
 theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
   (hφ : extraction φ) (conv : converges (u ∘ φ)) : converges u := by

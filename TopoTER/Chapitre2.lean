@@ -344,4 +344,114 @@ dense X s ↔ ∀ V, est_ouvert V → V.Nonempty → (V ∩ s).Nonempty := by
       specialize h v v_ouv v_ne
       exact Nonempty.mono (inter_subset_inter_left s v_in_u) h
 
+variable {E : Type*} [EspTop E]
+
+def val_adh (u : ℕ → E) (x : E) : Prop :=
+ ∀(V : Set E), est_vois x V → ∀ N : ℕ, ∃ n : ℕ, n ≥ N ∧ (u n) ∈ V
+
+lemma val_adh_inter (u : ℕ → E) :
+let X := fun (k : ℕ) ↦ {x : E | ∃ n ≥ k, u n = x}
+{x : E | val_adh u x} = ⋂ n : ℕ, adh (X n) := by
+  intro X
+  ext x
+  constructor
+  · intro hx
+    rw[Set.mem_iInter]
+    intro i
+    rw[Set.mem_setOf] at hx; unfold val_adh at hx
+    unfold adh
+    rw[Set.mem_setOf]
+    intro V hVVois
+    specialize hx V hVVois
+    specialize hx i
+    rcases hx with ⟨n, ⟨hni, hnV⟩⟩
+    --rw[nonempty_iff_empty_ne]
+    have h : u n ∈ X i := by
+      rw[Set.mem_setOf]
+      use n
+    apply inter_nonempty.mpr
+    use u n
+  · intro hx
+    rw[Set.mem_setOf]; unfold val_adh
+    intro V hV m
+    rw[Set.mem_iInter] at hx
+    specialize hx m
+    unfold adh at hx
+    rw[Set.mem_setOf] at hx
+    specialize hx V hV
+    rw[Set.nonempty_def] at hx
+    rcases hx with ⟨y, ⟨hyVn, hyXm⟩⟩
+    rw[Set.mem_setOf] at hyXm
+    rcases hyXm with ⟨n, ⟨hnm, huny⟩⟩
+    use n
+    constructor
+    · exact hnm
+    exact mem_of_eq_of_mem huny hyVn
+
+noncomputable def construction_extract_phi {X : Type*} [EspaceMetrique X] (u : ℕ → X) (x : X) (h : val_adh u x) : ℕ → ℕ
+  | 0 => 0
+  | Nat.succ k =>
+                  let prev := construction_extract_phi u x h k
+                  let A := {m : ℕ | m > prev ∧ u m ∈ Bₒ x (1/(k+1))}
+                    have A_ne : ∃ l, l ∈ A := by
+                      have hk1_pos : (0 : ℝ) < 1/(k+1):= by
+                        apply one_div_pos.mpr;
+                        exact Nat.cast_add_one_pos k
+                      have est_vois_B : est_vois x (Bₒ x (1/(k+1))) := by
+                        apply ouv_est_vois
+                        · exact ouv_of_boule_ouv x (1/(k+1))
+                        · exact centre_in_boule x hk1_pos
+                      specialize h (Bₒ x (1/(k+1))) est_vois_B
+                      specialize h ((prev) + 1)
+                      rcases h with ⟨l, ⟨hlφ, hl⟩⟩
+                      use l; apply And.intro _ hl
+                      change (prev) + 1 ≤ l at hlφ
+                      change prev < l
+                      rwa [Nat.lt_iff_add_one_le]
+                   Nat.find A_ne
+
+theorem val_adh_iff_extraite_conv {X : Type*} [EspaceMetrique X] (u : ℕ → X) (x : X) : val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by
+ constructor
+ · intro hvadhx
+   let φ := construction_extract_phi u x hvadhx
+   use φ
+   constructor
+   rw[extract_equiv]
+   intro n
+   unfold φ
+   rw[construction_extract_phi]
+   sorry
+
+
+ · intro hφ
+   rcases hφ with ⟨φ, ⟨hexφ, hconv⟩⟩
+   unfold val_adh
+   intro V hV m
+   unfold converge_vers at hconv
+   specialize hconv V hV
+   rcases hconv with ⟨l, hl⟩
+   have h_infini : ∃ N : ℕ, ∀ k ≥ N, φ k ≥ m := extr_conv_infini hexφ m
+   rcases h_infini with ⟨N, hN⟩
+   specialize hl (max N l)
+   have hmaxNL : max N l ≥ l := Nat.le_max_right N l
+   have huφ : (u ∘ φ) (max N l) ∈ V := mem_preimage.mp (hl hmaxNL)
+   use φ (max N l)
+   constructor
+   · apply hN (max N l) (Nat.le_max_left N l)
+   · dsimp at huφ; exact huφ
+
+theorem in_adh_suite {X : Type*} [EspaceMetrique X] (A : Partie X) (x : X) : x ∈ adh A ↔ ∃(u : ℕ → X), (∀n, u n ∈ A) ∧ (converge_vers u x) := by
+  constructor
+  · sorry
+  · intro h
+    intro V hV
+    rcases h with ⟨u, ⟨hu_in_a, hconv_u_x⟩⟩
+    unfold converge_vers at hconv_u_x
+    specialize hconv_u_x V hV
+    rcases hconv_u_x with ⟨n , hn⟩
+    specialize hn n (Nat.le_refl n)
+    specialize hu_in_a n
+    apply inter_nonempty.mpr
+    use u n
+
 end EspTop
