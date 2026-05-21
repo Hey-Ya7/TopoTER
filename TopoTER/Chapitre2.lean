@@ -423,7 +423,23 @@ theorem val_adh_iff_extraite_conv {X : Type*} [EspaceMetrique X] (u : ℕ → X)
      let p := m ↦ m > prev ∧ u m ∈ Bₒ x (1/(n + 1))
      let dec := Classical.decPred p; apply And.left
      apply Nat.find_spec (p := p)
-   ·
+   · unfold converge_vers
+     have inegφ : ∀ n : ℕ, d((u ∘ φ) (n + 1), x) < 1/(n+1):= by
+      intro n; change u (φ (n + 1)) ∈ Bₒ x (1/(n + 1))
+      let prev := construction_extract_phi u x hvadhx n
+      let p := m ↦ m > prev ∧ u m ∈ Bₒ x (1/(n + 1))
+      let dec := Classical.decPred p; apply And.right
+      unfold φ construction_extract_phi
+      apply Nat.find_spec (p := p)
+     intro V hV
+     rcases hV with ⟨Vo, ⟨hxVo, houv, hVoV⟩⟩
+     specialize houv x hxVo
+     rcases houv with ⟨r, ⟨hr_pos, hB⟩⟩
+     have inegB : ∃ N, ∀ n ≥ N, d(1/(n+1), (0:ℝ)) ≤ r := by apply conv_of_inv (fun n ↦ 1/(n+1)) r hr_pos
+
+
+
+
 
 
  · intro hφ
