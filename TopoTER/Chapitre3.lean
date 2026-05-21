@@ -84,6 +84,17 @@ def lipschitz (k : ℝ) (f : E → F) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
 
 def k_lipschitz (f : E → F) := ∃ k > 0, lipschitz k f
 
+open Valuation VectorSpace EspaceNorme in
+variable {K G : Type*} [ValuationField K] [GroupeNorme G] [V : EspaceVecNorme K G] in
+--
+lemma norme_lipschitz : lipschitz 1 N(K, G) := by
+  intro x y; unfold instEspaceMetriqueReal
+  dsimp; rw [one_mul, abs_sub_le_iff];
+  apply And.intro
+  · apply sub_ineq V.is_norm
+  · unfold instEspaceMetriqueEspaceMetNorme; dsimp
+    rw [norm_symm V.is_norm]; apply sub_ineq V.is_norm
+
 lemma unif_continu_cont (f : E → F) : unif_continu f → est_continu f := by
   intro hucf
   unfold est_continu
