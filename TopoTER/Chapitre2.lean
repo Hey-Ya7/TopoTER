@@ -388,27 +388,29 @@ let X := fun (k : ℕ) ↦ {x : E | ∃ n ≥ k, u n = x}
     · exact hnm
     exact mem_of_eq_of_mem huny hyVn
 
-noncomputable def construction_extract_phi {X : Type*} [EspaceMetrique X] (u : ℕ → X) (x : X) (h : val_adh u x) : ℕ → ℕ
+noncomputable def construction_extract_phi {X : Type*} [EspaceMetrique X]
+  (u : ℕ → X) (x : X) (h : val_adh u x) : ℕ → ℕ
   | 0 => 0
   | Nat.succ k =>
-                  let prev := construction_extract_phi u x h k
-                  let A := {m : ℕ | m > prev ∧ u m ∈ Bₒ x (1/(k+1))}
-                    have A_ne : ∃ l, l ∈ A := by
-                      have hk1_pos : (0 : ℝ) < 1/(k+1):= by
-                        apply one_div_pos.mpr;
-                        exact Nat.cast_add_one_pos k
-                      have est_vois_B : est_vois x (Bₒ x (1/(k+1))) := by
-                        apply ouv_est_vois
-                        · exact ouv_of_boule_ouv x (1/(k+1))
-                        · exact centre_in_boule x hk1_pos
-                      specialize h (Bₒ x (1/(k+1))) est_vois_B
-                      specialize h ((prev) + 1)
-                      rcases h with ⟨l, ⟨hlφ, hl⟩⟩
-                      use l; apply And.intro _ hl
-                      change (prev) + 1 ≤ l at hlφ
-                      change prev < l
-                      rwa [Nat.lt_iff_add_one_le]
-                   Nat.find A_ne
+      let prev := construction_extract_phi u x h k
+      let A := {m : ℕ | m > prev ∧ u m ∈ Bₒ x (1/(k+1))}
+      have A_ne : ∃ l, l ∈ A := by
+        have hk1_pos : (0 : ℝ) < 1/(k+1):= by
+          apply one_div_pos.mpr;
+          exact Nat.cast_add_one_pos k
+        have est_vois_B : est_vois x (Bₒ x (1/(k+1))) := by
+          apply ouv_est_vois
+          · exact ouv_of_boule_ouv x (1/(k+1))
+          · exact centre_in_boule x hk1_pos
+        specialize h (Bₒ x (1/(k+1))) est_vois_B
+        specialize h ((prev) + 1)
+        rcases h with ⟨l, ⟨hlφ, hl⟩⟩
+        use l; apply And.intro _ hl
+        change (prev) + 1 ≤ l at hlφ
+        change prev < l
+        rwa [Nat.lt_iff_add_one_le]
+      let dec := Classical.decPred (· ∈ A);
+      Nat.find A_ne
 
 theorem val_adh_iff_extraite_conv {X : Type*} [EspaceMetrique X] (u : ℕ → X) (x : X) : val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by
  constructor

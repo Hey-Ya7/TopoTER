@@ -187,16 +187,16 @@ lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
 
 variable {A : Partie X}
 
---instance : EspaceMetrique (Induite A) where
---  d := induite_dist A
---  is_dist := dist_of_induite A
+instance : EspaceMetrique (Induite A) where
+  d := induite_dist A
+  is_dist := dist_of_induite A
 
---instance : Coe (Partie X) (Partie Induite A) where
---  coe := S ↦ {x | (x : X) ∈ S}
+instance : Coe (Partie X) (Partie Induite A) where
+  coe := S ↦ {x | (x : X) ∈ S}
 
---omit M in
---@[simp] lemma self_induite : (A : Partie Induite A) = Ω := by
---  ext x; unfold Induite; simp
+omit M in
+@[simp] lemma self_induite : (A : Partie Induite A) = Ω := by
+  ext x; unfold Induite; simp
 
 end Metrique
 
@@ -663,20 +663,20 @@ def fermee (A : Partie X) := ouverte (Ω \ A)
 
 abbrev Z_induite : Partie ℝ := Induite Z
 
---lemma boule_in_Z_induite : ∀ x : Z_induite, Bₒ x (1/2) = {x} := by
---  intro k; ext x; apply Iff.intro
---  · case mp => intro h; rw [Set.mem_singleton_iff]
---               dsimp [EspaceMetrique.d, induite_dist] at h
---               apply Z_eq_of_sub_lt_one; linarith
---  · case mpr => intro h; rw [Set.mem_singleton_iff] at h
---                rw [h]; apply centre_in_boule; linarith
+lemma boule_in_Z_induite : ∀ x : Z_induite, Bₒ x (1/2) = {x} := by
+  intro k; ext x; apply Iff.intro
+  · case mp => intro h; rw [Set.mem_singleton_iff]
+               dsimp [EspaceMetrique.d, induite_dist] at h
+               apply Z_eq_of_sub_lt_one; linarith
+  · case mpr => intro h; rw [Set.mem_singleton_iff] at h
+                rw [h]; apply centre_in_boule; linarith
 
---lemma ouverte_of_Z_induite (A : Partie Z_induite) : ouverte A := by
- -- intro x x_in; use (1 / 2), by linarith
-  --rwa [boule_in_Z_induite, Set.singleton_subset_iff]
+lemma ouverte_of_Z_induite (A : Partie Z_induite) : ouverte A := by
+  intro x x_in; use (1 / 2), by linarith
+  rwa [boule_in_Z_induite, Set.singleton_subset_iff]
 
---lemma fermee_of_Z_induite (A : Partie Z_induite) : fermee A := by
---  apply ouverte_of_Z_induite
+lemma fermee_of_Z_induite (A : Partie Z_induite) : fermee A := by
+  apply ouverte_of_Z_induite
 
 -- b)
 
