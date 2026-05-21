@@ -1,4 +1,5 @@
 import TopoTER.Chapitre4
+set_option linter.style.emptyLine false
 
 open TER Set EspTop
 
@@ -293,12 +294,12 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
 
   sorry
 
-lemma h_split {n : ℕ} : Set.Icc 1 (n + 1) = insert (n + 1) (Set.Icc 1 n) := by
+lemma h_split {n : ℕ} : Set.Icc 0 (n + 1) = insert (n + 1) (Set.Icc 0 n) := by
   ext x
   simp only [mem_Icc, mem_insert_iff]
   constructor
   · rintro ⟨h1, h2⟩
-    by_cases! h : 1 ≤ x ∧ x ≤ n
+    by_cases! h : 0 ≤ x ∧ x ≤ n
     · right
       exact h
     · left
@@ -316,6 +317,17 @@ est_ouvert U ↔ ∀ x : X, x ∈ U → ∃ r > 0, boule_ouverte x r ⊆ U := so
 
 lemma fer_of_boule_fer [EspaceMetrique X] (a : X) (r : ℝ) : fermee (Bf a r) := sorry
 
+lemma lemme1 {U : ℕ → Partie X} : ⋂ n, U n = ⋂ n, ⋂ k ∈ Icc 0 n, U k := by
+  ext x
+  simp only [mem_Icc, zero_le, true_and, mem_iInter]
+  exact ⟨fun h _ m _ ↦ h m, fun h n ↦ h n n (by simp)⟩
+
+lemma lemme2 {V : Partie X} {U : ℕ → Partie X} :
+V ∩ ⋂ n, ⋂ k ∈ Icc 0 n, U k = ⋂ n, V ∩ ⋂ k ∈ Icc 0 n, U k := by
+  ext x
+  simp only [Set.mem_iInter, Set.mem_inter_iff]
+  exact ⟨fun h n ↦ ⟨h.1, h.2 n⟩, h ↦ ⟨(h 0).1, fun n m hm ↦ (h n).2 m hm⟩⟩
+
 lemma ouv_contient_bf [EspaceMetrique X] {U : Partie X} :
 est_ouvert U → U.Nonempty → ∃ c : X, ∃ r > 0, Bf c r ⊆ U := by
   intro U_ouv U_ne
@@ -329,7 +341,7 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
   intro X_compl U hU
   rw [dense_iff_inter_ouvert_nonempty]
   intro V V_ouv V_ne
-  let W : ℕ → Partie X := fun n ↦ V ∩ (⋂ k ∈ Set.Icc 1 n, U k)
+  let W : ℕ → Partie X := fun n ↦ V ∩ (⋂ k ∈ Set.Icc 0 n, U k)
 
   have W_ouv : ∀ n : ℕ, est_ouvert (W n) := by
     intro n
@@ -344,8 +356,10 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
     intro n
     induction n with
     | zero =>
-      simp
-      exact V_ne
+      simp only [Icc_self, mem_singleton_iff, iInter_iInter_eq_left]
+      rcases hU 0 with ⟨dens, _⟩
+      rw [dense_iff_inter_ouvert_nonempty] at dens
+      exact dens V V_ouv V_ne
     | succ n hr =>
       rw [h_split, biInter_insert]
       rw [Set.inter_comm (U (n+1)), ← Set.inter_assoc]
@@ -354,86 +368,93 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
       rw [dense_iff_inter_ouvert_nonempty] at U_dens
       exact U_dens (W n) (W_ouv n) hr
 
-  let B_ok (n : ℕ) (c : X) (r : ℝ) : Prop := r > 0 ∧ r ≤ 1 / (↑n + 2) ∧ Bf c r ⊆ W n
+  let B_ok (n : ℕ) (c : X) (r : ℝ) : Prop := r > 0 ∧ r ≤ 1 / (2*(↑n + 1)) ∧ Bf c r ⊆ W n
 
-  have B_succ_ok : ∀ n : ℕ, ∃ c : X, ∃ r : ℝ, B_ok n c r := by
-    intro n
-    induction n with
-    | zero =>
+  have H : ∃ c : ℕ → X, ∃ r : ℕ → ℝ, (∀ n, B_ok n (c n) (r n)) ∧
+                         (∀ n, Bf (c (n+1)) (r (n+1)) ⊆ Bf (c n) (r n)) := by
+
+    rcases ouv_contient_bf (W_ouv 0) (W_ne 0) with ⟨c0, r0, r0_pos, h0⟩
+
+    have B0_ok : B_ok 0 c0 (min r0 (1/2)) := by
       unfold B_ok
-      rcases ouv_contient_bf (W_ouv 0) (W_ne 0) with ⟨c, r, r_pos, h⟩
-      use c, min r (1/2)
       constructor
-      · simp [r_pos]
+      · simp [r0_pos]
       · constructor
         · simp
-        · intro x hx
-          simp at *
-          exact h hx.1
-    | succ n hr =>
-      rcases hr with ⟨c, r, r_pos, _, Bf_W⟩
-      have ouv : est_ouvert (Bₒ c r ∩ U (n + 1)) :=
-        inter_ouvert (ouv_of_boule_ouv c r) (hU (n + 1)).2
-      have ne : (Bₒ c r ∩ U (n + 1)).Nonempty := by
+        · apply subset_trans _ h0
+          exact boule_f_in_boule_f_ge c0 (by simp [r0_pos]) r0_pos (min_le_left r0 (1 / 2))
+
+    have Bn_ok : ∀ n : ℕ, ∀ p : X × ℝ, B_ok n p.1 p.2 →
+            ∃ q : X × ℝ, B_ok (n + 1) q.1 q.2 ∧ Bf q.1 q.2 ⊆ Bf p.1 p.2:= by
+      rintro n p ⟨r_pos, r_le, h⟩
+      have ouv : est_ouvert (Bₒ p.1 p.2 ∩ U (n + 1)) :=
+        inter_ouvert (ouv_of_boule_ouv p.1 p.2) (hU (n + 1)).2
+      have ne : (Bₒ p.1 p.2 ∩ U (n + 1)).Nonempty := by
         rcases hU (n + 1) with ⟨U_dens, U_ouv⟩
         rw [dense_iff_inter_ouvert_nonempty] at U_dens
-        apply U_dens (Bₒ c r) (ouv_of_boule_ouv c r)
-        use c
+        apply U_dens (Bₒ p.1 p.2) (ouv_of_boule_ouv p.1 p.2)
+        use p.1
         simp only [boule_ouverte, mem_setOf_eq]
-        have h : EspaceMetrique.d c c = 0 := by rw [EspaceMetrique.is_dist.sep c c]
+        have h : EspaceMetrique.d p.1 p.1 = 0 := by rw [EspaceMetrique.is_dist.sep p.1 p.1]
         rw [h]
         exact r_pos
       rcases ouv_contient_bf ouv ne with ⟨c_next, R, R_pos, hR⟩
-      let r_next := min R (1 / (n + 3))
-      use c_next, r_next
+      let r_next := min R (1 / (2*(n + 2)))
+      use (c_next, r_next)
+      have bf_in_bf := boule_f_in_boule_f_ge c_next (by positivity) R_pos
+                        (min_le_left R (1 / (2*(↑n + 2))))
+      have hyp : Bf c_next r_next ⊆ Bₒ p.1 p.2 ∩ U (n + 1) := by
+        intro x hx
+        apply bf_in_bf at hx
+        apply hR at hx
+        exact hx
       constructor
-      · exact lt_min R_pos (by positivity)
       · constructor
         · unfold r_next
-          push_cast
-          ring_nf
-          exact min_le_right _ _
-        · have hyp : Bf c_next r_next ⊆ Bₒ c r ∩ U (n + 1) := by
-            intro x hx
-            have bf_in_bf := boule_f_in_boule_f_ge c_next (by positivity) R_pos (min_le_left R (1 / (↑n + 3)))
-            apply bf_in_bf at hx
-            apply hR at hx
-            exact hx
-          apply hyp.trans
-          unfold W
-          rw [h_split, Set.biInter_insert, inter_comm (U (n + 1)), ←inter_assoc]
-          apply inter_subset_inter
-          change Bₒ c r ⊆ W n
-          apply subset_trans (boule_in_boule_f c r_pos) Bf_W
-          rfl
+          simp [R_pos]
+          linarith
+        · constructor
+          · unfold r_next
+            push_cast
+            ring_nf
+            exact min_le_right _ _
+          · apply hyp.trans
+            unfold W
+            rw [h_split, Set.biInter_insert, inter_comm (U (n + 1)), ←inter_assoc]
+            apply inter_subset_inter
+            change Bₒ p.1 p.2 ⊆ W n
+            apply subset_trans (boule_in_boule_f p.1 r_pos) h
+            rfl
+      · exact subset_trans hyp (subset_trans inter_subset_left (boule_in_boule_f p.1 r_pos))
 
-  choose c r r_pos h_sub using B_succ_ok
+    choose! f hf using Bn_ok
 
-  let B : ℕ → Partie X := n ↦ boule_fermee (c n) (min (r n) (1/(2*(n + 1))))
+    let B : ℕ → X × ℝ := fun n ↦ Nat.recOn n (c0, (min r0 (1/2))) f
 
-  have B_bf : ∀ n : ℕ, B n ⊆ boule_fermee (c n) (r n) := by
-    intro _
-    simp only [boule_fermee, one_div, mul_inv_rev, le_inf_iff, setOf_subset_setOf, and_imp, B]
-    exact fun _ hx _ ↦ hx
+    let c n := (B n).1
+    let r n := (B n).2
 
-  have B_W : ∀ n : ℕ, B n ⊆ W n := by
-    intro n
-    trans boule_fermee (c n) (r n)
-    · exact B_bf n
-    · exact (h_sub n).2
+    use c, r
+    have B_ok_n : ∀ n, B_ok n (c n) (r n) := by
+        intro n
+        induction n with
+        | zero => exact B0_ok
+        | succ n hr => exact (hf n (B n) hr).1
+    constructor
+    · exact B_ok_n
+    · intro n
+      exact (hf n (B n) (B_ok_n n)).2
+
+  choose c r Bn_ok bf_in_bf using H
+  let B : ℕ → Partie X := n ↦ Bf (c n) (r n)
+  change ∀ (n : ℕ), B (n + 1) ⊆ B n at bf_in_bf
 
   have c_B : ∀ n : ℕ, c n ∈ B n := by
     intro n
     have h'' : EspaceMetrique.d (c n) (c n) = 0 := by
       rw [EspaceMetrique.is_dist.sep (c n) (c n)]
-    simp only [boule_fermee, one_div, mul_inv_rev, le_inf_iff, mem_setOf_eq, B]
-    rw [h'']
-    constructor
-    · exact Std.le_of_lt (r_pos n)
-    · apply mul_nonneg
-      · apply inv_nonneg.mpr
-        linarith
-      · linarith
+    simp [B, h'']
+    linarith [(Bn_ok n).1]
 
   have B_diam' : ∀ n : ℕ, diam (B n) ≤ 1/(n + 1) := by
     intro n
@@ -452,14 +473,21 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
           have h'' : EspaceMetrique.d (c n) (c n) = 0 := by
             rw [EspaceMetrique.is_dist.sep (c n) (c n)]
           exact ⟨c_B n, c n, c_B n, h''⟩
-        · simp
+        · simp only [mem_setOf_eq, one_div, forall_exists_index, and_imp]
           intro d x hx y hy h
           have h_dist : ∀ z : X, z ∈ B n → EspaceMetrique.d z (c n) ≤ (min (r n) (1 / (2*(↑n + 1))))
           := by
             intro z hz
-            simp only [boule_fermee, one_div, mul_inv_rev, le_inf_iff, mem_setOf_eq, B] at hz
+            simp only [boule_fermee.eq_1, mem_setOf_eq, B] at hz
             simp only [one_div, mul_inv_rev, le_inf_iff]
-            exact ⟨hz.1, by apply hz.2.trans; rfl⟩
+            constructor
+            · exact hz
+            · specialize Bn_ok n
+              rcases Bn_ok with ⟨h1, h2, h3⟩
+              apply hz.trans
+              have h_calc : 1 / (2 * ((n : ℝ) + 1)) = ((n : ℝ) + 1)⁻¹ * 2⁻¹ := by field_simp
+              rw [←h_calc]
+              exact h2
           rw [←h]
           calc EspaceMetrique.d x y
             ≤ EspaceMetrique.d x (c n) + EspaceMetrique.d (c n) y :=
@@ -494,42 +522,25 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
         · exact hN
     · have B_in_boule : in_boule (B n) := by
         use (c n), 2*(r n)
-        constructor
-        · simp
-          exact r_pos n
-        · unfold B
-          simp
-          exact fun _ hx _ ↦ lt_of_le_of_lt hx (lt_two_mul_self (r_pos n))
+        simp only [gt_iff_lt, Nat.ofNat_pos, mul_pos_iff_of_pos_left, boule_ouverte]
+        exact ⟨(Bn_ok n).1, fun _ hx ↦ lt_of_le_of_lt hx (lt_two_mul_self ((Bn_ok n).1))⟩
       rw [←bdd_iff_in_boule, ←bornee_iff_bdd] at B_in_boule
       unfold diam_bornee at B_in_boule
       have nh : diam (B n) ≠ -1 := ne_of_gt B_in_boule.2
       contradiction
 
-  have W_decrois : ∀ n : ℕ, W (n + 1) ⊆ W n := by
-    intro n
-    unfold W
-    apply Set.inter_subset_inter_right
-    apply Set.biInter_subset_biInter_left
-    intro k hk
-    exact ⟨hk.1, Nat.le_succ_of_le hk.2⟩
-
   apply thm_beurre X_compl at B_diam
 
   swap
   · intro n
-    constructor
-    · rw [← Set.nonempty_iff_ne_empty]
-      exact ⟨c n, c_B n⟩
-    · constructor
-      · apply fer_of_boule_fer
-      · apply crois_equ.mpr
-        intro m
-        sorry
+    rw [← Set.nonempty_iff_ne_empty]
+    exact ⟨⟨c n, c_B n⟩, fer_of_boule_fer (c n) (r n), (crois_equ.mpr bf_in_bf) n⟩
+  · rcases B_diam with ⟨x, hx⟩
+    have h : (⋂ n, B n).Nonempty := by
+      use x
+      rw [hx]
+      rfl
 
-  rcases B_diam with ⟨x, hx⟩
-
-
-
-  --B_W B_diam W_decrois
-
-  sorry
+    have B_W  : ⋂ n, B n ⊆ ⋂ n, V ∩ ⋂ k ∈ Icc 0 n, U k := Set.iInter_mono (n ↦ (Bn_ok n).2.2)
+    rw [lemme1, lemme2]
+    exact Nonempty.mono B_W h
