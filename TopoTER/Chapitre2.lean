@@ -409,20 +409,21 @@ noncomputable def construction_extract_phi {X : Type*} [EspaceMetrique X]
         change (prev) + 1 ≤ l at hlφ
         change prev < l
         rwa [Nat.lt_iff_add_one_le]
-      let dec := Classical.decPred (· ∈ A);
-      Nat.find A_ne
+      let dec := Classical.decPred (· ∈ A); Nat.find A_ne
 
-theorem val_adh_iff_extraite_conv {X : Type*} [EspaceMetrique X] (u : ℕ → X) (x : X) : val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by
+theorem val_adh_iff_extraite_conv {X : Type*} [EspaceMetrique X] (u : ℕ → X) (x : X) :
+  val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by
  constructor
  · intro hvadhx
    let φ := construction_extract_phi u x hvadhx
-   use φ
-   constructor
-   rw[extract_equiv]
-   intro n
-   unfold φ
-   rw[construction_extract_phi]
-   sorry
+   use φ; unfold φ; constructor
+   · rw [extract_equiv]
+     intro n; let prev := construction_extract_phi u x hvadhx n
+     refold_let prev; unfold construction_extract_phi
+     let p := m ↦ m > prev ∧ u m ∈ Bₒ x (1/(n + 1))
+     let dec := Classical.decPred p; apply And.left
+     apply Nat.find_spec (p := p)
+   ·
 
 
  · intro hφ
