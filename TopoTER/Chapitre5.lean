@@ -3,12 +3,12 @@ set_option linter.style.emptyLine false
 
 open TER Set EspTop
 
-variable {X Y : Type*} [EspTop X] [EspTop Y] [EspSepareT2 Y]
+variable {X Y : Type} [EspTop X] [EspTop Y] [EspSepareT2 Y]
 
-def prop_baire {X : Type*} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
+def prop_baire {X : Type} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
   dense X (u n) ∧ est_ouvert (u n)) → dense X (⋂ n : ℕ, u n)
 
-def baire (X : Type*) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
+def baire (X : Type) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
 
 lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite v)
   := by
@@ -114,7 +114,7 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
       by_contra _
       exact z_nadh z_adh
 
-variable {X : Type*}
+variable {X : Type}
 
 open Metrique
 

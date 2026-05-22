@@ -10,7 +10,7 @@ namespace Metrique
 
 -- Définition 1.1.
 
-variable {X : Type*}
+variable {X : Type}
 
 def nneg (d : X → X → ℝ) := ∀ x y, d x y ≥ 0
 
@@ -26,7 +26,7 @@ structure estDistance (d : X → X → ℝ) where
   symm : symm d
   ineq : ineq d
 
-class EspaceMetrique (X : Type*) where
+class EspaceMetrique (X : Type) where
   d : X → X → ℝ
   is_dist : estDistance d
 
@@ -132,26 +132,26 @@ end Euclidean
 -- 4.
 noncomputable section Discrete
 open Classical in
-@[simp] def discrete_dist (X : Type*) : X → X → ℝ := x ↦ y ↦
+@[simp] def discrete_dist (X : Type) : X → X → ℝ := x ↦ y ↦
   if x = y then 0 else 1
 
-def Discrete (X : Type*) : Type _ := X
+def Discrete (X : Type) : Type _ := X
 
-lemma discrete_nneg (X : Type*) : nneg (discrete_dist X) := by
+lemma discrete_nneg (X : Type) : nneg (discrete_dist X) := by
   intro x y; dsimp; split
   · case isTrue => rfl
   · case isFalse => linarith
 
-lemma discrete_sep (X : Type*) : sep (discrete_dist X) := by
+lemma discrete_sep (X : Type) : sep (discrete_dist X) := by
   intro x y; dsimp; split
   · case isTrue h => simp only [h]
   · case isFalse h => simp only [one_ne_zero, h]
 
-lemma discrete_symm (X : Type*) : symm (discrete_dist X) := by
+lemma discrete_symm (X : Type) : symm (discrete_dist X) := by
   intro x y; dsimp; congr 1; rw [Eq.comm (a := x)]
 
 open Classical in
-lemma discrete_ineq (X : Type*) : ineq (discrete_dist X) := by
+lemma discrete_ineq (X : Type) : ineq (discrete_dist X) := by
   intro x y z; dsimp; split
   · case isTrue => apply add_nonneg (discrete_nneg X x y)
                    exact discrete_nneg X y z
@@ -205,7 +205,7 @@ end Metrique
 namespace EspaceNorme
 open Valuation VectorSpace
 
-variable {K E : Type*} [ValuationField K] [AddCommGroup E] [Module K E]
+variable {K E : Type} [ValuationField K] [AddCommGroup E] [Module K E]
 
 def nneg (N : E → ℝ) := ∀ x, N x ≥ 0
 
@@ -215,7 +215,7 @@ def homogen (N : E → ℝ) := ∀ x, ∀ a : K, N (a • x) = |a|ₖ * N x
 
 def ineq (N : E → ℝ) := ∀ x y, N (x + y) ≤ N x + N y
 
-class GroupeNorme (E : Type*) extends AddCommGroup E where
+class GroupeNorme (E : Type) extends AddCommGroup E where
   norm : E → ℝ
   nneg : nneg norm
   definie : definie norm
@@ -243,7 +243,7 @@ lemma sub_ineq {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N x - N y �
 
 notation : max "‖" x "‖" => GroupeNorme.norm x
 
-class EspaceVecNorme (K E : Type*) [ValuationField K] [G : GroupeNorme E]
+class EspaceVecNorme (K E : Type) [ValuationField K] [G : GroupeNorme E]
   extends Module K E where
   norm : E → ℝ := G.norm
   homogen : homogen (K := K) G.norm
@@ -255,7 +255,7 @@ class EspaceVecNorme (K E : Type*) [ValuationField K] [G : GroupeNorme E]
 
 open Metrique
 
-theorem dist_of_norme (K E : Type*) [ValuationField K] [GroupeNorme E]
+theorem dist_of_norme (K E : Type) [ValuationField K] [GroupeNorme E]
   [V : EspaceVecNorme K E] :
   let d : E → E → ℝ := x ↦ y ↦ ‖x - y‖; estDistance d := by
   rcases V.is_norm with ⟨nneg, defi, homo, ineq⟩; constructor
@@ -266,19 +266,19 @@ theorem dist_of_norme (K E : Type*) [ValuationField K] [GroupeNorme E]
                  have eq : x - z = (x - y) + (y - z) := by abel
                  rw [eq]; apply ineq
 
-def EspaceMetNorme (K E : Type*) [ValuationField K] [GroupeNorme E]
+def EspaceMetNorme (K E : Type) [ValuationField K] [GroupeNorme E]
   [EspaceVecNorme K E] : Type _ := E
 
 notation "Vec⟨" K " | " E "⟩" => EspaceMetNorme K E
 notation "N(" K ", " E ")" => fun (x : Vec⟨K | E⟩) => ‖x‖
 
-instance {K E : Type*} [ValuationField K] [G : GroupeNorme E]
+instance {K E : Type} [ValuationField K] [G : GroupeNorme E]
   [EspaceVecNorme K E] : GroupeNorme Vec⟨K | E⟩ := G
 
-instance {K E : Type*} [ValuationField K] [GroupeNorme E]
+instance {K E : Type} [ValuationField K] [GroupeNorme E]
   [V : EspaceVecNorme K E] : EspaceVecNorme K Vec⟨K | E⟩ := V
 
-instance {K E : Type*} [ValuationField K] [GroupeNorme E]
+instance {K E : Type} [ValuationField K] [GroupeNorme E]
   [EspaceVecNorme K E] : EspaceMetrique Vec⟨K | E⟩ where
   d := x ↦ y ↦ ‖x - y‖
   is_dist := dist_of_norme K E
@@ -367,8 +367,8 @@ def norme_taxi : K^n → ℝ := x ↦ ∑ i, |x.p i|ₖ
   := by unfold norme_taxi; simp
 
 def Inf (α : Type _) : Type _ := α
-instance {E : Type*} [G : AddCommGroup E] : AddCommGroup (Inf E) := G
-instance {K E : Type*} [Field K] [AddCommGroup E] [M : Module K E] :
+instance {E : Type} [G : AddCommGroup E] : AddCommGroup (Inf E) := G
+instance {K E : Type} [Field K] [AddCommGroup E] [M : Module K E] :
   Module K (Inf E) := M
 
 instance : GroupeNorme (Inf K^n) where
@@ -413,8 +413,8 @@ lemma euclid_eq_Rn_norm (x : K^n) : norme_euclid x = ‖Rn_of_Kn x‖ₑ := by
   congr 2; dsimp [Rn_of_Kn]; ext; ring
 
 def Eucl (α : Type _) : Type _ := α
-instance {K : Type*} [G : AddCommGroup K] : AddCommGroup (Eucl K) := G
-instance {K E : Type*} [Field K] [AddCommGroup E] [M : Module K E] :
+instance {K : Type} [G : AddCommGroup K] : AddCommGroup (Eucl K) := G
+instance {K E : Type} [Field K] [AddCommGroup E] [M : Module K E] :
   Module K (Eucl E) := M
 
 open Real in
@@ -479,13 +479,13 @@ noncomputable instance : EspaceVecNorme K (Eucl K^n) where
     congr; ext i; simp [sq, SMul.smul, instHSMul]; ring_nf
   }
 
-structure NormeEquiv (E : Type*) (norm₁ : E → ℝ) (norm₂ : E → ℝ) where
+structure NormeEquiv (E : Type) (norm₁ : E → ℝ) (norm₂ : E → ℝ) where
   exists_C : ∃ C > 0, ∀ x, norm₁ x ≤ C * norm₂ x
   exists_D : ∃ D > 0, ∀ x, norm₂ x ≤ D * norm₁ x
 
 notation N₁ " ≃ " N₂ " on " E => NormeEquiv E N₁ N₂
 
-instance NormeEq {E : Type*} : Equivalence (NormeEquiv E) where
+instance NormeEq {E : Type} : Equivalence (NormeEquiv E) where
   refl := by {
     intro N; constructor
     · use 1, zero_lt_one; simp
@@ -579,7 +579,7 @@ end EspaceNorme
 
 open Metrique
 
-variable {X : Type*} [M : EspaceMetrique X]
+variable {X : Type} [M : EspaceMetrique X]
 
 @[simp] def boule_ouverte (a : X) (r : ℝ) := {x | d(x, a) < r}
 
@@ -866,8 +866,8 @@ end Relatifs
 -- a)
 
 open Famille in
-@[simp] theorem ouverte_of_union {ι : Type*} {F : Famille ι X} (hu : ∀ A ∈ F,
-  ouverte A) : ouverte (⋃ᵢ F) := by
+@[simp] theorem ouverte_of_union {F : Famille X} (hu : ∀ A ∈ F, ouverte A) :
+  ouverte (⋃ᵢ F) := by
   intro x hx; rcases hx with ⟨A, hA, x_in⟩
   rcases (hu A hA) x x_in with ⟨r, r_pos, hr⟩
   use r, r_pos; exact subset_union_famille hr hA
@@ -909,16 +909,16 @@ open Famille in
 -- d)
 
 open Famille in
-theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ ι : Type u_1,
-  ∃ F : Famille ι X, (∀ B ∈ F, is_boule B) ∧ U = ⋃ᵢ F := by
+theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille X,
+  (∀ B ∈ F, is_boule B) ∧ U = ⋃ᵢ F := by
   let r (x : U) : ℝ := Exists.choose (h x.val x.prop)
   have r_prop : ∀ x, r x > 0 ∧ Bₒ (X := X) x (r x) ⊆ U := by
     intro x; exact Exists.choose_spec (h x.val x.prop)
-  let F : Famille U X := ⟨x ↦ Bₒ x.val (r x)⟩
+  let F : Famille X := ⟨U, x ↦ Bₒ x.val (r x)⟩
   have F_is_boule : ∀ B ∈ F, is_boule B := by
     intro B hB; rcases hB with ⟨x, hx⟩; rw [←hx]; use x, r x
 --
-  use U, F, F_is_boule; ext x; apply Iff.intro
+  use F, F_is_boule; ext x; apply Iff.intro
   · case mp => intro in_u; let xᵤ : U := ⟨x, in_u⟩
                rw [mem_union_famille]; use Bₒ x (r xᵤ), by use xᵤ
                apply centre_in_boule; exact (r_prop xᵤ).left
@@ -1012,7 +1012,7 @@ lemma bdd_iff_in_boule (A : Partie X) : Nonempty X ∧ dist_bornee A ↔
                 apply le_trans (ineq x a y); apply le_of_lt
                 rw [symm a y]; exact add_lt_add (in_B hx) (in_B hy)
 
-def bornee (X : Type*) [EspaceMetrique X] := dist_bornee_nneg (X := X) Ω
+def bornee (X : Type) [EspaceMetrique X] := dist_bornee_nneg (X := X) Ω
 
 -- Définition 1.11.
 
@@ -1060,17 +1060,28 @@ theorem lim_iff_lim_vois (u : ℕ → X) (l : X) : converges_to u l ↔
 
 -- a)
 
-theorem conv_of_inv : let u : ℕ → ℝ := n ↦ 1 / (n + 1); converges_to u 0 := by
+lemma inv_of_le_forall : let u : ℕ → ℝ := n ↦ 1 / (n + 1); ∀ ε > 0, ∃ N,
+  ∀ n ≥ N, u n ≤ ε := by
   intro u ε ε_pos
   have arch := Real.instArchimedean.arch 1 ε_pos
   rcases arch with ⟨N, hN⟩; use N; intro n hn
+  unfold u; field_simp; apply le_trans hN; rw [nsmul_eq_mul]
+  apply mul_le_mul_of_nonneg_right _ (by linarith)
+  rw [←Nat.cast_add_one, Nat.cast_le]; linarith
+
+lemma conv_of_le_inv (v : ℕ → ℝ) (hv : ∀ n, v n ≥ 0) (h : ∀ n, v n ≤ 1 / (n + 1))
+  : converges_to v 0 := by
+  intro ε ε_pos
+  have exists_N := inv_of_le_forall ε ε_pos
+  rcases exists_N with ⟨N, hN⟩; use N; intro n hn
   dsimp [instEspaceMetriqueReal]
-  have u_n_pos : 0 < 1 / ((n : ℝ) + 1) := by
-    apply div_pos (zero_lt_one); linarith
-  rw [sub_zero, abs_of_pos u_n_pos, div_le_iff₀ (by linarith)]
-  apply le_trans hN; rw [nsmul_eq_mul, mul_comm]
-  apply mul_le_mul_of_nonneg_left _ (by linarith)
-  apply le_trans (b := (n : ℝ)) _ (by linarith); rwa [Nat.cast_le]
+  rw [sub_zero, abs_of_nonneg (hv n)]
+  exact le_trans (h n) (hN n hn)
+
+theorem conv_of_inv : let u : ℕ → ℝ := n ↦ 1 / (n + 1); converges_to u 0 := by
+  intro u; apply conv_of_le_inv u
+  · intro n; unfold u; field_simp; linarith
+  · intro n; linarith
 
 -- b)
 
@@ -1172,5 +1183,5 @@ theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
 
 -- Définition 1.16.
 
-def complet (X : Type*) [EspaceMetrique X] := ∀ u : ℕ → X, cauchy u →
+def complet (X : Type) [EspaceMetrique X] := ∀ u : ℕ → X, cauchy u →
   converges u
