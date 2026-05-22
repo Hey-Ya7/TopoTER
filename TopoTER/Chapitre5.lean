@@ -17,7 +17,6 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
 
   have Uouv : ∀ (n : ℕ), est_ouvert (U n) := by
     intro n; unfold U
-    --rw [hU n]
     apply union_est_ouvert
     · have h : est_ouvert (u n) := (hu n).2
       rcases h with ⟨w, hw, h'⟩
@@ -38,13 +37,17 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
     rcases (hu n) with ⟨u_dens, u_ouv⟩
     rw [dense_iff_inter_ouvert_nonempty] at u_dens
 
-    by_cases x_v : x ∈ v
+    by_cases x_adh : x ∈ adh v
     · have Ws_ne : W_sub.Nonempty := by
+        specialize x_adh W W_vois
+        rcases x_adh with ⟨y, hy⟩
+        use ⟨y, hy.2⟩
         unfold W_sub
-        use ⟨x, x_v⟩
         simp only [mem_preimage]
-        rcases W_vois with ⟨U, ⟨x_U, _, U_W⟩⟩
-        exact U_W x_U
+        exact hy.1
+      unfold adh at x_adh
+      simp only [mem_setOf_eq] at x_adh
+      specialize x_adh W W_vois
       specialize u_dens W_sub Ws_ouv Ws_ne
       rcases u_dens with ⟨y, ⟨y_Ws, y_u⟩⟩
       use y
@@ -52,34 +55,15 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
       · exact y_Ws
       · unfold U
         left
-        simp
+        simp only [mem_image, Subtype.exists, exists_and_right, exists_eq_right, Subtype.coe_eta,
+          Subtype.coe_prop, exists_const]
         exact y_u
+    · use x
+      constructor
+      · exact hx
+      · right
+        exact x_adh
 
-    · by_cases x_adh : x ∈ (adh v)
-      · have Ws_ne : W_sub.Nonempty := by
-          specialize x_adh W W_vois
-          rcases x_adh with ⟨y, hy⟩
-          use ⟨y, hy.2⟩
-          unfold W_sub
-          simp only [mem_preimage]
-          exact hy.1
-        unfold adh at x_adh
-        simp only [mem_setOf_eq] at x_adh
-        specialize x_adh W W_vois
-        specialize u_dens W_sub Ws_ouv Ws_ne
-        rcases u_dens with ⟨y, ⟨y_Ws, y_u⟩⟩
-        use y
-        constructor
-        · exact y_Ws
-        · unfold U
-          left
-          simp
-          exact y_u
-      · use x
-        constructor
-        · exact hx
-        · right
-          exact x_adh
   unfold baire prop_baire at hb
   have h' : dense X (⋂ n, U n) := by
     apply hb
@@ -98,13 +82,14 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
     rcases W_vois with ⟨w, ⟨x_w, w_ouv, w_W⟩⟩
     use w
     constructor
-    · simp
+    · simp only [mem_image, Subtype.exists, exists_and_right, exists_eq_right, Subtype.coe_eta,
+      Subtype.coe_prop, exists_const]
       exact x_w
     · rcases w_ouv with ⟨A, hA⟩
       rw [hA.2]
       simp only [Subtype.image_preimage_coe]
       exact inter_ouvert hv hA.1
-    · simp
+    · simp only [image_subset_iff, Subtype.val_injective, preimage_image_eq]
       exact w_W
   specialize h' Wsub_vois
   rcases h' with ⟨y, ⟨y_W, y_U⟩⟩
@@ -119,7 +104,8 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
       exact y_U n
     unfold U at z_Un
     rcases z_Un with z_un | z_nadh
-    · simp? at z_un
+    · simp only [mem_image, Subtype.exists, exists_and_right, exists_eq_right, Subtype.coe_eta,
+      Subtype.coe_prop, exists_const] at z_un
       exact z_un
     · rw [mem_compl_iff] at z_nadh
       have z_adh : ↑z ∈ adh v := by
@@ -422,24 +408,23 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
             unfold W
             rw [h_split, Set.biInter_insert, inter_comm (U (n + 1)), ←inter_assoc]
             apply inter_subset_inter
-            change Bₒ p.1 p.2 ⊆ W n
-            apply subset_trans (boule_in_boule_f p.1 r_pos) h
-            rfl
+            · change Bₒ p.1 p.2 ⊆ W n
+              apply subset_trans (boule_in_boule_f p.1 r_pos) h
+            · rfl
       · exact subset_trans hyp (subset_trans inter_subset_left (boule_in_boule_f p.1 r_pos))
 
     choose! f hf using Bn_ok
-
     let B : ℕ → X × ℝ := fun n ↦ Nat.recOn n (c0, (min r0 (1/2))) f
-
     let c n := (B n).1
     let r n := (B n).2
-
     use c, r
+
     have B_ok_n : ∀ n, B_ok n (c n) (r n) := by
-        intro n
-        induction n with
-        | zero => exact B0_ok
-        | succ n hr => exact (hf n (B n) hr).1
+      intro n
+      induction n with
+      | zero => exact B0_ok
+      | succ n hr => exact (hf n (B n) hr).1
+
     constructor
     · exact B_ok_n
     · intro n
@@ -531,16 +516,15 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
 
   apply thm_beurre X_compl at B_diam
 
-  swap
-  · intro n
-    rw [← Set.nonempty_iff_ne_empty]
-    exact ⟨⟨c n, c_B n⟩, fer_of_boule_fer (c n) (r n), (crois_equ.mpr bf_in_bf) n⟩
   · rcases B_diam with ⟨x, hx⟩
     have h : (⋂ n, B n).Nonempty := by
       use x
       rw [hx]
       rfl
-
     have B_W  : ⋂ n, B n ⊆ ⋂ n, V ∩ ⋂ k ∈ Icc 0 n, U k := Set.iInter_mono (n ↦ (Bn_ok n).2.2)
     rw [lemme1, lemme2]
     exact Nonempty.mono B_W h
+
+  · intro n
+    rw [← Set.nonempty_iff_ne_empty]
+    exact ⟨⟨c n, c_B n⟩, fer_of_boule_fer (c n) (r n), (crois_equ.mpr bf_in_bf) n⟩
