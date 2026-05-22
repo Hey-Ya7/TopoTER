@@ -118,21 +118,6 @@ variable {X : Type*}
 
 open Metrique
 
---lemma sep_iff_diag_ferme :
---letI Δ : Set X := {x ∈ X | (x,x)}
---EspSepareT2 X ↔ est_ferme Δ
-
-lemma diam_gt_0 [EspaceMetrique X] {A : Partie X} :
-(A = ∅ ∨ ∃ x : X, A = {x}) ↔ diam A = 0 := by
-  constructor
-  · intro h
-    rcases h with h | ⟨x, hx⟩
-    · subst A
-      exact diam_empty
-    · unfold diam
-      sorry
-  · sorry
-
 lemma diam_born_sub [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam_bornee A := by
   intro bornB A_B
@@ -543,3 +528,8 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
   · exact n ↦ fermee_of_boule_f (c n) (r n)
 
   · exact crois_equ.mpr (n ↦ bf_in_bf n)
+
+--comm tournoi OMP : balatro maxxing
+--mardi 26 mai a 15h avec un thm chacun (1/2 heure chacun)
+--nettoyer le code qui a mettre des sorry
+--rapport même si c'est pas mega complet, surtout il faut qu'il y ait ce qu'on presente mardi
