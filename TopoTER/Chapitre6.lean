@@ -4,7 +4,7 @@ open TER Set EspTop
 
 -- 6. Espaces topologiques compacts
 
-variable {ι X Y : Type*} [EspTop X] [EspTop Y] [EspSepareT2 X] [EspSepareT2 Y]
+variable {X Y : Type} [EspTop X] [EspTop Y] [EspSepareT2 X] [EspSepareT2 Y]
 
 -- 6.1. Compacité via les recouvrements
 
@@ -12,58 +12,56 @@ open Famille
 
 -- a)
 
-@[simp] def couvrement (F : Famille ι X) (A : Partie X) := A ⊆ ⋃ᵢ F
+@[simp] def couvrement (F : Famille X) (A : Partie X) := A ⊆ ⋃ᵢ F
 
-@[simp] def sous_couvrement (F : Famille ι X) (J : Set ι) (A : Partie X) :=
+@[simp] def sous_couvrement (F : Famille X) (J : Set F.ι) (A : Partie X) :=
   couvrement (SousFamille F J) A
 
-class EspCompact (X : Type*) [EspTop X] [EspSepareT2 X] where
-  compact : ∀ ι : Type*, ∀ C : Famille ι X, (∀ A ∈ C, est_ouvert A) →
-    couvrement C Ω → ∃ J, J.Finite ∧ sous_couvrement C J Ω
+class EspCompact (X : Type) [EspTop X] [EspSepareT2 X] where
+  compact : ∀ C : Famille X, (∀ A ∈ C, est_ouvert A) → couvrement C Ω
+    → ∃ J, J.Finite ∧ sous_couvrement C J Ω
 
 -- b)
 
-def est_compact_f (X : Type*) [EspTop X] [EspSepareT2 X] := ∀ ι : Type*,
-  ∀ F : Famille ι X, (∀ A ∈ F, est_ferme A) → ⋂ᵢ F = ∅ → ∃ J, J.Finite ∧
-  ⋂ᵢ (SousFamille F J) = ∅
+def est_compact_f (X : Type) [EspTop X] [EspSepareT2 X] := ∀ F : Famille X,
+  (∀ A ∈ F, est_ferme A) → ⋂ᵢ F = ∅ → ∃ J, J.Finite ∧ ⋂ᵢ (SousFamille F J) = ∅
 
-lemma comp_f_of_comp [C : EspCompact.{_, u} X] : est_compact_f.{_, u} X := by
-  intro ι F h₁ h₂
+lemma comp_f_of_comp [C : EspCompact X] : est_compact_f X := by
+  intro F h₁ h₂
   have F_ouvert : ∀ A ∈ F`ᶜ, est_ouvert A := by
     intro A hA; rw [est_ouvert_iff_compl_est_ferme]
     rw [in_compl_famille] at hA; exact h₁ Aᶜ hA
   have F_couvre : couvrement F`ᶜ Ω := by
     simp [←inter_famille_compl, h₂]
 --
-  rcases C.compact ι F`ᶜ F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
+  rcases C.compact F`ᶜ F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
   use J, hJ; dsimp at J_couvre
   rw [←compl_of_sous_famille, ←inter_famille_compl] at J_couvre
   rwa [univ_subset_iff, compl_univ_iff] at J_couvre
 
-instance {h : est_compact_f.{_, u} X} : EspCompact.{_, u} X
+instance {h : est_compact_f X} : EspCompact X
   where compact := by {
-    intro ι F h₁ h₂
+    intro F h₁ h₂
     have F_ferme : ∀ A ∈ F`ᶜ, est_ferme A := by
       intro A hA; rw [est_ferme]
       rw [in_compl_famille] at hA; exact h₁ Aᶜ hA
     have F_inter : ⋂ᵢ F`ᶜ = ∅ := by
       simp_all [←union_famille_compl]
-    rcases h ι F`ᶜ F_ferme F_inter with ⟨J, hJ, J_inter⟩; use J, hJ
+    rcases h F`ᶜ F_ferme F_inter with ⟨J, hJ, J_inter⟩; use J, hJ
     rw [←compl_of_sous_famille, ←union_famille_compl] at J_inter
     dsimp; rwa [univ_subset_iff, ←compl_empty_iff]
   }
 
 -- 6.2.
 
-def est_compact (A : Partie X) := ∀ ι : Type*, ∀ C : Famille ι X, (∀ P ∈ C,
-  est_ouvert P) → couvrement C A → ∃ J, J.Finite ∧ sous_couvrement C J A
+def est_compact (A : Partie X) := ∀ C : Famille X, (∀ P ∈ C, est_ouvert P)
+  → couvrement C A → ∃ J, J.Finite ∧ sous_couvrement C J A
 
 -- Théorème 6.4.
 
 -- a)
 
-theorem ferme_of_compact {A : Partie X} (h : est_compact.{_, u_2} A) :
-  est_ferme A := by
+theorem ferme_of_compact {A : Partie X} (h : est_compact A) : est_ferme A := by
   rw [est_ferme, ouvert_ssi_vois]; intro x hx
   have sep_y : ∀ y ∈ A, ∃ U V, est_ouvert U ∧ est_ouvert V ∧ y ∈ U ∧ x ∈ V
     ∧ U ∩ V = ∅ := by
@@ -71,22 +69,22 @@ theorem ferme_of_compact {A : Partie X} (h : est_compact.{_, u_2} A) :
     intro eq; rw [eq] at hy; exact hx hy
   choose! u v hu hv y_in x_in disj using sep_y
 --
-  let F : Famille A X := ⟨y ↦ u y⟩
+  let F : Famille X := ⟨A, y ↦ u y⟩
   have F_ouvert : ∀ P ∈ F, est_ouvert P := by
     intro P hP; rcases hP with ⟨y, hy⟩
     rw [←hy]; exact hu y y.prop
   have F_couvre : couvrement F A := by
     intro y hy; rw [mem_union_famille]
     use u y, (by use ⟨y, hy⟩); exact y_in y hy
-  rcases h A F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
+  rcases h F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
 --
   let V' := ⋂ j ∈ J, v j; use V'; constructor
   · simp only [V', mem_iInter]; intro j hj
     exact x_in j j.prop
   · unfold V'; apply inter_fini_ouvert (hI := hJ)
     intro j hj; exact hv j j.prop
-  · intro z hz in_A; rcases J_couvre in_A with ⟨j, hj, z_in⟩
-    rcases hj with ⟨y, hy⟩; dsimp [SousFamille] at y hy
+  · intro z hz in_A
+    rcases J_couvre in_A with ⟨j, ⟨y, hy⟩, z_in⟩
     rw [←mem_empty_iff_false z, ←disj y y.val.prop]
     apply And.intro
     · dsimp [F] at hy; rwa [hy]
@@ -102,9 +100,9 @@ theorem compact_of_ferme [EspCompact X] {A : Partie X} (h : est_ferme A)
 
 omit [EspSepareT2 X] in
 theorem comp_of_continu_image {f : X → Y} (h : est_continu f) {A : Partie X}
-  (comp : est_compact.{_, u} A) : est_compact.{_, u} (f '' A) := by
-  intro ι C h₁ h₂
-  let F : Famille ι X := ⟨i ↦ f ⁻¹' (C.u i)⟩
+  (comp : est_compact A) : est_compact (f '' A) := by
+  intro C h₁ h₂
+  let F : Famille X := ⟨C.ι, i ↦ f ⁻¹' (C.u i)⟩
   have F_ouvert : ∀ A ∈ F, est_ouvert A := by
     intro A hA; rcases hA with ⟨i, hi⟩; dsimp [F] at hi
     rw [continu_iff_preim_ouv] at h; rw [←hi]
@@ -116,22 +114,22 @@ theorem comp_of_continu_image {f : X → Y} (h : est_continu f) {A : Partie X}
     use f ⁻¹' B; apply And.intro _ fx_in
     rcases hB with ⟨i, hi⟩; use i; simp [F, hi]
 --
-  rcases comp ι F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
+  rcases comp F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
   use J, hJ; intro y y_in; rcases y_in with ⟨x, x_in, hx⟩
   apply J_couvre at x_in; rcases x_in with ⟨s, s_in, hs⟩
-  rcases s_in with ⟨i, hi⟩; dsimp [SousFamille]; rw [←hi] at hs
+  rcases s_in with ⟨i, hi⟩; rw [←hi] at hs
   rw [mem_union_famille]; use C.u i, (by use i), (by rwa [←hx])
 
 -- 6.2. Espaces métriques compacts
 
 open Metrique
 
-variable {E F : Type*} [M₁ : EspaceMetrique E] [M₂ : EspaceMetrique F]
+variable {E F : Type} [M₁ : EspaceMetrique E] [M₂ : EspaceMetrique F]
 
 -- Proposition 6.7.
 
-theorem bornee_of_compact [Cmp : EspCompact.{_, u_4} E] : bornee E := by
-  let C : Famille E E := ⟨x ↦ Bₒ x 1⟩
+theorem bornee_of_compact [Cmp : EspCompact E] : bornee E := by
+  let C : Famille E := ⟨E, x ↦ Bₒ x 1⟩
   have C_ouvert : ∀ A ∈ C, est_ouvert A := by
     intro A hA; rcases hA with ⟨x, hx⟩
     dsimp [C] at hx; rw [←hx]; unfold est_ouvert;
@@ -140,7 +138,7 @@ theorem bornee_of_compact [Cmp : EspCompact.{_, u_4} E] : bornee E := by
     intro x hx; rw [mem_union_famille]; use Bₒ x 1, (by use x)
     exact centre_in_boule x zero_lt_one
 --
-  rcases Cmp.compact E C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
+  rcases Cmp.compact C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
   let S := {d(x, y) | (x ∈ J) (y ∈ J)}
   have bdd : BddAbove S := by
     let f : E × E → ℝ := I ↦ d(I.1, I.2)
@@ -154,28 +152,27 @@ theorem bornee_of_compact [Cmp : EspCompact.{_, u_4} E] : bornee E := by
 --
   rcases J_couvre hx with ⟨A, hA, x_in⟩; rcases hA with ⟨i, hi⟩
   rcases J_couvre hy with ⟨B, hB, y_in⟩; rcases hB with ⟨j, hj⟩
-  dsimp [SousFamille, C] at hi; dsimp [SousFamille, C] at hj
   have ineq₁ := M₁.is_dist.ineq x i.val y
   have ineq₂ := M₁.is_dist.ineq i.val j.val y
   have d_ij_in : d(i.val, j.val) ∈ S := by
     use i.val, i.prop, j.val, j.prop
   have ineq₃ := hM d_ij_in
-  rw [←hi] at x_in; dsimp at x_in; rw [←hj] at y_in
-  dsimp at y_in; rw [M₁.is_dist.symm] at y_in; linarith
+  rw [←hi] at x_in; dsimp [C] at x_in; rw [←hj] at y_in
+  dsimp [C] at y_in; rw [M₁.is_dist.symm] at y_in; linarith
 
 -- Définition 6.8.
 
-def precompact (E : Type*) [EspaceMetrique E] := ∀ ε > 0, ∃ ι : Type*,
-  ∃ u : ι → E, Finite ι ∧ couvrement ⟨i ↦ Bₒ (u i) ε⟩ Ω
+def precompact (E : Type) [EspaceMetrique E] := ∀ ε > 0, ∃ F : Famille E,
+  Finite F.ι ∧ (∀ A ∈ F, ∃ x, A = Bₒ x ε) ∧ couvrement F Ω
 
-def lebesgue_n (F : Famille ι E) (r : ℝ) := ∀ x, ∃ i, Bₒ x r ⊆ F.u i
+def lebesgue_n (F : Famille E) (r : ℝ) := ∀ x, ∃ i, Bₒ x r ⊆ F.u i
 
-def seq_compact (E : Type*) [EspaceMetrique E] := ∀ u : ℕ → E, ∃ φ,
+def seq_compact (E : Type) [EspaceMetrique E] := ∀ u : ℕ → E, ∃ φ,
   extraction φ ∧ converges (u ∘ φ)
 
 -- Théorème 6.9.
 
-noncomputable def construction_not_precomp {E : Type*} [EspaceMetrique E]
+noncomputable def construction_not_precomp {E : Type} [EspaceMetrique E]
   [ne : Nonempty E] (h : ¬precompact E) : ℕ → E
   | 0 => have mem : ∃ x : E, True := by simp
          Exists.choose mem
@@ -186,9 +183,9 @@ noncomputable def construction_not_precomp {E : Type*} [EspaceMetrique E]
         by_contra h; sorry
       sorry
 
-theorem comp_iff_of_met₂ (E : Type*) [EspaceMetrique E] : seq_compact E →
-  precompact E ∧ ∀ ι, ∀ F : Famille ι E, (∀ A ∈ F, est_ouvert A) →
-  couvrement F Ω → ∃ r > 0, lebesgue_n F r := by
+theorem comp_iff_of_met₂ (E : Type) [EspaceMetrique E] : seq_compact E →
+  precompact E ∧ ∀ F : Famille E, (∀ A ∈ F, est_ouvert A) → couvrement F Ω →
+  ∃ r > 0, lebesgue_n F r := by
   intro seq_comp; apply And.intro
   · intro ε ε_pos; by_contra absurd; push_neg at absurd
     sorry
@@ -198,7 +195,7 @@ theorem comp_iff_of_met₂ (E : Type*) [EspaceMetrique E] : seq_compact E →
 
 open Valuation VectorSpace K_n EspaceNorme
 
-variable {n : ℕ} {K : Type*} [ValuationField K]
+variable {n : ℕ} {K : Type} [ValuationField K]
 
 -- Lemme 6.23.
 
