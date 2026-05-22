@@ -133,6 +133,17 @@ lemma diam_gt_0 [EspaceMetrique X] {A : Partie X} :
       sorry
   · sorry
 
+lemma diam_born_sub [EspaceMetrique X] {A : Partie X} {B : Partie X} :
+diam_bornee B → A ⊆ B → diam_bornee A := by
+  intro bornB A_B
+  rw [bornee_iff_bdd]
+  rw [bornee_iff_bdd] at bornB
+  unfold dist_bornee
+  unfold dist_bornee at bornB
+  rcases bornB with ⟨M, hM⟩
+  exact ⟨M,
+  fun x hx y hy ↦ hM x (Set.mem_of_mem_of_subset hx A_B) y (Set.mem_of_mem_of_subset hy A_B)⟩
+
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam A ≤ diam B := by
   intro bornB A_B
@@ -177,12 +188,13 @@ lemma crois_equ [EspaceMetrique X] {F : ℕ → Partie X} :
       · exact h laetitia
       · exact hr
 
-theorem thm_beurre [EspaceMetrique X] {F : ℕ → Partie X} : complet X →
-(∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F m) ⊆ (F n)) →
+theorem pre_thm_baire [EspaceMetrique X] {F : ℕ → Partie X} : complet X →
+(∀ n : ℕ, F n ≠ ∅) → (∀ n : ℕ, fermee (F n)) → (∀ n m : ℕ, m ≥ n → (F m) ⊆ (F n)) →
 converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
-  intro compl hFn lim
-  have h : ∀ n : ℕ, ∃ x : X, x ∈ F n := fun n ↦ Set.nonempty_iff_ne_empty.mpr (hFn n).1
+  intro compl F_ne F_fer F_decrois lim
+  have h : ∀ n : ℕ, ∃ x : X, x ∈ F n := fun n ↦ Set.nonempty_iff_ne_empty.mpr (F_ne n)
   choose x hx using h
+
   have x_cau : cauchy x := by
     intro e e_pos
     let ε := min e 0.5
@@ -205,8 +217,8 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
       rw [h_d1] at hN
       linarith
     trans (diam (F M))
-    · have Fn_FM : F n ⊆ F M := ((hFn M).2).2 _ (Nat.min_le_left n m)
-      have Fm_FM : F m ⊆ F M := ((hFn M).2).2 _ (Nat.min_le_right n m)
+    · have Fn_FM : F n ⊆ F M := (F_decrois M) _ (Nat.min_le_left n m)
+      have Fm_FM : F m ⊆ F M := (F_decrois M) _ (Nat.min_le_right n m)
       have hn : x n ∈ F M := Set.mem_preimage.mp (Fn_FM (hx n))
       have hm : x m ∈ F M := Set.mem_preimage.mp (Fm_FM (hx m))
       unfold diam at dfm
@@ -229,16 +241,20 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
         · contradiction
       · exact ε_e
 
-  specialize compl x x_cau
-  rcases compl with ⟨l, hl⟩
+  rcases compl x x_cau with ⟨l, hl⟩
 
   have hF : ∀ n : ℕ, ∀ m : ℕ, m ≥ n → x m ∈ F n := by
     intro n m hm
-    exact (hFn n).2.2 m hm (hx m)
+    exact (F_decrois n) m hm (hx m)
 
-  have lfn : l ∈ ⋂ n : ℕ, F n := sorry
+  have lfn : l ∈ ⋂ n : ℕ, F n := by
+    rw [mem_iInter]
+    intro n
+    have ⟨m, hm⟩ : ∃ m : ℕ, m ≥ n := exists_nat_ge n
+    have h : (x m) ∈ (F n) := mem_preimage.mp (hF n m hm)
+    sorry
 
-  have mborn : ∃ m : ℕ, ∀ n : ℕ, n ≥ m → diam_bornee (F n) := by
+  have mborn : ∃ N : ℕ, ∀ n : ℕ, n ≥ N → diam_bornee (F n) := by
     rcases lim 0.5 (by linarith) with ⟨N, hN⟩
     dsimp at hN
     use N
@@ -247,13 +263,21 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     specialize hN n hn
     change |(diam (F n)) - 0| ≤ 0.5 at hN
     linarith [abs_le.mp hN]
+
   rcases mborn with ⟨N, hN⟩
 
-  have hdiam : ∀ m : ℕ, m ≥ N → diam (⋂ n : ℕ, F n) ≤ diam (F m) := by
-    intro m hm
-    apply diam_crois
-    · exact hN m hm
-    · exact iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
+  have inter_in_F : ∀ m, ⋂ n, F n ⊆ F m := m ↦ iInter_subset_of_subset m (by rfl)
+
+  have born : diam_bornee (⋂ n : ℕ, F n) := diam_born_sub (hN N (by rfl)) (inter_in_F N)
+
+  have diam_pos : diam (⋂ n : ℕ, F n) ≥ 0 := by
+    rcases diam_nneg (⋂ n : ℕ, F n) with h | h
+    · exact h
+    · unfold diam_bornee at born
+      linarith
+
+  have hdiam : ∀ m : ℕ, m ≥ N → diam (⋂ n : ℕ, F n) ≤ diam (F m) :=
+    fun m hm ↦ diam_crois (hN m hm) (inter_in_F m)
 
   have diam_0 : ∀ ε > 0, diam (⋂ n : ℕ, F n) ≤ ε := by
     intro ε ε_pos
@@ -265,18 +289,13 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     · exact hdiam
     · linarith [abs_le.mp hM]
 
-  have diam_ge0 : diam (⋂ n : ℕ, F n) ≥ 0 := by
-    rcases diam_nneg (⋂ n : ℕ, F n) with h | h
-    · exact h
-    · specialize hN N (by rfl)
-      have tizi : (⋂ n, F n) ⊆ (F N) := by
-        exact iInter_subset_of_subset N fun ⦃a⦄ a_1 ↦ a_1
-      sorry
+  have h_le : diam (⋂ n, F n) ≤ 0 := by
+    apply le_of_forall_pos_le_add
+    intro ε hε
+    rw[zero_add]
+    exact diam_0 ε hε
 
-  have diam_0 : diam (⋂ n : ℕ, F n) = 0 := by
-    by_contra! h
-    have hyp := Std.lt_of_le_of_ne diam_ge0 (id (Ne.symm h))
-    sorry
+  have diam_0 : diam (⋂ n : ℕ, F n) = 0 := le_antisymm h_le diam_pos
 
   sorry
 
@@ -295,14 +314,6 @@ lemma h_split {n : ℕ} : Set.Icc 0 (n + 1) = insert (n + 1) (Set.Icc 0 n) := by
   rcases h with h | h
   repeat constructor; repeat linarith
 
-noncomputable def diam2 [EspaceMetrique X] (A : Partie X) :=
-  let S := {d(x, y) | (x ∈ A) (y ∈ A)}; sSup S
-
-lemma ouv_metr [EspaceMetrique X] {U : Partie X} :
-est_ouvert U ↔ ∀ x : X, x ∈ U → ∃ r > 0, boule_ouverte x r ⊆ U := sorry
-
-lemma fer_of_boule_fer [EspaceMetrique X] (a : X) (r : ℝ) : fermee (Bf a r) := sorry
-
 lemma lemme1 {U : ℕ → Partie X} : ⋂ n, U n = ⋂ n, ⋂ k ∈ Icc 0 n, U k := by
   ext x
   simp only [mem_Icc, zero_le, true_and, mem_iInter]
@@ -318,7 +329,7 @@ lemma ouv_contient_bf [EspaceMetrique X] {U : Partie X} :
 est_ouvert U → U.Nonempty → ∃ c : X, ∃ r > 0, Bf c r ⊆ U := by
   intro U_ouv U_ne
   obtain ⟨c, hc⟩ := U_ne
-  rw [ouv_metr] at U_ouv
+  unfold est_ouvert at U_ouv
   rcases U_ouv c hc with ⟨r, r_pos, h⟩
   use c, r/2
   exact ⟨half_pos r_pos, fun x hx ↦ h (by simp at *; linarith)⟩
@@ -514,7 +525,7 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
       have nh : diam (B n) ≠ -1 := ne_of_gt B_in_boule.2
       contradiction
 
-  apply thm_beurre X_compl at B_diam
+  apply pre_thm_baire X_compl at B_diam
 
   · rcases B_diam with ⟨x, hx⟩
     have h : (⋂ n, B n).Nonempty := by
@@ -527,4 +538,8 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
 
   · intro n
     rw [← Set.nonempty_iff_ne_empty]
-    exact ⟨⟨c n, c_B n⟩, fer_of_boule_fer (c n) (r n), (crois_equ.mpr bf_in_bf) n⟩
+    exact ⟨c n, c_B n⟩
+
+  · exact n ↦ fermee_of_boule_f (c n) (r n)
+
+  · exact crois_equ.mpr (n ↦ bf_in_bf n)
