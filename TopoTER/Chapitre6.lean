@@ -128,6 +128,8 @@ open Metrique
 
 variable {E F : Type*} [M₁ : EspaceMetrique E] [M₂ : EspaceMetrique F]
 
+-- Proposition 6.7.
+
 theorem bornee_of_compact [Cmp : EspCompact.{_, u_4} E] : bornee E := by
   let C : Famille E E := ⟨x ↦ Bₒ x 1⟩
   have C_ouvert : ∀ A ∈ C, est_ouvert A := by
@@ -160,6 +162,37 @@ theorem bornee_of_compact [Cmp : EspCompact.{_, u_4} E] : bornee E := by
   have ineq₃ := hM d_ij_in
   rw [←hi] at x_in; dsimp at x_in; rw [←hj] at y_in
   dsimp at y_in; rw [M₁.is_dist.symm] at y_in; linarith
+
+-- Définition 6.8.
+
+def precompact (E : Type*) [EspaceMetrique E] := ∀ ε > 0, ∃ ι : Type*,
+  ∃ u : ι → E, Finite ι ∧ couvrement ⟨i ↦ Bₒ (u i) ε⟩ Ω
+
+def lebesgue_n (F : Famille ι E) (r : ℝ) := ∀ x, ∃ i, Bₒ x r ⊆ F.u i
+
+def seq_compact (E : Type*) [EspaceMetrique E] := ∀ u : ℕ → E, ∃ φ,
+  extraction φ ∧ converges (u ∘ φ)
+
+-- Théorème 6.9.
+
+noncomputable def construction_not_precomp {E : Type*} [EspaceMetrique E]
+  [ne : Nonempty E] (h : ¬precompact E) : ℕ → E
+  | 0 => have mem : ∃ x : E, True := by simp
+         Exists.choose mem
+  | Nat.succ k =>
+      let ι := {construction_not_precomp h (k - n) | n};
+      let A := Ω \ ι;
+      have A_ne : ∃ x, x ∈ A := by
+        by_contra h; sorry
+      sorry
+
+theorem comp_iff_of_met₂ (E : Type*) [EspaceMetrique E] : seq_compact E →
+  precompact E ∧ ∀ ι, ∀ F : Famille ι E, (∀ A ∈ F, est_ouvert A) →
+  couvrement F Ω → ∃ r > 0, lebesgue_n F r := by
+  intro seq_comp; apply And.intro
+  · intro ε ε_pos; by_contra absurd; push_neg at absurd
+    sorry
+  · sorry
 
 -- 6.4. Compacts d'un e.v.n. de dimension finie
 

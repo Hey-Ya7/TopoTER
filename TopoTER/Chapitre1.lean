@@ -1060,6 +1060,14 @@ theorem lim_iff_lim_vois (u : ℕ → X) (l : X) : converges_to u l ↔
 
 -- a)
 
+lemma inv_of_le_forall : let u : ℕ → ℝ := n ↦ 1 / (n + 1); ∀ ε > 0, ∃ N,
+  ∀ n ≥ N, u n ≤ ε := by
+  intro u ε ε_pos
+  have arch := Real.instArchimedean.arch 1 ε_pos
+  rcases arch with ⟨N, hN⟩; use N; intro n hn
+  unfold u; field_simp; apply le_trans hN; rw [nsmul_eq_mul]
+  apply mul_le_mul_of_nonneg_right _ (by linarith); sorry
+
 theorem conv_of_inv : let u : ℕ → ℝ := n ↦ 1 / (n + 1); converges_to u 0 := by
   intro u ε ε_pos
   have arch := Real.instArchimedean.arch 1 ε_pos
