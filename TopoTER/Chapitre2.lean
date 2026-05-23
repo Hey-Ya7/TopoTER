@@ -8,12 +8,12 @@ open TER
 
 open Set
 
-class EspTop (X : Type*) where
+class EspTop (X : Type) where
   est_ouvert : Set X → Prop
   univ_ouvert : est_ouvert Ω
   empty_ouvert : est_ouvert ∅
 --
-  union_ouvert {ι : Type u_1} {F : Famille ι X} (hu : ∀ A ∈ F, est_ouvert A) :
+  union_ouvert {F : Famille X} (hu : ∀ A ∈ F, est_ouvert A) :
     est_ouvert (⋃ᵢ F)
 --
   inter_ouvert {u v : Set X} (hu : est_ouvert u) (hv : est_ouvert v) :
@@ -21,7 +21,7 @@ class EspTop (X : Type*) where
 
 attribute [simp] EspTop.univ_ouvert EspTop.empty_ouvert
 
-variable {X Y : Type*} [EspTop X] [EspTop Y]
+variable {X Y : Type} [EspTop X] [EspTop Y]
 
 namespace EspTop
 
@@ -43,14 +43,14 @@ def topo_engendree (S : Set (Set X)) : EspTop X where
 
 lemma iunion_ouvert {ι : Type u_1} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
-  let F : Famille ι X := ⟨u⟩
+  let F : Famille X := ⟨ι, u⟩
   have eq : ⋃ᵢ F = ⋃ i, u i := by rfl
   have hu : ∀ A ∈ F, est_ouvert A := by
     intro A hA; rcases hA with ⟨i, hi⟩
     rw [←hi]; exact h i
-  rw [←eq]; exact union_ouvert (ι := ι) hu
+  rw [←eq]; exact union_ouvert hu
 
-lemma bunion_ouvert {ι : Type u_1} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I,
+lemma bunion_ouvert {ι : Type} {u : ι → Set X} {I : Set ι} (h : ∀ i ∈ I,
   est_ouvert (u i)) : est_ouvert (⋃ i ∈ I, u i) := by
   apply iunion_ouvert; intro i
   by_cases hi : i ∈ I
@@ -73,7 +73,7 @@ lemma union_est_ouvert (u v : Set X) (hu : est_ouvert u) (hv : est_ouvert v) :
   rw [←union_F]; apply bunion_ouvert; intro s hs
   cases hs; repeat simp_all
 
-lemma inter_fini_ouvert {ι : Type*} {u : ι → Set X} {I : Set ι} [hI : Finite I]
+lemma inter_fini_ouvert {ι : Type} {u : ι → Set X} {I : Set ι} [hI : Finite I]
   (h : ∀ i ∈ I, est_ouvert (u i)) : est_ouvert (⋂ i ∈ I, u i) := by
   induction I, hI using Set.Finite.induction_on with
   | empty => simp
@@ -84,7 +84,7 @@ lemma inter_fini_ouvert {ι : Type*} {u : ι → Set X} {I : Set ι} [hI : Finit
       · apply H; intro i hi; apply h
         exact mem_insert_of_mem x hi
 
-lemma inter_fini_ouvert' {ι : Type*} {u : ι → Set X} [Finite ι] (h : ∀ i,
+lemma inter_fini_ouvert' {ι : Type} {u : ι → Set X} [Finite ι] (h : ∀ i,
   est_ouvert (u i)) : est_ouvert (⋂ i, u i) := by
   have eq : ⋂ i ∈ Ω, u i = ⋂ i, u i := by simp
   rw [←eq]; apply inter_fini_ouvert (I := Ω); intro i hi; exact h i
@@ -103,8 +103,8 @@ lemma est_ouvert_iff_compl_est_ferme {s : Set X} : est_ouvert s ↔ est_ferme s�
   exact univ_ouvert
 
 open Famille in
-lemma inter_ferme {ι : Type u_1} {F : Famille ι X} (hu : ∀ A ∈ F, est_ferme A) :
-  est_ferme (⋂ᵢ F) := by
+lemma inter_ferme {F : Famille X} (hu : ∀ A ∈ F, est_ferme A) : est_ferme (⋂ᵢ F)
+  := by
   rw [est_ferme, inter_famille_compl]
   apply union_ouvert; intro A hA; rw [in_compl_famille] at hA
   rw [est_ouvert_iff_compl_est_ferme]; apply hu Aᶜ hA
@@ -114,7 +114,7 @@ lemma union_ferme {u v : Set X} (hu : est_ferme u) (hv : est_ferme v) :
   rw [est_ferme, compl_union]
   apply inter_ouvert; repeat assumption
 
-lemma inter_est_ferme {ι : Type u_1} {u : ι → Set X} (hu : ∀ i, est_ferme (u i)) :
+lemma inter_est_ferme {ι : Type} {u : ι → Set X} (hu : ∀ i, est_ferme (u i)) :
   est_ferme (⋂ i, u i) := by
   rw [est_ferme, compl_iInter]
   exact iunion_ouvert hu
@@ -134,22 +134,21 @@ lemma union_fini_ferme' {ι : Type} {u : ι → Set X} [Finite ι]
 -- a)
 
 open Metrique
-instance {X : Type*} [EspaceMetrique X] : EspTop X where
-  est_ouvert := A ↦ ouverte A
+instance {X : Type} [EspaceMetrique X] : EspTop X where
+  est_ouvert := ouverte
   univ_ouvert := ouverte_of_uni
   empty_ouvert := ouverte_of_vide
-
   union_ouvert := ouverte_of_union
   inter_ouvert := ouverte_of_inter
 
 -- 2.2. Intérieur, adhérence, voisinage
 
-structure est_vois_ouv_dans {X : Type*} [EspTop X] (x : X) (s ouv : Set X) where
+structure est_vois_ouv_dans {X : Type} [EspTop X] (x : X) (s ouv : Set X) where
   x_dans : x ∈ ouv
   ouv_ouvert : est_ouvert ouv
   ouv_contenu : ouv ⊆ s
 
-def est_vois {X : Type*} [EspTop X] (x : X) (s : Set X) :=
+def est_vois {X : Type} [EspTop X] (x : X) (s : Set X) :=
   ∃ u, est_vois_ouv_dans x s u
 
 lemma ouvert_ssi_vois (s : Set X) : est_ouvert s ↔ ∀ x ∈ s, est_vois x s := by
@@ -170,26 +169,38 @@ lemma ouvert_ssi_vois (s : Set X) : est_ouvert s ↔ ∀ x ∈ s, est_vois x s :
 
 lemma ouv_est_vois {x : X} {u : Set X} : est_ouvert u → x ∈ u → est_vois x u := by
   intro u_ouv x_u
-  use u
-  exact ⟨x_u, u_ouv, by simp⟩
+  use u; exact ⟨x_u, u_ouv, by simp⟩
+
+lemma univ_est_vois (x : X) : est_vois x Ω := by
+  exact ouv_est_vois (univ_ouvert) (mem_univ x)
 
 @[simp] def adh (s : Set X) := {x | ∀ u, est_vois x u → (u ∩ s).Nonempty}
 
 lemma contenu_adh (s : Set X) : s ⊆ adh s := by
-  intro x hx U hxU
-  use x
+  intro x hx U hxU; use x
   constructor
   · rcases hxU with ⟨V, hV⟩
     apply hV.ouv_contenu
     exact hV.x_dans
-  exact hx
+  · exact hx
+
+lemma adh_vide (s : Set X) : adh s = ∅ ↔ s = ∅ := by
+  apply Iff.intro
+  · case mp => intro h; rw [←subset_empty_iff, ←h]
+               exact contenu_adh s
+  · case mpr => intro h; rw [eq_empty_iff_forall_notMem]
+                intro x in_adh
+                specialize in_adh Ω (univ_est_vois x)
+                rw [h, inter_empty] at in_adh
+                exact not_nonempty_empty in_adh
 
 lemma adh_eq_inter (s : Set X) : adh s = ⋂₀ {F : Set X | est_ferme F ∧ s ⊆ F} := by
   apply Subset.antisymm_iff.mpr
   constructor
   · intro x hasx F hF
     simp only [mem_setOf_eq, est_ferme] at hF; rcases hF with ⟨hF1, hF2⟩;
-    by_contra hxnh; rw[← mem_compl_iff] at hxnh; rw[ouvert_ssi_vois] at hF1; specialize hF1 x hxnh;
+    by_contra hxnh; rw[← mem_compl_iff] at hxnh; rw[ouvert_ssi_vois] at hF1
+    specialize hF1 x hxnh;
     specialize hasx (Fᶜ) hF1
     have subs_nempty : (Fᶜ ∩ s) ⊆ Fᶜ ∩ F := inter_subset_inter_right (Fᶜ) hF2
     have hne : (Fᶜ ∩ F).Nonempty := Nonempty.mono subs_nempty hasx
@@ -200,32 +211,53 @@ lemma adh_eq_inter (s : Set X) : adh s = ⋂₀ {F : Set X | est_ferme F ∧ s �
   apply Nonempty.mono HVUS
   by_contra! h;
   have hVc : est_ferme Vᶜ := est_ouvert_iff_compl_est_ferme.mp h2
-  rw[← Set.subset_empty_iff, ← Set.disjoint_iff, ← subset_compl_iff_disjoint_left] at h
+  rw[← subset_empty_iff, ← Set.disjoint_iff, ← subset_compl_iff_disjoint_left] at h
   have : x ∈ Vᶜ := by
     apply hx
     exact mem_sep hVc h
   exact this h1
 
-lemma adh_ferme (s : Set X) : est_ferme (adh s) := by
+lemma adh_ferme {s : Set X} : est_ferme (adh s) := by
   rw [adh_eq_inter, sInter_eq_iInter]
   apply inter_est_ferme
   intro F
   exact F.property.1
 
+<<<<<<< HEAD
+lemma adh_contenu_of_contenu_ferme (s t : Set X) (h : s ⊆ t) (hf : est_ferme t) :
+  adh s ⊆ t := by
+  rw [adh_eq_inter]; exact sInter_subset_of_mem ⟨hf, h⟩
+
+lemma adh_contenu_adh (s t : Set X) (h : s ⊆ t) : adh s ⊆ adh t := by
+  apply adh_contenu_of_contenu_ferme
+  · exact subset_trans h (contenu_adh t)
+  · exact adh_ferme t
+=======
+lemma ferme_iff_adh {A : Set X} : est_ferme A ↔ (adh A) = A := by
+  constructor
+  · intro hA
+    rw [adh_eq_inter]
+    exact Subset.antisymm (sInter_subset_of_mem ⟨hA, (by rfl)⟩)
+                          (fun x hx ↦ mem_sInter.mp (fun F hF ↦ hF.2 hx))
+  · intro hA
+    rw [←hA]
+    exact adh_ferme
+>>>>>>> 269c16848b9963ab2234d36fdfa30aecd284cc5e
+
 ----------------------------------------------------------------------------------------------
 @[simp]
 def int (s : Set X) := {x | est_vois x s}
 
-lemma ouvert_iff_int (U : Set X) : est_ouvert U ↔ (int U) = U := by
+lemma ouvert_iff_int {A : Set X} : est_ouvert A ↔ (int A) = A := by
   constructor
-  · intro hU
+  · intro hA
     unfold int
     ext x
     constructor
     · intro hx
       rcases hx with ⟨_,⟨h1, _, h2⟩⟩
       exact mem_of_subset_of_mem h2 h1
-    · exact fun hx ↦ ⟨U, hx, hU, by simp⟩
+    · exact fun hx ↦ ⟨A, hx, hA, by simp⟩
   rw [ouvert_ssi_vois]
   intro h x hx
   rw [<-h] at hx
@@ -264,7 +296,7 @@ lemma front_carac (U : Set X) : front U = (adh U) ∩ (adh (Uᶜ)) := by
       choose y hy using hx2
       exact hy
 
-structure base_de_vois {X : Type*} [EspTop X] (x : X) {ι : Type} (V : ι → Set X) where
+structure base_de_vois {X : Type} [EspTop X] (x : X) {ι : Type} (V : ι → Set X) where
   V_vois : ∀(i : ι), est_vois x (V i)
   V_base : ∀(W : Set X), est_vois x W → ∃(i : ι), (V i) ⊆ W
 
@@ -290,15 +322,24 @@ lemma conv_equ_ouv (u : ℕ -> X) (l : X) : converge_vers u l ↔
 
 def converge (u : ℕ → X) := ∃ l : X, converge_vers u l
 
+lemma conv_vers_iff_conv_to {X : Type} [EspaceMetrique X] (u : ℕ → X) (l : X) :
+  converge_vers u l ↔ converges_to u l := by
+  rw [lim_iff_lim_vois, conv_equ_ouv]; apply Iff.intro
+  · case mp => intro h U U_ouv l_in; apply h
+               apply And.intro _ U_ouv
+               apply ouv_est_vois U_ouv; exact l_in
+  · case mpr => intro h V ⟨⟨u, hu⟩, V_ouv⟩; apply h V V_ouv
+                exact hu.ouv_contenu hu.x_dans
+
 --lemma ferme_suite (F : Set X) : est_ferme F ↔ (∀ u : ℕ → F, ∃ l : F, converge_vers u l)
 
-class EspSepareT2 (X : Type*) [EspTop X] where
+class EspSepareT2 (X : Type) [EspTop X] where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),
     (est_ouvert U) ∧ (est_ouvert V) ∧ (x ∈ U) ∧ (y ∈ V) ∧ (U ∩ V = ∅)
 
-variable {Z : Type*} [EspTop Z] [S : EspSepareT2 Z]
+variable {Z : Type} [EspTop Z] [S : EspSepareT2 Z]
 
-instance {X : Type*} [M : EspaceMetrique X] : EspSepareT2 X where
+instance {X : Type} [M : EspaceMetrique X] : EspSepareT2 X where
   est_separe := by
     intro x y h; let d := d(x, y) / 2
     have d_pos : d > 0 := by
@@ -339,7 +380,7 @@ lemma unicite_lim (u : ℕ → Z) (l l' : Z) :
       have H : U ∩ V ≠ ∅ := ne_of_mem_of_not_mem' hk fun a ↦ a
       contradiction
 
-def dense (X : Type*) [EspTop X] (A : Set X) : Prop := adh A = univ
+def dense (X : Type) [EspTop X] (A : Set X) : Prop := adh A = univ
 
 lemma dense_iff_inter_ouvert_nonempty (s : Set X) :
 dense X s ↔ ∀ V, est_ouvert V → V.Nonempty → (V ∩ s).Nonempty := by
@@ -360,14 +401,13 @@ dense X s ↔ ∀ V, est_ouvert V → V.Nonempty → (V ∩ s).Nonempty := by
       specialize h v v_ouv v_ne
       exact Nonempty.mono (inter_subset_inter_left s v_in_u) h
 
-variable {E : Type*} [EspTop E]
+variable {E : Type} [EspTop E]
 
 def val_adh (u : ℕ → E) (x : E) : Prop :=
  ∀(V : Set E), est_vois x V → ∀ N : ℕ, ∃ n : ℕ, n ≥ N ∧ (u n) ∈ V
 
-lemma val_adh_inter (u : ℕ → E) :
-let X := fun (k : ℕ) ↦ {x : E | ∃ n ≥ k, u n = x}
-{x : E | val_adh u x} = ⋂ n : ℕ, adh (X n) := by
+lemma val_adh_inter (u : ℕ → E) : let X := k ↦ {x : E | ∃ n ≥ k, u n = x}
+  {x : E | val_adh u x} = ⋂ n : ℕ, adh (X n) := by
   intro X
   ext x
   constructor
@@ -404,7 +444,7 @@ let X := fun (k : ℕ) ↦ {x : E | ∃ n ≥ k, u n = x}
     · exact hnm
     exact mem_of_eq_of_mem huny hyVn
 
-noncomputable def construction_extract_phi {X : Type*} [EspaceMetrique X]
+noncomputable def construction_extract_phi {X : Type} [EspaceMetrique X]
   (u : ℕ → X) (x : X) (h : val_adh u x) : ℕ → ℕ
   | 0 => 0
   | Nat.succ k =>
@@ -427,45 +467,37 @@ noncomputable def construction_extract_phi {X : Type*} [EspaceMetrique X]
         rwa [Nat.lt_iff_add_one_le]
       let dec := Classical.decPred (· ∈ A); Nat.find A_ne
 
-theorem val_adh_iff_extraite_conv {X : Type*} [EspaceMetrique X] (u : ℕ → X) (x : X) :
+theorem val_adh_iff_extraite_conv {X : Type} [EspaceMetrique X] (u : ℕ → X) (x : X) :
   val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by
  constructor
  · intro hvadhx
-   let φ := construction_extract_phi u x hvadhx
-   use φ; unfold φ; constructor
-   · rw [extract_equiv]
-     intro n; let prev := construction_extract_phi u x hvadhx n
-     refold_let prev; unfold construction_extract_phi
-     let p := m ↦ m > prev ∧ u m ∈ Bₒ x (1/(n + 1))
-     let dec := Classical.decPred p; apply And.left
-     apply Nat.find_spec (p := p)
-   · unfold converge_vers
-     have inegφ : ∀ n : ℕ, d((u ∘ φ) (n + 1), x) < 1/(n+1):= by
-      intro n; change u (φ (n + 1)) ∈ Bₒ x (1/(n + 1))
-      let prev := construction_extract_phi u x hvadhx n
-      let p := m ↦ m > prev ∧ u m ∈ Bₒ x (1/(n + 1))
-      let dec := Classical.decPred p; apply And.right
-      apply Nat.find_spec (p := p)
-     intro V hV
+   have est_vois_B (k : ℕ) : est_vois x (Bₒ x (1/(k+1))) := by
+    apply ouv_est_vois
+    · exact ouv_of_boule_ouv x (1/(k+1))
+    · exact centre_in_boule x (by field_simp; linarith)
+--
+   let P (k m : ℕ) := u m ∈ Bₒ x (1/(k+1))
+   let Q (k m n : ℕ) := n > m
+   have h₀ : ∃ n, P 0 n := by
+    rcases hvadhx _ (est_vois_B 0) 0 with ⟨m, _, hm⟩
+    use m, (by unfold P; simp_all)
+   have ih (k m : ℕ) (h : P k m) : ∃ n, P (k+1) n ∧ Q k m n := by
+    rcases hvadhx _ (est_vois_B (k+1)) (m+1) with ⟨n, n_ge, hn⟩
+    use n, (by unfold P; simp_all), n_ge
+   rcases exists_by_induction' P Q h₀ ih with ⟨φ, hφ⟩
+--
+   use φ; apply And.intro
+   · rw [extract_equiv]; intro n; exact (hφ n).right
+   · intro V hV
      rcases hV with ⟨Vo, ⟨hxVo, houv, hVoV⟩⟩
      specialize houv x hxVo
      rcases houv with ⟨r, ⟨hr_pos, hB⟩⟩
-     have inegB : ∃ N : ℕ, ∀ n ≥ N, d((1/(n+1) : ℝ), 0) ≤ r := by apply conv_of_inv r hr_pos
-     rcases inegB with ⟨m , hm⟩
-     use m + 1
-     intro n hnm
-     have n_pos : n > 0 := by linarith
-     have le_n_pred : m ≤ n.pred := by
-      apply Nat.le_pred_of_lt; exact Nat.lt_of_succ_le hnm
-     rw[<-Nat.succ_pred_eq_of_pos n_pos, Nat.succ_eq_add_one]
-     refold_let φ
-     specialize inegφ n.pred
-     specialize hm n.pred le_n_pred
-     suffices h : u (φ (n.pred + 1)) ∈ Bₒ x r by
-      exact hVoV (hB h)
-     apply lt_of_lt_of_le inegφ
-     dsimp [instEspaceMetriqueReal] at hm
-     rwa [sub_zero, abs_of_pos] at hm; field_simp; linarith
+     have inegφ (n : ℕ) := (hφ n).left
+     have inegB := inv_of_le_forall r hr_pos
+     rcases inegB with ⟨m, hm⟩
+     use m; intro n n_ge; specialize inegφ n
+     specialize hm n n_ge; apply hVoV; apply hB
+     dsimp; apply lt_of_lt_of_le inegφ hm
 --
  · intro hφ
    rcases hφ with ⟨φ, ⟨hexφ, hconv⟩⟩
@@ -484,8 +516,7 @@ theorem val_adh_iff_extraite_conv {X : Type*} [EspaceMetrique X] (u : ℕ → X)
    · apply hN (max N l) (Nat.le_max_left N l)
    · dsimp at huφ; exact huφ
 
-
-lemma in_inv_vois (k : ℕ) {X : Type*} [EspaceMetrique X] (A : Partie X) (x : X)
+lemma in_inv_vois (k : ℕ) {X : Type} [EspaceMetrique X] (A : Partie X) (x : X)
   (h : x ∈ adh A) : ∃ a ∈ A, a ∈ Bₒ x (1/(k+1)) := by
   have est_vois_B : est_vois x (Bₒ x (1/(k+1))) := by
     apply ouv_est_vois
@@ -495,16 +526,15 @@ lemma in_inv_vois (k : ℕ) {X : Type*} [EspaceMetrique X] (A : Partie X) (x : X
   rw [nonempty_def] at h
   rcases h with ⟨x1, hx1⟩; use x1; rwa [And.comm]
 
-noncomputable def construction_adh {X : Type*} [EspaceMetrique X]
+noncomputable def construction_adh {X : Type} [EspaceMetrique X]
   (A : Partie X) (x : X) (h : x ∈ adh A) : ℕ → X
   | k => Exists.choose (in_inv_vois k A x h)
 
-theorem in_adh_suite {X : Type*} [EspaceMetrique X] (A : Partie X) (x : X) : x ∈ adh A ↔
+theorem in_adh_suite {X : Type} [EspaceMetrique X] (A : Partie X) (x : X) : x ∈ adh A ↔
   ∃(u : ℕ → X), (∀n, u n ∈ A) ∧ (converge_vers u x) := by
   constructor
   · intro hxadh
-    let u := construction_adh A x hxadh
-    use u
+    let u := construction_adh A x hxadh; use u
     constructor
     · intro n; let spec := in_inv_vois n A x hxadh
       apply And.left; apply Exists.choose_spec spec
@@ -517,16 +547,12 @@ theorem in_adh_suite {X : Type*} [EspaceMetrique X] (A : Partie X) (x : X) : x �
       rcases hV with ⟨Vo, ⟨hxVo, houv, hVoV⟩⟩
       specialize houv x hxVo
       rcases houv with ⟨r, ⟨hr_pos, hB⟩⟩
-      have inegB : ∃ N : ℕ, ∀ n ≥ N, d((1/(n+1) : ℝ), 0) ≤ r := by apply conv_of_inv r hr_pos
-      rcases inegB with ⟨m , hm⟩
-      use m
-      intro n hnm
-      specialize inegφ n
-      specialize hm n hnm
-      suffices h : u n ∈ Bₒ x r by exact hVoV (hB h)
-      apply lt_of_lt_of_le inegφ
-      dsimp [instEspaceMetriqueReal] at hm
-      rwa [sub_zero, abs_of_pos] at hm; field_simp; linarith
+      have inegB := inv_of_le_forall r hr_pos
+      rcases inegB with ⟨m, hm⟩
+      use m; intro n hnm; specialize inegφ n
+      specialize hm n hnm; apply hVoV; apply hB
+      apply lt_of_lt_of_le inegφ hm
+--
   · intro h V hV
     rcases h with ⟨u, ⟨hu_in_a, hconv_u_x⟩⟩
     unfold converge_vers at hconv_u_x

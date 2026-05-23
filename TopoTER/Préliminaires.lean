@@ -59,6 +59,69 @@ lemma Z_eq_of_sub_lt_one (x y : Z) (h : |(x : ℝ) - y| < 1) : x = y := by
   · rw [abs_sub_comm, ←Int.cast_sub] at h; apply lt_of_abs_lt at h
     rw [Int.cast_lt] at h; linarith
 
+theorem eq_forall_iff_eq_add_one (P : ℕ → ℕ → Prop) (h : ∀ k, ∀ m < k, P m k →
+  P k (k + 1) → P m (k + 1)) : (∀ n, ∀ m < n, P m n) ↔ ∀ n, P n (n + 1) := by
+  apply Iff.intro
+  · intro hyp n; apply hyp (n + 1) n; linarith
+  · intro hyp n m hmn; induction n
+    · case zero => linarith
+    · case succ k hk =>
+        by_cases h1 : m+1 = k+1
+        · rw [←h1]; exact hyp m
+        · have m_lt : m < k := by
+            rw [Nat.add_right_cancel_iff] at h1
+            apply lt_of_le_of_ne _ h1; linarith
+          apply h k m m_lt (hk m_lt) (hyp k)
+
+theorem exists_by_induction {α : Type} (P : ℕ → α → Prop) (h₀ : ∃ a, P 0 a)
+  (ih : ∀ n a, P n a → ∃ a', P (n + 1) a') : ∃ f : ℕ → α, ∀ n, P n (f n) := by
+  choose f₀ hf₀ using h₀; choose! F hF using ih
+  exact ⟨n ↦ Nat.recOn n f₀ F, n ↦ Nat.rec hf₀ ((n ih) ↦ hF n _ ih) n⟩
+
+theorem exists_by_induction' {α : Type} (P : ℕ → α → Prop) (Q : ℕ → α → α → Prop)
+    (h₀ : ∃ a, P 0 a) (ih : ∀ n a, P n a → ∃ a', P (n + 1) a' ∧ Q n a a') :
+    ∃ f : ℕ → α, ∀ n, P n (f n) ∧ Q n (f n) (f <| n + 1) := by
+  choose f₀ hf₀ using h₀
+  choose! F hF hF' using ih
+  have key : ∀ n, P n (Nat.recOn n f₀ F) := n ↦ Nat.rec hf₀ ((n ih) ↦ hF n _ ih) n
+  exact ⟨n ↦ Nat.recOn n f₀ F, n ↦ ⟨key n, hF' n _ (key n)⟩⟩
+
+theorem exists_by_piecewise {α : Type} (P : α → α → Prop) (h₀ : Nonempty α)
+  (ih : ∀ n, ∀ u : Fin n → α, ∃ a', ∀ i, P (u i) a') : ∃ f : ℕ → α, ∀ n, ∀ i < n,
+  P (f i) (f n) := by
+  let n_equiv (n : ℕ) (u v : ℕ → α) := ∀ i < n, u i = v i
+  let Q (n : ℕ) (u : ℕ → α) := ∀ i < n, P (u i) (u n)
+  have f₀ : ℕ → α := n ↦ Nonempty.some h₀
+  have ihQ : ∀ n, ∀ u : ℕ → α, ∃ u', n_equiv (n+1) u u' ∧ Q (n+1) u' := by
+    intro n u; let fu : Fin (n + 1) → α := i ↦ u i
+    specialize ih (n + 1) fu; rcases ih with ⟨a', ha'⟩
+    let u' : ℕ → α := i ↦ if i < n + 1 then u i else a'
+    use u'; apply And.intro;
+    · intro i hi; unfold u'; rw [if_pos]; linarith
+    · intro i hi; unfold u'; rw [if_pos hi]
+      have eq_fin : u i = fu ⟨i, hi⟩ := by rfl
+      rw [eq_fin, if_neg (by linarith)]; apply ha'
+--
+  choose! F hF using ihQ
+  let f' (n : ℕ) : ℕ → α := Nat.recOn n f₀ F
+  have f'_equiv : ∀ n, ∀ i < n, n_equiv (i+1) (f' i) (f' n) := by
+    intro n i hi
+    let P' := k ↦ m ↦ k ≥ i → n_equiv (i+1) (f' k) (f' m)
+    suffices h : ∀ m, ∀ k < m, P' k m by exact h n i hi (refl i)
+    rw [eq_forall_iff_eq_add_one P']
+    · intro m hm k hk; specialize hF m (f' m)
+      have k_lt : k < m + 1 := by linarith
+      exact hF.left k k_lt
+    · unfold P'; intro a b a_lt h₁ h₂ hb k hk
+      rw [h₁ hb k hk]; apply h₂ _ k hk; linarith
+--
+  let f : ℕ → α := n ↦ (f' n) n; use f; intro n i hi
+  unfold f; rw [f'_equiv n i hi i (by linarith)]
+  suffices h : Q n (f' n) by exact h i hi
+  cases n
+  · case zero => linarith
+  · case succ k => apply And.right; apply hF
+
 @[simp] def Interval₁ (a b : ℝ) : Set ℝ := {x | a < x ∧ x < b}
 @[simp] def Interval₂ (a b : ℝ) : Set ℝ := {x | a ≤ x ∧ x ≤ b}
 @[simp] def Interval₃ (a b : ℝ) : Set ℝ := {x | a < x ∧ x ≤ b}
@@ -79,40 +142,42 @@ notation "[" a "≤__<" "+∞]" => Interval₆ a
 notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
 
-structure Famille (ι X : Type*) where
+structure Famille (X : Type) where
+  ι : Type
   u : ι → Partie X
 
 namespace Famille
 
-variable {ι X : Type*}
+variable {X : Type}
 
-def SousFamille (F : Famille ι X) (J : Set ι) : Famille J X where
+abbrev SousFamille (F : Famille X) (J : Set F.ι) : Famille X where
+  ι := J
   u := j ↦ F.u j
 
-def iUnion (F : Famille ι X) : Partie X := ⋃ i, F.u i
-def iInter (F : Famille ι X) : Partie X := ⋂ i, F.u i
-def Compl (F : Famille ι X) : Famille ι X := ⟨i ↦ (F.u i)ᶜ⟩
+def iUnion (F : Famille X) : Partie X := ⋃ i, F.u i
+def iInter (F : Famille X) : Partie X := ⋂ i, F.u i
+def Compl (F : Famille X) : Famille X := ⟨F.ι, i ↦ (F.u i)ᶜ⟩
 
 notation "⋃ᵢ " F : (max-10) => iUnion F
 notation "⋂ᵢ " F : (max-10) => iInter F
 notation : max F "`ᶜ" => Compl F
 
-instance : Membership (Partie X) (Famille ι X) where
+instance : Membership (Partie X) (Famille X) where
   mem := F ↦ A ↦ A ∈ Set.range (i ↦ F.u i)
 
-lemma compl_compl_famille (F : Famille ι X) : (F`ᶜ)`ᶜ = F := by simp [Compl]
+lemma compl_compl_famille (F : Famille X) : (F`ᶜ)`ᶜ = F := by simp [Compl]
 
-lemma compl_of_sous_famille (F : Famille ι X) (J : Set ι) :
+lemma compl_of_sous_famille (F : Famille X) (J : Set F.ι) :
   (SousFamille F J)`ᶜ = SousFamille F`ᶜ J := by simp [SousFamille, Compl]
 
-lemma in_compl_famille (F : Famille ι X) (A : Partie X) : A ∈ F`ᶜ ↔ Aᶜ ∈ F := by
+lemma in_compl_famille (F : Famille X) (A : Partie X) : A ∈ F`ᶜ ↔ Aᶜ ∈ F := by
   apply Iff.intro
   · case mp => intro h; rcases h with ⟨i, hi⟩; dsimp [Compl] at hi
                rw [←hi, compl_compl]; use i
   · case mpr => intro h; rcases h with ⟨i, hi⟩; use i; dsimp [Compl]
                 dsimp [Compl] at hi; rw [hi, compl_compl]
 
-lemma mem_union_famille (F : Famille ι X) (x : X) : x ∈ ⋃ᵢ F ↔ ∃ A, A ∈ F ∧
+lemma mem_union_famille (F : Famille X) (x : X) : x ∈ ⋃ᵢ F ↔ ∃ A, A ∈ F ∧
   x ∈ A := by
   apply Iff.intro
   · case mp => intro h; rcases h with ⟨A, hA, x_in⟩
@@ -120,27 +185,27 @@ lemma mem_union_famille (F : Famille ι X) (x : X) : x ∈ ⋃ᵢ F ↔ ∃ A, A
   · case mpr => intro h; rcases h with ⟨A, hA, x_in⟩
                 use A, hA, x_in
 
-lemma mem_inter_famille (F : Famille ι X) (x : X) : x ∈ ⋂ᵢ F ↔ ∀ A ∈ F,
+lemma mem_inter_famille (F : Famille X) (x : X) : x ∈ ⋂ᵢ F ↔ ∀ A ∈ F,
   x ∈ A := by
   unfold iInter; rw [Set.mem_iInter]; apply Iff.intro
   · case mp => intro h A hA; rcases hA with ⟨i, hi⟩
                rw [←hi]; exact h i
   · case mpr => intro h i; apply h; use i
 
-lemma subset_union_famille {F : Famille ι X} {A B : Partie X} (h₁ : A ⊆ B)
+lemma subset_union_famille {F : Famille X} {A B : Partie X} (h₁ : A ⊆ B)
   (h₂ : B ∈ F) : A ⊆ ⋃ᵢ F := by
   unfold iUnion; rcases h₂ with ⟨i, hi⟩; dsimp at hi
   apply Set.subset_iUnion_of_subset i; rwa [hi]
 
-lemma subset_inter_famille {F : Famille ι X} {A : Partie X} (h : ∀ B ∈ F,
+lemma subset_inter_famille {F : Famille X} {A : Partie X} (h : ∀ B ∈ F,
   A ⊆ B) : A ⊆ ⋂ᵢ F := by
   unfold iInter; apply Set.subset_iInter
   intro i; apply h; use i
 
-lemma union_famille_compl (F : Famille ι X) : (⋃ᵢ F)ᶜ = ⋂ᵢ F`ᶜ := by
+lemma union_famille_compl (F : Famille X) : (⋃ᵢ F)ᶜ = ⋂ᵢ F`ᶜ := by
   simp [iUnion, iInter, Compl]
 
-lemma inter_famille_compl (F : Famille ι X) : (⋂ᵢ F)ᶜ = ⋃ᵢ F`ᶜ := by
+lemma inter_famille_compl (F : Famille X) : (⋂ᵢ F)ᶜ = ⋃ᵢ F`ᶜ := by
   simp [iUnion, iInter, Compl]
 
 end Famille

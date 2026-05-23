@@ -2,13 +2,13 @@ import TopoTER.Chapitre2
 
 open TER Set EspTop Metrique
 
-variable {X Y Z : Type*} [EspTop X] [EspTop Y] [EspTop Z] [EspSepareT2 Y]
-variable {E F : Type*} [M : EspaceMetrique E] [EspaceMetrique F]
+variable {X Y Z : Type} [EspTop X] [EspTop Y] [EspTop Z] [EspSepareT2 Y]
+variable {E F : Type} [M : EspaceMetrique E] [EspaceMetrique F]
 
-def est_continu_point {X Y : Type*} [EspTop X] [EspTop Y] (f : X → Y) (x : X) : Prop :=
+def est_continu_point {X Y : Type} [EspTop X] [EspTop Y] (f : X → Y) (x : X) : Prop :=
   ∀(V : Set Y), (est_vois (f x) V) → ∃(U : Set X), (est_vois x U) ∧  (f '' U ⊆ V)
 
-def est_continu {X Y : Type*} [EspTop X] [EspTop Y] (f : X → Y) : Prop :=
+def est_continu {X Y : Type} [EspTop X] [EspTop Y] (f : X → Y) : Prop :=
   ∀(x : X), est_continu_point f x
 
 theorem continu_iff_preim_ouv (f : X → Y) :
@@ -85,7 +85,7 @@ def lipschitz (k : ℝ) (f : E → F) := ∀ x y, d(f x, f y) ≤ k * d(x, y)
 def k_lipschitz (f : E → F) := ∃ k > 0, lipschitz k f
 
 open Valuation VectorSpace EspaceNorme in
-variable {K G : Type*} [ValuationField K] [GroupeNorme G] [V : EspaceVecNorme K G] in
+variable {K G : Type} [ValuationField K] [GroupeNorme G] [V : EspaceVecNorme K G] in
 --
 lemma norme_lipschitz : lipschitz 1 N(K, G) := by
   intro x y; unfold instEspaceMetriqueReal
@@ -164,7 +164,7 @@ instance {s : Partie X} : EspTop (Induite s) where
   empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
 --
   union_ouvert := by
-    intro ι F h; choose! u h_ouv h_int using h
+    intro F h; choose! u h_ouv h_int using h
     use ⋃ i, u (F.u i); apply And.intro
     · apply iunion_ouvert; intro i; apply h_ouv; use i
     · rw [preimage_iUnion]; dsimp [Famille.iUnion]

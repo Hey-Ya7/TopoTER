@@ -1,13 +1,14 @@
 import TopoTER.Chapitre4
+set_option linter.style.emptyLine false
 
 open TER Set EspTop
 
-variable {X Y : Type*} [EspTop X] [EspTop Y] [EspSepareT2 Y]
+variable {X Y : Type} [EspTop X] [EspTop Y] [EspSepareT2 Y]
 
-def prop_baire {X : Type*} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
+def prop_baire {X : Type} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
   dense X (u n) ∧ est_ouvert (u n)) → dense X (⋂ n : ℕ, u n)
 
-def baire (X : Type*) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
+def baire (X : Type) [EspTop X] : Prop := ∀ (u : ℕ → Set X), prop_baire u
 
 lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite v)
   := by
@@ -16,20 +17,19 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
 
   have Uouv : ∀ (n : ℕ), est_ouvert (U n) := by
     intro n; unfold U
-    --rw [hU n]
     apply union_est_ouvert
     · have h : est_ouvert (u n) := (hu n).2
       rcases h with ⟨w, hw, h'⟩
       simp [h', inter_ouvert hv hw]
     · rw [est_ouvert_iff_compl_est_ferme, compl_compl]
-      exact adh_ferme v
+      exact adh_ferme
 
   have Udens : ∀ (n : ℕ), dense X (U n) := by
     intro n
     rw [dense_iff_inter_ouvert_nonempty]
     intro W W_ouv W_ne
     rcases W_ne with ⟨x, hx⟩
-    have W_vois : est_vois x W := by -- ⟨W, hx, W_ouv, by simp⟩
+    have W_vois : est_vois x W := by --⟨W, ⟨hx, W_ouv, by simp⟩⟩
       use W
       exact ⟨hx, W_ouv, by simp⟩
     let W_sub : Set (Induite v) := Subtype.val ⁻¹' W
@@ -37,13 +37,17 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
     rcases (hu n) with ⟨u_dens, u_ouv⟩
     rw [dense_iff_inter_ouvert_nonempty] at u_dens
 
-    by_cases x_v : x ∈ v
+    by_cases x_adh : x ∈ adh v
     · have Ws_ne : W_sub.Nonempty := by
+        specialize x_adh W W_vois
+        rcases x_adh with ⟨y, hy⟩
+        use ⟨y, hy.2⟩
         unfold W_sub
-        use ⟨x, x_v⟩
         simp only [mem_preimage]
-        rcases W_vois with ⟨U, ⟨x_U, _, U_W⟩⟩
-        exact U_W x_U
+        exact hy.1
+      unfold adh at x_adh
+      simp only [mem_setOf_eq] at x_adh
+      specialize x_adh W W_vois
       specialize u_dens W_sub Ws_ouv Ws_ne
       rcases u_dens with ⟨y, ⟨y_Ws, y_u⟩⟩
       use y
@@ -51,34 +55,15 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
       · exact y_Ws
       · unfold U
         left
-        simp
+        simp only [mem_image, Subtype.exists, exists_and_right, exists_eq_right, Subtype.coe_eta,
+          Subtype.coe_prop, exists_const]
         exact y_u
+    · use x
+      constructor
+      · exact hx
+      · right
+        exact x_adh
 
-    · by_cases x_adh : x ∈ (adh v)
-      · have Ws_ne : W_sub.Nonempty := by
-          specialize x_adh W W_vois
-          rcases x_adh with ⟨y, hy⟩
-          use ⟨y, hy.2⟩
-          unfold W_sub
-          simp only [mem_preimage]
-          exact hy.1
-        unfold adh at x_adh
-        simp only [mem_setOf_eq] at x_adh
-        specialize x_adh W W_vois
-        specialize u_dens W_sub Ws_ouv Ws_ne
-        rcases u_dens with ⟨y, ⟨y_Ws, y_u⟩⟩
-        use y
-        constructor
-        · exact y_Ws
-        · unfold U
-          left
-          simp
-          exact y_u
-      · use x
-        constructor
-        · exact hx
-        · right
-          exact x_adh
   unfold baire prop_baire at hb
   have h' : dense X (⋂ n, U n) := by
     apply hb
@@ -97,13 +82,14 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
     rcases W_vois with ⟨w, ⟨x_w, w_ouv, w_W⟩⟩
     use w
     constructor
-    · simp
+    · simp only [mem_image, Subtype.exists, exists_and_right, exists_eq_right, Subtype.coe_eta,
+      Subtype.coe_prop, exists_const]
       exact x_w
     · rcases w_ouv with ⟨A, hA⟩
       rw [hA.2]
       simp only [Subtype.image_preimage_coe]
       exact inter_ouvert hv hA.1
-    · simp
+    · simp only [image_subset_iff, Subtype.val_injective, preimage_image_eq]
       exact w_W
   specialize h' Wsub_vois
   rcases h' with ⟨y, ⟨y_W, y_U⟩⟩
@@ -118,7 +104,8 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
       exact y_U n
     unfold U at z_Un
     rcases z_Un with z_un | z_nadh
-    · simp? at z_un
+    · simp only [mem_image, Subtype.exists, exists_and_right, exists_eq_right, Subtype.coe_eta,
+      Subtype.coe_prop, exists_const] at z_un
       exact z_un
     · rw [mem_compl_iff] at z_nadh
       have z_adh : ↑z ∈ adh v := by
@@ -127,7 +114,7 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
       by_contra _
       exact z_nadh z_adh
 
-variable {X Y: Type*}
+variable {X : Type}
 
 open Metrique
 
@@ -250,6 +237,16 @@ lemma diam_gt_0 [EspaceMetrique X] {A : Partie X} :
     · unfold diam
       sorry
   · sorry
+lemma diam_born_sub [EspaceMetrique X] {A : Partie X} {B : Partie X} :
+diam_bornee B → A ⊆ B → diam_bornee A := by
+  intro bornB A_B
+  rw [bornee_iff_bdd]
+  rw [bornee_iff_bdd] at bornB
+  unfold dist_bornee
+  unfold dist_bornee at bornB
+  rcases bornB with ⟨M, hM⟩
+  exact ⟨M,
+  fun x hx y hy ↦ hM x (Set.mem_of_mem_of_subset hx A_B) y (Set.mem_of_mem_of_subset hy A_B)⟩
 
 lemma diam_crois [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam A ≤ diam B := by
@@ -295,12 +292,95 @@ lemma crois_equ [EspaceMetrique X] {F : ℕ → Partie X} :
       · exact h laetitia
       · exact hr
 
-theorem thm_beurre [EspaceMetrique X] {F : ℕ → Partie X} : complet X →
-(∀ n : ℕ, F n ≠ ∅ ∧ fermee (F n) ∧ ∀ m : ℕ, m ≥ n → (F m) ⊆ (F n)) →
+lemma diam_0_singl_or_empty [EspaceMetrique X] {A : Partie X} :
+A.Nonempty → diam A = 0 → ∃ x : X, A = {x} := by
+  rintro ⟨x, hx⟩ diam_0
+  use x
+  ext y
+  constructor
+  · intro hy
+    unfold diam at diam_0
+    dsimp at diam_0
+    split_ifs at diam_0 with h
+    · let S := {d | ∃ a ∈ A, ∃ b ∈ A, EspaceMetrique.d a b = d}
+      have d_diam : EspaceMetrique.d x y ≤ sSup S := le_csSup h ⟨x, hx, y, hy, rfl⟩
+      rw [diam_0] at d_diam
+      have d_0 : EspaceMetrique.d x y = 0 := le_antisymm d_diam (EspaceMetrique.is_dist.nneg x y)
+      rw [(EspaceMetrique.is_dist.sep x y).mp d_0]
+      rfl
+    · linarith
+  · intro hy
+    rw [hy]
+    exact hx
+
+lemma ouv_contient_b_centre [EspaceMetrique X] {U : Partie X} {c : X} :
+est_ouvert U → c ∈ U → ∃ r > 0, Bₒ c r ⊆ U := by
+  intro U_ouv hc
+  rcases U_ouv c hc with ⟨r, r_pos, h⟩
+  use r
+
+lemma ouv_contient_b [EspaceMetrique X] {U : Partie X} :
+est_ouvert U → U.Nonempty → ∃ c : X, ∃ r > 0, Bₒ c r ⊆ U :=
+  fun U_ouv ⟨c, hc⟩ ↦ ⟨c, ouv_contient_b_centre U_ouv hc⟩
+
+lemma ouv_contient_bf_centre [EspaceMetrique X] {U : Partie X} :
+est_ouvert U → c ∈ U → ∃ r > 0, Bf c r ⊆ U := by
+  intro U_ouv hc
+  rcases U_ouv c hc with ⟨r, r_pos, h⟩
+  exact ⟨r/2, half_pos r_pos, fun x hx ↦ h (by simp at *; linarith)⟩
+
+lemma ouv_contient_bf [EspaceMetrique X] {U : Partie X} :
+est_ouvert U → U.Nonempty → ∃ c : X, ∃ r > 0, Bf c r ⊆ U :=
+  fun U_ouv ⟨c, hc⟩ ↦ ⟨c, ouv_contient_bf_centre U_ouv hc⟩
+
+lemma conv_equ [EspaceMetrique X] {u : ℕ → X} {l : X} :
+converge_vers u l ↔ converges_to u l := by
+  unfold converge_vers converges_to
+  constructor
+  · intro conv ε ε_pos
+    have B_vois : est_vois l (Bₒ l ε) :=
+      ⟨Bₒ l ε, centre_in_boule l ε_pos, ouv_of_boule_ouv l ε, by rfl⟩
+    rcases conv (Bₒ l ε) B_vois with ⟨N, hN⟩
+    use N
+    intro n hn
+    specialize hN n hn
+    simp at hN
+    linarith [hN]
+  · rintro conv V ⟨v, l_v, v_ouv, v_V⟩
+    rcases ouv_contient_bf_centre v_ouv l_v with ⟨r, r_pos, B_v⟩
+    rcases conv r r_pos with ⟨N, hN⟩
+    use N
+    intro n hn
+    specialize hN n hn
+    apply B_v.trans
+    · exact v_V
+    · simp only [boule_fermee.eq_1, mem_setOf_eq, hN]
+
+lemma conv_ge_N_equ [EspTop X] {u : ℕ → X} {v : ℕ → X} {l : X} {N : ℕ} :
+(∀ n ≥ N, u n = v n) → (converge_vers u l ↔ converge_vers v l) := by
+  intro h
+  unfold converge_vers
+  constructor
+  · intro conv_u V V_vois
+    rcases conv_u V V_vois with ⟨M, hM⟩
+    use max M N
+    intro m hm
+    rw [←h m (le_of_max_le_right hm)]
+    exact hM m (le_of_max_le_left hm)
+  · intro conv_u V V_vois
+    rcases conv_u V V_vois with ⟨M, hM⟩
+    use max M N
+    intro m hm
+    rw [h m (le_of_max_le_right hm)]
+    exact hM m (le_of_max_le_left hm)
+
+theorem pre_thm_baire [EspaceMetrique X] {F : ℕ → Partie X} : complet X →
+(∀ n : ℕ, F n ≠ ∅) → (∀ n : ℕ, fermee (F n)) → (∀ n m : ℕ, m ≥ n → (F m) ⊆ (F n)) →
 converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
-  intro compl hFn lim
-  have h : ∀ n : ℕ, ∃ x : X, x ∈ F n := fun n ↦ Set.nonempty_iff_ne_empty.mpr (hFn n).1
+  intro compl F_ne F_fer F_decrois lim
+  have h : ∀ n : ℕ, ∃ x : X, x ∈ F n := fun n ↦ Set.nonempty_iff_ne_empty.mpr (F_ne n)
   choose x hx using h
+
   have x_cau : cauchy x := by
     intro e e_pos
     let ε := min e 0.5
@@ -323,8 +403,8 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
       rw [h_d1] at hN
       linarith
     trans (diam (F M))
-    · have Fn_FM : F n ⊆ F M := ((hFn M).2).2 _ (Nat.min_le_left n m)
-      have Fm_FM : F m ⊆ F M := ((hFn M).2).2 _ (Nat.min_le_right n m)
+    · have Fn_FM : F n ⊆ F M := (F_decrois M) _ (Nat.min_le_left n m)
+      have Fm_FM : F m ⊆ F M := (F_decrois M) _ (Nat.min_le_right n m)
       have hn : x n ∈ F M := Set.mem_preimage.mp (Fn_FM (hx n))
       have hm : x m ∈ F M := Set.mem_preimage.mp (Fm_FM (hx m))
       unfold diam at dfm
@@ -347,16 +427,41 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
         · contradiction
       · exact ε_e
 
-  specialize compl x x_cau
-  rcases compl with ⟨l, hl⟩
+  rcases compl x x_cau with ⟨l, hl⟩
 
   have hF : ∀ n : ℕ, ∀ m : ℕ, m ≥ n → x m ∈ F n := by
     intro n m hm
-    exact (hFn n).2.2 m hm (hx m)
+    exact (F_decrois n) m hm (hx m)
 
-  have lfn : l ∈ ⋂ n : ℕ, F n := sorry
+  have inter_fer : fermee (⋂ n : ℕ, F n) := by
+    change est_ferme (⋂ n, F n)
+    exact inter_est_ferme F_fer
 
-  have mborn : ∃ m : ℕ, ∀ n : ℕ, n ≥ m → diam_bornee (F n) := by
+  have lfn : l ∈ ⋂ n : ℕ, F n := by
+    rw [mem_iInter]
+    intro n
+    have ⟨N, hN⟩ : ∃ m : ℕ, m ≥ n := exists_nat_ge n
+    have h : (x N) ∈ (F n) := mem_preimage.mp (hF n N hN)
+    change ∀ (n : ℕ), est_ferme (F n) at F_fer
+    specialize F_fer n
+    rw [ferme_iff_adh] at F_fer
+    rw [←F_fer, in_adh_suite]
+    let y : ℕ → X := m ↦ if m < n then x n else x m
+    use y
+    constructor
+    · intro m
+      by_cases m_n : m < n
+      · simp only [m_n, ↓reduceIte, y]
+        exact hF n n (by rfl)
+      · simp only [m_n, ↓reduceIte, y]
+        push_neg at m_n
+        exact hF n m m_n
+    · have x_eq_y : ∀ m ≥ n, x m = y m := by
+        intro m hm
+        simp [y, hm]
+      rw [←conv_ge_N_equ x_eq_y, conv_equ]
+      exact hl
+  have mborn : ∃ N : ℕ, ∀ n : ℕ, n ≥ N → diam_bornee (F n) := by
     rcases lim 0.5 (by linarith) with ⟨N, hN⟩
     dsimp at hN
     use N
@@ -365,13 +470,21 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     specialize hN n hn
     change |(diam (F n)) - 0| ≤ 0.5 at hN
     linarith [abs_le.mp hN]
+
   rcases mborn with ⟨N, hN⟩
 
-  have hdiam : ∀ m : ℕ, m ≥ N → diam (⋂ n : ℕ, F n) ≤ diam (F m) := by
-    intro m hm
-    apply diam_crois
-    · exact hN m hm
-    · exact iInter_subset_of_subset m fun ⦃a⦄ a_1 ↦ a_1
+  have inter_in_F : ∀ m, ⋂ n, F n ⊆ F m := m ↦ iInter_subset_of_subset m (by rfl)
+
+  have born : diam_bornee (⋂ n : ℕ, F n) := diam_born_sub (hN N (by rfl)) (inter_in_F N)
+
+  have diam_pos : diam (⋂ n : ℕ, F n) ≥ 0 := by
+    rcases diam_nneg (⋂ n : ℕ, F n) with h | h
+    · exact h
+    · unfold diam_bornee at born
+      linarith
+
+  have hdiam : ∀ m : ℕ, m ≥ N → diam (⋂ n : ℕ, F n) ≤ diam (F m) :=
+    fun m hm ↦ diam_crois (hN m hm) (inter_in_F m)
 
   have diam_0 : ∀ ε > 0, diam (⋂ n : ℕ, F n) ≤ ε := by
     intro ε ε_pos
@@ -383,27 +496,22 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     · exact hdiam
     · linarith [abs_le.mp hM]
 
-  have diam_ge0 : diam (⋂ n : ℕ, F n) ≥ 0 := by
-    rcases diam_nneg (⋂ n : ℕ, F n) with h | h
-    · exact h
-    · specialize hN N (by rfl)
-      have tizi : (⋂ n, F n) ⊆ (F N) := by
-        exact iInter_subset_of_subset N fun ⦃a⦄ a_1 ↦ a_1
-      sorry
+  have h_le : diam (⋂ n, F n) ≤ 0 := by
+    apply le_of_forall_pos_le_add
+    intro ε hε
+    rw[zero_add]
+    exact diam_0 ε hε
 
-  have diam_0 : diam (⋂ n : ℕ, F n) = 0 := by
-    by_contra! h
-    have hyp := Std.lt_of_le_of_ne diam_ge0 (id (Ne.symm h))
-    sorry
+  have diam_0 : diam (⋂ n : ℕ, F n) = 0 := le_antisymm h_le diam_pos
 
-  sorry
+  exact diam_0_singl_or_empty ⟨l, lfn⟩ diam_0
 
-lemma h_split {n : ℕ} : Set.Icc 1 (n + 1) = insert (n + 1) (Set.Icc 1 n) := by
+lemma h_split {n : ℕ} : Set.Icc 0 (n + 1) = insert (n + 1) (Set.Icc 0 n) := by
   ext x
   simp only [mem_Icc, mem_insert_iff]
   constructor
   · rintro ⟨h1, h2⟩
-    by_cases! h : 1 ≤ x ∧ x ≤ n
+    by_cases! h : 0 ≤ x ∧ x ≤ n
     · right
       exact h
     · left
@@ -413,28 +521,22 @@ lemma h_split {n : ℕ} : Set.Icc 1 (n + 1) = insert (n + 1) (Set.Icc 1 n) := by
   rcases h with h | h
   repeat constructor; repeat linarith
 
-noncomputable def diam2 [EspaceMetrique X] (A : Partie X) :=
-  let S := {d(x, y) | (x ∈ A) (y ∈ A)}; sSup S
+lemma lemme1 {U : ℕ → Partie X} : ⋂ n, U n = ⋂ n, ⋂ k ∈ Icc 0 n, U k := by
+  ext x
+  simp only [mem_Icc, zero_le, true_and, mem_iInter]
+  exact ⟨fun h _ m _ ↦ h m, fun h n ↦ h n n (by simp)⟩
 
-lemma ouv_metr [EspaceMetrique X] {U : Partie X} :
-est_ouvert U ↔ ∀ x : X, x ∈ U → ∃ r > 0, boule_ouverte x r ⊆ U := sorry
-
-lemma fer_of_boule_fer [EspaceMetrique X] (a : X) (r : ℝ) : fermee (Bf a r) := sorry
-
-lemma ouv_contient_bf [EspaceMetrique X] {U : Partie X} :
-est_ouvert U → U.Nonempty → ∃ c : X, ∃ r > 0, Bf c r ⊆ U := by
-  intro U_ouv U_ne
-  obtain ⟨c, hc⟩ := U_ne
-  rw [ouv_metr] at U_ouv
-  rcases U_ouv c hc with ⟨r, r_pos, h⟩
-  use c, r/2
-  exact ⟨half_pos r_pos, fun x hx ↦ h (by simp at *; linarith)⟩
+lemma lemme2 {V : Partie X} {U : ℕ → Partie X} :
+V ∩ ⋂ n, ⋂ k ∈ Icc 0 n, U k = ⋂ n, V ∩ ⋂ k ∈ Icc 0 n, U k := by
+  ext x
+  simp only [Set.mem_iInter, Set.mem_inter_iff]
+  exact ⟨fun h n ↦ ⟨h.1, h.2 n⟩, h ↦ ⟨(h 0).1, fun n m hm ↦ (h n).2 m hm⟩⟩
 
 theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
   intro X_compl U hU
   rw [dense_iff_inter_ouvert_nonempty]
   intro V V_ouv V_ne
-  let W : ℕ → Partie X := fun n ↦ V ∩ (⋂ k ∈ Set.Icc 1 n, U k)
+  let W : ℕ → Partie X := fun n ↦ V ∩ (⋂ k ∈ Set.Icc 0 n, U k)
 
   have W_ouv : ∀ n : ℕ, est_ouvert (W n) := by
     intro n
@@ -449,8 +551,10 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
     intro n
     induction n with
     | zero =>
-      simp
-      exact V_ne
+      simp only [Icc_self, mem_singleton_iff, iInter_iInter_eq_left]
+      rcases hU 0 with ⟨dens, _⟩
+      rw [dense_iff_inter_ouvert_nonempty] at dens
+      exact dens V V_ouv V_ne
     | succ n hr =>
       rw [h_split, biInter_insert]
       rw [Set.inter_comm (U (n+1)), ← Set.inter_assoc]
@@ -459,182 +563,168 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
       rw [dense_iff_inter_ouvert_nonempty] at U_dens
       exact U_dens (W n) (W_ouv n) hr
 
-  let B_ok (n : ℕ) (c : X) (r : ℝ) : Prop := r > 0 ∧ r ≤ 1 / (↑n + 2) ∧ Bf c r ⊆ W n
+  let B_ok (n : ℕ) (c : X) (r : ℝ) : Prop := r > 0 ∧ r ≤ 1 / (2*(↑n + 1)) ∧ Bf c r ⊆ W n
 
-  have B_succ_ok : ∀ n : ℕ, ∃ c : X, ∃ r : ℝ, B_ok n c r := by
-    intro n
-    induction n with
-    | zero =>
+  have H : ∃ c : ℕ → X, ∃ r : ℕ → ℝ, (∀ n, B_ok n (c n) (r n)) ∧
+                         (∀ n, Bf (c (n+1)) (r (n+1)) ⊆ Bf (c n) (r n)) := by
+
+    rcases ouv_contient_bf (W_ouv 0) (W_ne 0) with ⟨c0, r0, r0_pos, h0⟩
+
+    have B0_ok : B_ok 0 c0 (min r0 (1/2)) := by
       unfold B_ok
-      rcases ouv_contient_bf (W_ouv 0) (W_ne 0) with ⟨c, r, r_pos, h⟩
-      use c, min r (1/2)
       constructor
-      · simp [r_pos]
+      · simp [r0_pos]
       · constructor
         · simp
-        · intro x hx
-          simp at *
-          exact h hx.1
-    | succ n hr =>
-      rcases hr with ⟨c, r, r_pos, _, Bf_W⟩
-      have ouv : est_ouvert (Bₒ c r ∩ U (n + 1)) :=
-        inter_ouvert (ouv_of_boule_ouv c r) (hU (n + 1)).2
-      have ne : (Bₒ c r ∩ U (n + 1)).Nonempty := by
+        · apply subset_trans _ h0
+          exact boule_f_in_boule_f_ge c0 (by simp [r0_pos]) r0_pos (min_le_left r0 (1 / 2))
+
+    have Bn_ok : ∀ n : ℕ, ∀ p : X × ℝ, B_ok n p.1 p.2 →
+            ∃ q : X × ℝ, B_ok (n + 1) q.1 q.2 ∧ Bf q.1 q.2 ⊆ Bf p.1 p.2:= by
+      rintro n p ⟨r_pos, r_le, h⟩
+      have ouv : est_ouvert (Bₒ p.1 p.2 ∩ U (n + 1)) :=
+        inter_ouvert (ouv_of_boule_ouv p.1 p.2) (hU (n + 1)).2
+      have ne : (Bₒ p.1 p.2 ∩ U (n + 1)).Nonempty := by
         rcases hU (n + 1) with ⟨U_dens, U_ouv⟩
         rw [dense_iff_inter_ouvert_nonempty] at U_dens
-        apply U_dens (Bₒ c r) (ouv_of_boule_ouv c r)
-        use c
+        apply U_dens (Bₒ p.1 p.2) (ouv_of_boule_ouv p.1 p.2)
+        use p.1
         simp only [boule_ouverte, mem_setOf_eq]
-        have h : EspaceMetrique.d c c = 0 := by rw [EspaceMetrique.is_dist.sep c c]
+        have h : EspaceMetrique.d p.1 p.1 = 0 := by rw [EspaceMetrique.is_dist.sep p.1 p.1]
         rw [h]
         exact r_pos
       rcases ouv_contient_bf ouv ne with ⟨c_next, R, R_pos, hR⟩
-      let r_next := min R (1 / (n + 3))
-      use c_next, r_next
+      let r_next := min R (1 / (2*(n + 2)))
+      use (c_next, r_next)
+      have bf_in_bf := boule_f_in_boule_f_ge c_next (by positivity) R_pos
+                        (min_le_left R (1 / (2*(↑n + 2))))
+      have hyp : Bf c_next r_next ⊆ Bₒ p.1 p.2 ∩ U (n + 1) := by
+        intro x hx
+        apply bf_in_bf at hx
+        apply hR at hx
+        exact hx
       constructor
-      · exact lt_min R_pos (by positivity)
       · constructor
         · unfold r_next
-          push_cast
-          ring_nf
-          exact min_le_right _ _
-        · have hyp : Bf c_next r_next ⊆ Bₒ c r ∩ U (n + 1) := by
-            intro x hx
-            have bf_in_bf := boule_f_in_boule_f_ge c_next (by positivity) R_pos (min_le_left R (1 / (↑n + 3)))
-            apply bf_in_bf at hx
-            apply hR at hx
-            exact hx
-          apply hyp.trans
-          unfold W
-          rw [h_split, Set.biInter_insert, inter_comm (U (n + 1)), ←inter_assoc]
-          apply inter_subset_inter
-          change Bₒ c r ⊆ W n
-          apply subset_trans (boule_in_boule_f c r_pos) Bf_W
-          rfl
+          simp [R_pos]
+          linarith
+        · constructor
+          · unfold r_next
+            push_cast
+            ring_nf
+            exact min_le_right _ _
+          · apply hyp.trans
+            unfold W
+            rw [h_split, Set.biInter_insert, inter_comm (U (n + 1)), ←inter_assoc]
+            apply inter_subset_inter
+            · change Bₒ p.1 p.2 ⊆ W n
+              apply subset_trans (boule_in_boule_f p.1 r_pos) h
+            · rfl
+      · exact subset_trans hyp (subset_trans inter_subset_left (boule_in_boule_f p.1 r_pos))
 
-  choose c r r_pos h_sub using B_succ_ok
+    choose! f hf using Bn_ok
+    let B : ℕ → X × ℝ := fun n ↦ Nat.recOn n (c0, (min r0 (1/2))) f
+    let c n := (B n).1
+    let r n := (B n).2
+    use c, r
 
-  let B : ℕ → Partie X := n ↦ boule_fermee (c n) (min (r n) (1/(2*(n + 1))))
+    have B_ok_n : ∀ n, B_ok n (c n) (r n) := by
+      intro n
+      induction n with
+      | zero => exact B0_ok
+      | succ n hr => exact (hf n (B n) hr).1
 
-  have B_bf : ∀ n : ℕ, B n ⊆ boule_fermee (c n) (r n) := by
-    intro _
-    simp only [boule_fermee, one_div, mul_inv_rev, le_inf_iff, setOf_subset_setOf, and_imp, B]
-    exact fun _ hx _ ↦ hx
+    constructor
+    · exact B_ok_n
+    · intro n
+      exact (hf n (B n) (B_ok_n n)).2
 
-  have B_W : ∀ n : ℕ, B n ⊆ W n := by
-    intro n
-    trans boule_fermee (c n) (r n)
-    · exact B_bf n
-    · exact (h_sub n).2
+  choose c r Bn_ok bf_in_bf using H
+  let B : ℕ → Partie X := n ↦ Bf (c n) (r n)
+  change ∀ (n : ℕ), B (n + 1) ⊆ B n at bf_in_bf
 
   have c_B : ∀ n : ℕ, c n ∈ B n := by
     intro n
     have h'' : EspaceMetrique.d (c n) (c n) = 0 := by
       rw [EspaceMetrique.is_dist.sep (c n) (c n)]
-    simp only [boule_fermee, one_div, mul_inv_rev, le_inf_iff, mem_setOf_eq, B]
-    rw [h'']
-    constructor
-    · exact Std.le_of_lt (r_pos n)
-    · apply mul_nonneg
-      · apply inv_nonneg.mpr
-        linarith
-      · linarith
+    simp [B, h'']
+    linarith [(Bn_ok n).1]
 
-  have B_diam' : ∀ n : ℕ, diam (B n) ≤ 1/(n + 1) := by
+  have B_diam_pos : ∀ n : ℕ, diam (B n) ≥ 0 := by
     intro n
-    by_cases! h : diam (B n) = -1
-    · rw [h]
-      trans 0
-      · linarith
-      · apply one_div_nonneg.mpr ?_
-        linarith
-    · unfold diam
-      dsimp
-      split_ifs with h'
-      · apply csSup_le
-        · use 0
-          use c n
-          have h'' : EspaceMetrique.d (c n) (c n) = 0 := by
-            rw [EspaceMetrique.is_dist.sep (c n) (c n)]
-          exact ⟨c_B n, c n, c_B n, h''⟩
-        · simp
-          intro d x hx y hy h
-          have h_dist : ∀ z : X, z ∈ B n → EspaceMetrique.d z (c n) ≤ (min (r n) (1 / (2*(↑n + 1))))
-          := by
-            intro z hz
-            simp only [boule_fermee, one_div, mul_inv_rev, le_inf_iff, mem_setOf_eq, B] at hz
-            simp only [one_div, mul_inv_rev, le_inf_iff]
-            exact ⟨hz.1, by apply hz.2.trans; rfl⟩
-          rw [←h]
-          calc EspaceMetrique.d x y
-            ≤ EspaceMetrique.d x (c n) + EspaceMetrique.d (c n) y :=
-              EspaceMetrique.is_dist.ineq x (c n) y
-            _ ≤ (min (r n) (1 / (2*(↑n + 1)))) + (min (r n) (1 / (2*(↑n + 1)))) :=
-              add_le_add (h_dist x hx) (by rw [EspaceMetrique.is_dist.symm]; exact (h_dist y hy))
-            _ = 2 * (min (r n) (1 / (2*(↑n + 1)))) := by ring
-            _ ≤ 2 * (1 / (2*(↑n + 1))) := mul_le_mul_of_nonneg_left (min_le_right _ _) (by norm_num)
-            _ ≤ (↑n + 1)⁻¹ := by field_simp; rfl
-      · trans 0
-        · linarith
-        · apply one_div_nonneg.mpr ?_
-          linarith
-
-  have B_diam : converges_to (n ↦ (diam (B n))) 0 := by
-    unfold converges_to
-    intro ε ε_pos
-    obtain ⟨N, hN⟩ := exists_nat_one_div_lt ε_pos
-    use N
-    intro n hn
-    change |((fun n ↦ diam (B n)) n) - 0| ≤ ε
-    simp only [sub_zero]
-    specialize B_diam' n
     rcases diam_nneg (B n) with h | h
-    · rw [abs_le]
-      constructor
-      · linarith
-      · apply B_diam'.trans
-        apply le_of_lt at hN
-        trans 1 / (↑N + 1)
-        · gcongr
-        · exact hN
+    · exact h
     · have B_in_boule : in_boule (B n) := by
         use (c n), 2*(r n)
-        constructor
-        · simp
-          exact r_pos n
-        · unfold B
-          simp
-          exact fun _ hx _ ↦ lt_of_le_of_lt hx (lt_two_mul_self (r_pos n))
+        simp only [gt_iff_lt, Nat.ofNat_pos, mul_pos_iff_of_pos_left, boule_ouverte]
+        exact ⟨(Bn_ok n).1, fun _ hx ↦ lt_of_le_of_lt hx (lt_two_mul_self ((Bn_ok n).1))⟩
       rw [←bdd_iff_in_boule, ←bornee_iff_bdd] at B_in_boule
       unfold diam_bornee at B_in_boule
       have nh : diam (B n) ≠ -1 := ne_of_gt B_in_boule.2
       contradiction
 
-  have W_decrois : ∀ n : ℕ, W (n + 1) ⊆ W n := by
+  have B_diam_le_inv : ∀ n : ℕ, diam (B n) ≤ 1/(n + 1) := by
     intro n
-    unfold W
-    apply Set.inter_subset_inter_right
-    apply Set.biInter_subset_biInter_left
-    intro k hk
-    exact ⟨hk.1, Nat.le_succ_of_le hk.2⟩
+    unfold diam
+    dsimp
+    split_ifs with h'
+    · apply csSup_le
+      · use 0, c n
+        have h'' : EspaceMetrique.d (c n) (c n) = 0 := by
+          rw [EspaceMetrique.is_dist.sep (c n) (c n)]
+        exact ⟨c_B n, c n, c_B n, h''⟩
+      · simp only [mem_setOf_eq, one_div, forall_exists_index, and_imp]
+        intro d x hx y hy h
+        have h_dist : ∀ z : X, z ∈ B n → EspaceMetrique.d z (c n) ≤ (min (r n) (1 / (2*(↑n + 1))))
+        := by
+          intro z hz
+          simp only [boule_fermee.eq_1, mem_setOf_eq, B] at hz
+          simp only [one_div, mul_inv_rev, le_inf_iff]
+          constructor
+          · exact hz
+          · specialize Bn_ok n
+            rcases Bn_ok with ⟨h1, h2, h3⟩
+            apply hz.trans
+            have h_calc : 1 / (2 * ((n : ℝ) + 1)) = ((n : ℝ) + 1)⁻¹ * 2⁻¹ := by field_simp
+            rw [←h_calc]
+            exact h2
+        rw [←h]
+        calc EspaceMetrique.d x y
+          ≤ EspaceMetrique.d x (c n) + EspaceMetrique.d (c n) y :=
+            EspaceMetrique.is_dist.ineq x (c n) y
+          _ ≤ (min (r n) (1 / (2*(↑n + 1)))) + (min (r n) (1 / (2*(↑n + 1)))) :=
+            add_le_add (h_dist x hx) (by rw [EspaceMetrique.is_dist.symm]; exact (h_dist y hy))
+          _ = 2 * (min (r n) (1 / (2*(↑n + 1)))) := by ring
+          _ ≤ 2 * (1 / (2*(↑n + 1))) := mul_le_mul_of_nonneg_left (min_le_right _ _) (by norm_num)
+          _ ≤ (↑n + 1)⁻¹ := by field_simp; rfl
+    · trans 0
+      · linarith
+      · apply one_div_nonneg.mpr ?_
+        linarith
 
-  apply thm_beurre X_compl at B_diam
+  have B_diam : converges_to (n ↦ (diam (B n))) 0 := by
+    exact conv_of_le_inv (n ↦ diam (B n)) B_diam_pos B_diam_le_inv
 
-  swap
+  apply pre_thm_baire X_compl at B_diam
+
+  · rcases B_diam with ⟨x, hx⟩
+    have h : (⋂ n, B n).Nonempty := by
+      use x
+      rw [hx]
+      rfl
+    have B_W  : ⋂ n, B n ⊆ ⋂ n, V ∩ ⋂ k ∈ Icc 0 n, U k := Set.iInter_mono (n ↦ (Bn_ok n).2.2)
+    rw [lemme1, lemme2]
+    exact Nonempty.mono B_W h
+
   · intro n
-    constructor
-    · rw [← Set.nonempty_iff_ne_empty]
-      exact ⟨c n, c_B n⟩
-    · constructor
-      · apply fer_of_boule_fer
-      · apply crois_equ.mpr
-        intro m
-        sorry
+    rw [← Set.nonempty_iff_ne_empty]
+    exact ⟨c n, c_B n⟩
 
-  rcases B_diam with ⟨x, hx⟩
+  · exact n ↦ fermee_of_boule_f (c n) (r n)
 
+  · exact crois_equ.mpr (n ↦ bf_in_bf n)
 
-
-  --B_W B_diam W_decrois
-
-  sorry
+--comm tournoi OMP : balatro maxxing
+--mardi 26 mai a 15h avec un thm chacun (1/2 heure chacun)
+--nettoyer le code qui a mettre des sorry
+--rapport même si c'est pas mega complet, surtout il faut qu'il y ait ce qu'on presente mardi
