@@ -194,11 +194,66 @@ A.Nonempty → diam A = 0 → ∃ x : X, A = {x} := by
     rw [hy]
     exact hx
 
+lemma ouv_contient_b_centre [EspaceMetrique X] {U : Partie X} {c : X} :
+est_ouvert U → c ∈ U → ∃ r > 0, Bₒ c r ⊆ U := by
+  intro U_ouv hc
+  rcases U_ouv c hc with ⟨r, r_pos, h⟩
+  use r
+
+lemma ouv_contient_b [EspaceMetrique X] {U : Partie X} :
+est_ouvert U → U.Nonempty → ∃ c : X, ∃ r > 0, Bₒ c r ⊆ U :=
+  fun U_ouv ⟨c, hc⟩ ↦ ⟨c, ouv_contient_b_centre U_ouv hc⟩
+
+lemma ouv_contient_bf_centre [EspaceMetrique X] {U : Partie X} :
+est_ouvert U → c ∈ U → ∃ r > 0, Bf c r ⊆ U := by
+  intro U_ouv hc
+  rcases U_ouv c hc with ⟨r, r_pos, h⟩
+  exact ⟨r/2, half_pos r_pos, fun x hx ↦ h (by simp at *; linarith)⟩
+
+lemma ouv_contient_bf [EspaceMetrique X] {U : Partie X} :
+est_ouvert U → U.Nonempty → ∃ c : X, ∃ r > 0, Bf c r ⊆ U :=
+  fun U_ouv ⟨c, hc⟩ ↦ ⟨c, ouv_contient_bf_centre U_ouv hc⟩
+
 lemma conv_equ [EspaceMetrique X] {u : ℕ → X} {l : X} :
-converge_vers u l ↔ converges_to u l := sorry
+converge_vers u l ↔ converges_to u l := by
+  unfold converge_vers converges_to
+  constructor
+  · intro conv ε ε_pos
+    have B_vois : est_vois l (Bₒ l ε) :=
+      ⟨Bₒ l ε, centre_in_boule l ε_pos, ouv_of_boule_ouv l ε, by rfl⟩
+    rcases conv (Bₒ l ε) B_vois with ⟨N, hN⟩
+    use N
+    intro n hn
+    specialize hN n hn
+    simp at hN
+    linarith [hN]
+  · rintro conv V ⟨v, l_v, v_ouv, v_V⟩
+    rcases ouv_contient_bf_centre v_ouv l_v with ⟨r, r_pos, B_v⟩
+    rcases conv r r_pos with ⟨N, hN⟩
+    use N
+    intro n hn
+    specialize hN n hn
+    apply B_v.trans
+    · exact v_V
+    · simp only [boule_fermee.eq_1, mem_setOf_eq, hN]
 
 lemma conv_ge_N_equ [EspTop X] {u : ℕ → X} {v : ℕ → X} {l : X} {N : ℕ} :
-(∀ n ≥ N, u n = v n) → (converge_vers u l ↔ converge_vers v l) := sorry
+(∀ n ≥ N, u n = v n) → (converge_vers u l ↔ converge_vers v l) := by
+  intro h
+  unfold converge_vers
+  constructor
+  · intro conv_u V V_vois
+    rcases conv_u V V_vois with ⟨M, hM⟩
+    use max M N
+    intro m hm
+    rw [←h m (le_of_max_le_right hm)]
+    exact hM m (le_of_max_le_left hm)
+  · intro conv_u V V_vois
+    rcases conv_u V V_vois with ⟨M, hM⟩
+    use max M N
+    intro m hm
+    rw [h m (le_of_max_le_right hm)]
+    exact hM m (le_of_max_le_left hm)
 
 theorem pre_thm_baire [EspaceMetrique X] {F : ℕ → Partie X} : complet X →
 (∀ n : ℕ, F n ≠ ∅) → (∀ n : ℕ, fermee (F n)) → (∀ n m : ℕ, m ≥ n → (F m) ⊆ (F n)) →
@@ -357,15 +412,6 @@ V ∩ ⋂ n, ⋂ k ∈ Icc 0 n, U k = ⋂ n, V ∩ ⋂ k ∈ Icc 0 n, U k := by
   ext x
   simp only [Set.mem_iInter, Set.mem_inter_iff]
   exact ⟨fun h n ↦ ⟨h.1, h.2 n⟩, h ↦ ⟨(h 0).1, fun n m hm ↦ (h n).2 m hm⟩⟩
-
-lemma ouv_contient_bf [EspaceMetrique X] {U : Partie X} :
-est_ouvert U → U.Nonempty → ∃ c : X, ∃ r > 0, Bf c r ⊆ U := by
-  intro U_ouv U_ne
-  obtain ⟨c, hc⟩ := U_ne
-  unfold est_ouvert at U_ouv
-  rcases U_ouv c hc with ⟨r, r_pos, h⟩
-  use c, r/2
-  exact ⟨half_pos r_pos, fun x hx ↦ h (by simp at *; linarith)⟩
 
 theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
   intro X_compl U hU
