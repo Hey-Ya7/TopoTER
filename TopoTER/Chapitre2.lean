@@ -25,6 +25,22 @@ variable {X Y : Type*} [EspTop X] [EspTop Y]
 
 namespace EspTop
 
+inductive ouv_top_engendree (S : Set (Set X)) : Set X → Prop
+  | ouvS (U : Set X) (hU : U ∈ S): ouv_top_engendree S U
+  | univS : ouv_top_engendree S Ω
+  | emptyS : ouv_top_engendree S ∅
+  | interS {U V : Set X} (hU : ouv_top_engendree S U) (hV : ouv_top_engendree S V) :
+     ouv_top_engendree S (U ∩ V)
+  | unionS {ι : Type u_1} {U : Famille ι X} (hU : ∀ O ∈ U, ouv_top_engendree S O) :
+     ouv_top_engendree S (⋃ᵢ U)
+
+def topo_engendree (S : Set (Set X)) : EspTop X where
+  est_ouvert := fun U ↦ ouv_top_engendree S U
+  univ_ouvert := ouv_top_engendree.univS
+  empty_ouvert := ouv_top_engendree.emptyS
+  union_ouvert := fun hu ↦ ouv_top_engendree.unionS hu
+  inter_ouvert := fun hU hV ↦ ouv_top_engendree.interS hU hV
+
 lemma iunion_ouvert {ι : Type u_1} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
   let F : Famille ι X := ⟨u⟩
