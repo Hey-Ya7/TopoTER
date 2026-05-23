@@ -17,6 +17,13 @@ open Famille
 @[simp] def sous_couvrement (F : Famille X) (J : Set F.ι) (A : Partie X) :=
   couvrement (SousFamille F J) A
 
+omit [EspTop X] in
+lemma sous_couvre_of_couvre (F : Famille X) (A : Partie X) (h : couvrement F A) :
+  sous_couvrement F Ω A := by
+  intro x hx; rw [mem_union_famille]
+  rcases h hx with ⟨B, hB, x_in⟩; rcases hB with ⟨i, hi⟩
+  use B, (by use ⟨i, by simp⟩), x_in
+
 class EspCompact (X : Type) [EspTop X] [EspSepareT2 X] where
   compact : ∀ C : Famille X, (∀ A ∈ C, est_ouvert A) → couvrement C Ω
     → ∃ J, J.Finite ∧ sous_couvrement C J Ω
@@ -26,22 +33,21 @@ class EspCompact (X : Type) [EspTop X] [EspSepareT2 X] where
 def est_compact_f (X : Type) [EspTop X] [EspSepareT2 X] := ∀ F : Famille X,
   (∀ A ∈ F, est_ferme A) → ⋂ᵢ F = ∅ → ∃ J, J.Finite ∧ ⋂ᵢ (SousFamille F J) = ∅
 
-lemma comp_f_of_comp [C : EspCompact X] : est_compact_f X := by
-  intro F h₁ h₂
-  have F_ouvert : ∀ A ∈ F`ᶜ, est_ouvert A := by
-    intro A hA; rw [est_ouvert_iff_compl_est_ferme]
-    rw [in_compl_famille] at hA; exact h₁ Aᶜ hA
-  have F_couvre : couvrement F`ᶜ Ω := by
-    simp [←inter_famille_compl, h₂]
+lemma compact_iff_comp_f : EspCompact X ↔ est_compact_f X := by
+  apply Iff.intro
+  · intro ⟨comp⟩ F h₁ h₂
+    have F_ouvert : ∀ A ∈ F`ᶜ, est_ouvert A := by
+      intro A hA; rw [est_ouvert_iff_compl_est_ferme]
+      rw [in_compl_famille] at hA; exact h₁ Aᶜ hA
+    have F_couvre : couvrement F`ᶜ Ω := by
+      simp [←inter_famille_compl, h₂]
+  --
+    rcases comp F`ᶜ F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
+    use J, hJ; dsimp at J_couvre
+    rw [←compl_of_sous_famille, ←inter_famille_compl] at J_couvre
+    rwa [univ_subset_iff, compl_univ_iff] at J_couvre
 --
-  rcases C.compact F`ᶜ F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
-  use J, hJ; dsimp at J_couvre
-  rw [←compl_of_sous_famille, ←inter_famille_compl] at J_couvre
-  rwa [univ_subset_iff, compl_univ_iff] at J_couvre
-
-instance {h : est_compact_f X} : EspCompact X
-  where compact := by {
-    intro F h₁ h₂
+  · intro h; constructor; intro F h₁ h₂
     have F_ferme : ∀ A ∈ F`ᶜ, est_ferme A := by
       intro A hA; rw [est_ferme]
       rw [in_compl_famille] at hA; exact h₁ Aᶜ hA
@@ -50,12 +56,39 @@ instance {h : est_compact_f X} : EspCompact X
     rcases h F`ᶜ F_ferme F_inter with ⟨J, hJ, J_inter⟩; use J, hJ
     rw [←compl_of_sous_famille, ←union_famille_compl] at J_inter
     dsimp; rwa [univ_subset_iff, ←compl_empty_iff]
-  }
 
 -- 6.2.
 
 def est_compact (A : Partie X) := ∀ C : Famille X, (∀ P ∈ C, est_ouvert P)
   → couvrement C A → ∃ J, J.Finite ∧ sous_couvrement C J A
+
+-- b)
+
+theorem inter_decr_non_vide [cmp : EspCompact X] (u : ℕ → Partie X) (hf : ∀ i,
+  est_ferme (u i)) (decr : ∀ i, u (i + 1) ⊆ u i) (h : ∀ i, u i ≠ ∅) :
+  ⋂ i, u i ≠ ∅ := by
+  intro vide; let F : Famille X := ⟨ℕ, u⟩
+  have F_ferme : ∀ A ∈ F, est_ferme A := by
+    intro A hA; rcases hA with ⟨i, hi⟩
+    dsimp at hi; rw [←hi]; exact hf i
+  have F_inter : ⋂ᵢ F = ∅ := by rw [←vide]; rfl
+--
+  rw [compact_iff_comp_f] at cmp
+  rcases cmp F F_ferme F_inter with ⟨J, hJ, J_inter⟩
+  rcases Finite.bddAbove hJ with ⟨M, hM⟩
+  have non_vide : ∃ x, x ∈ F.u (M + 1) := by
+    apply Set.nonempty_iff_ne_empty.mpr; apply h
+  have of_decr : ∀ n, ∀ i < n, u n ⊆ u i := by
+    rw [eq_forall_iff_eq_add_one]
+    · intro n; exact decr n
+    · intro _ _ _ h₁ h₂; exact subset_trans h₂ h₁
+--
+  rcases non_vide with ⟨x, hx⟩
+  rw [←mem_empty_iff_false x, ←J_inter, mem_inter_famille]
+  intro A hA; rcases hA with ⟨i, hi⟩; dsimp at hi; rw [←hi]
+  have ineq : i < M + 1 := by
+    apply Nat.lt_succ_of_le; exact hM i.prop
+  apply of_decr (M + 1) i ineq; exact hx
 
 -- Théorème 6.4.
 
@@ -136,7 +169,7 @@ theorem bornee_of_compact [Cmp : EspCompact E] : bornee E := by
     exact ouv_of_boule_ouv x 1
   have C_couvre : couvrement C Ω := by
     intro x hx; rw [mem_union_famille]; use Bₒ x 1, (by use x)
-    exact centre_in_boule x zero_lt_one
+    exact centre_in_boule x one_pos
 --
   rcases Cmp.compact C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
   let S := {d(x, y) | (x ∈ J) (y ∈ J)}
@@ -162,34 +195,134 @@ theorem bornee_of_compact [Cmp : EspCompact E] : bornee E := by
 
 -- Définition 6.8.
 
-def precompact (E : Type) [EspaceMetrique E] := ∀ ε > 0, ∃ F : Famille E,
+def ε_precompact (E : Type) [EspaceMetrique E] (ε : ℝ) := ∃ F : Famille E,
   Finite F.ι ∧ (∀ A ∈ F, ∃ x, A = Bₒ x ε) ∧ couvrement F Ω
 
-def lebesgue_n (F : Famille E) (r : ℝ) := ∀ x, ∃ i, Bₒ x r ⊆ F.u i
+def precompact (E : Type) [EspaceMetrique E] := ∀ ε > 0, ε_precompact E ε
+
+def lebesgue_n (F : Famille E) (r : ℝ) := ∀ x, ∃ A ∈ F, Bₒ x r ⊆ A
+
+def has_lebesgue_n (F : Famille E) := ∃ r > 0, lebesgue_n F r
 
 def seq_compact (E : Type) [EspaceMetrique E] := ∀ u : ℕ → E, ∃ φ,
   extraction φ ∧ converges (u ∘ φ)
 
+def lebesgue_compact (E : Type) [EspaceMetrique E] := ∀ F : Famille E,
+  (∀ A ∈ F, est_ouvert A) → couvrement F Ω → has_lebesgue_n F
+
 -- Théorème 6.9.
 
-noncomputable def construction_not_precomp {E : Type} [EspaceMetrique E]
-  [ne : Nonempty E] (h : ¬precompact E) : ℕ → E
-  | 0 => have mem : ∃ x : E, True := by simp
-         Exists.choose mem
-  | Nat.succ k =>
-      let ι := {construction_not_precomp h (k - n) | n};
-      let A := Ω \ ι;
-      have A_ne : ∃ x, x ∈ A := by
-        by_contra h; sorry
-      sorry
+lemma exists_next_of_not_precomp {ε : ℝ} (h : ¬ε_precompact E ε) (n : ℕ)
+  (u : Fin n → E) : ∃ x, ∀ i, d(x, u i) ≥ ε := by
+  contrapose h; push_neg at h
+  let F : Famille E := ⟨Fin n, i ↦ Bₒ (u i) ε⟩
+  use F, (by apply Finite.of_fintype); apply And.intro
+  · intro A hA; rcases hA with ⟨i, hi⟩
+    dsimp at hi; use (u i); rw [←hi]
+  · intro x hx; rcases h x with ⟨i, hi⟩
+    rw [mem_union_famille]; use (F.u i), (by use i), hi
 
-theorem comp_iff_of_met₂ (E : Type) [EspaceMetrique E] : seq_compact E →
-  precompact E ∧ ∀ F : Famille E, (∀ A ∈ F, est_ouvert A) → couvrement F Ω →
-  ∃ r > 0, lebesgue_n F r := by
+lemma precompact_of_empty (h : IsEmpty E) : precompact E := by
+  intro ε ε_pos
+  let F : Famille E := ⟨E, x ↦ Bₒ x ε⟩; use F
+  apply And.intro
+  · have fin := @Fintype.ofIsEmpty E h
+    apply Finite.of_fintype
+  · apply And.intro
+    · intro A hA; rcases hA with ⟨x, hx⟩
+      use x, by rw [←hx]
+    · intro x hx; apply @IsEmpty.elim E h
+
+lemma exists_next_of_no_lebesgue (F : Famille E) (h : ¬has_lebesgue_n F) (n : ℕ) :
+  ∃ x, ∀ A ∈ F, ¬Bₒ x (1/(n+1)) ⊆ A := by
+  contrapose h; push_neg at h
+  use 1/(n+1), (by field_simp; linarith), h
+
+lemma lebesgue_compact_of_empty (h : IsEmpty E) : lebesgue_compact E := by
+  intro F F_ouvert F_couvre; use 1, one_pos
+  apply @IsEmpty.elim E h
+
+theorem seq_comp_of_compact (E : Type) [EspaceMetrique E] : EspCompact E →
+  seq_compact E := by
+  intro h u; let X := k ↦ {x : E | ∃ n ≥ k, u n = x}
+  suffices h : ⋂ n : ℕ, adh (X n) ≠ ∅ by
+    rw [←val_adh_inter, ←Set.nonempty_iff_ne_empty] at h
+    rcases h with ⟨x, hx⟩; dsimp at hx
+    rw [val_adh_iff_extraite_conv] at hx
+    rcases hx with ⟨φ, hφ, conv⟩
+    use φ, hφ, x; rwa [←conv_vers_iff_conv_to]
+  apply inter_decr_non_vide
+  · intro i; exact adh_ferme (X i)
+  · intro i; apply adh_contenu_adh; intro x hx
+    rcases hx with ⟨n, n_ge, hn⟩; use n, (by linarith), hn
+  · intro i h; rw [adh_vide] at h
+    rw [←mem_empty_iff_false (u i), ←h]; use i
+
+theorem lebesgue_comp_of_seq_comp (E : Type) [EspaceMetrique E] : seq_compact E →
+  precompact E ∧ lebesgue_compact E := by
   intro seq_comp; apply And.intro
-  · intro ε ε_pos; by_contra absurd; push_neg at absurd
-    sorry
-  · sorry
+  · by_cases nonempty : Nonempty E
+    · case pos => intro ε ε_pos; by_contra contra
+                  let P (x y : E) := d(y, x) ≥ ε
+                  have next := exists_next_of_not_precomp contra
+                  rcases exists_by_piecewise P nonempty next with ⟨u, hu⟩
+                  rcases seq_comp u with ⟨φ, hφ, conv⟩
+                  apply cauchy_of_conv at conv
+                  rcases conv (ε/2) (by linarith) with ⟨N, hN⟩
+                  specialize hN (N+1) (by linarith) N (refl N)
+                  absurd hN; rw [not_le]
+                  apply lt_of_lt_of_le (half_lt_self ε_pos)
+                  apply hu; apply hφ; linarith
+    · case neg => rw [not_nonempty_iff] at nonempty
+                  exact precompact_of_empty nonempty
+--
+  · by_cases nonempty : Nonempty E
+    · case pos => intro F F_ouvert F_couvre; by_contra contra
+                  choose! f hf using (exists_next_of_no_lebesgue F contra)
+                  rcases seq_comp f with ⟨φ, hφ, conv⟩
+                  rcases conv with ⟨l, conv_l⟩; have l' := mem_univ l
+                  rcases F_couvre l' with ⟨L, hL, l_in⟩
+                  rcases F_ouvert L hL l l_in with ⟨ε, ε_pos, hε⟩
+                  rcases conv_l (ε/2) (by linarith) with ⟨N₁, hN₁⟩
+                  rcases inv_of_le_forall (ε/2) (by linarith) with ⟨N₂, hN₂⟩
+--
+                  let N := max N₁ N₂; apply hf (φ N) L hL; intro x hx
+                  have ineq₁ : d(x, f (φ N)) < ε/2 := by
+                    apply lt_of_lt_of_le hx; apply hN₂
+                    apply le_trans _ (n_le_extr_n hφ N); apply le_max_right
+                  have ineq₂ : d(f (φ N), l) ≤ ε/2 := hN₁ N (le_max_left N₁ N₂)
+                  have ineq₃ := EspaceMetrique.is_dist.ineq x (f (φ N)) l
+                  apply hε; apply lt_of_le_of_lt ineq₃; linarith
+    · case neg => rw [not_nonempty_iff] at nonempty
+                  exact lebesgue_compact_of_empty nonempty
+
+theorem compact_of_lebesgue_comp (E : Type) [EspaceMetrique E] : precompact E ∧
+  lebesgue_compact E → EspCompact E := by
+  intro ⟨h₁, h₂⟩; constructor; intro C C_ouvert C_couvre
+  by_cases nonempty : Nonempty C.ι
+  · case pos => rcases h₂ C C_ouvert C_couvre with ⟨r, r_pos, hr⟩
+                rcases h₁ r r_pos with ⟨J, J_fin, hJ, J_couvre⟩
+                have sousF : ∀ j : J.ι, ∃ i : C.ι, J.u j ⊆ C.u i := by
+                  intro j; rcases hJ (J.u j) (by use j) with ⟨x, hx⟩
+                  rw [hx]; rcases hr x with ⟨A, hA, incl_A⟩
+                  rcases hA with ⟨i, hi⟩; use i; dsimp at hi; rwa [hi]
+                choose! f hf using sousF; use Set.range f; apply And.intro
+                · apply SupReal.image_of_fin
+                · intro x hx; rcases J_couvre hx with ⟨B, hB, x_in⟩
+                  rcases hB with ⟨j, hj⟩; rw [mem_union_famille]
+                  use C.u (f j), (by use ⟨f j, by use j⟩)
+                  apply hf; dsimp at hj; rwa [hj]
+  · case neg => rw [not_nonempty_iff] at nonempty
+                use Ω; apply And.intro
+                · have fin := @Fintype.ofIsEmpty C.ι nonempty
+                  apply Finite.of_fintype
+                · exact sous_couvre_of_couvre C Ω C_couvre
+
+theorem compact_iff_seq_comp (E : Type) [EspaceMetrique E] : EspCompact E ↔
+  seq_compact E := by
+  apply Iff.intro (seq_comp_of_compact E)
+  intro hyp; apply compact_of_lebesgue_comp
+  exact lebesgue_comp_of_seq_comp E hyp
 
 -- 6.4. Compacts d'un e.v.n. de dimension finie
 
@@ -204,7 +337,7 @@ lemma norme_Kn_lipschitz {N : K ^ n → ℝ} (h : estNorme (K := K) N) :
   k_lipschitz N := by
   let e (i : Fin n) := canonBasis K i
   cases n
-  · case zero => use 1, zero_lt_one; intro x y
+  · case zero => use 1, one_pos; intro x y
                  simp [zero_of_K_zero, self_dist]
   · case succ k =>
     let C := sSup {N (e i) | i}

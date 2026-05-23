@@ -488,8 +488,8 @@ notation N₁ " ≃ " N₂ " on " E => NormeEquiv E N₁ N₂
 instance NormeEq {E : Type} : Equivalence (NormeEquiv E) where
   refl := by {
     intro N; constructor
-    · use 1, zero_lt_one; simp
-    · use 1, zero_lt_one; simp
+    · use 1, one_pos; simp
+    · use 1, one_pos; simp
   }
 
   symm := by {
@@ -518,11 +518,11 @@ instance NormeEq {E : Type} : Equivalence (NormeEquiv E) where
 lemma sup_equiv_taxi : norme_sup ≃ norme_taxi on K^n := by
   cases n
   · case zero => constructor
-                 · use 1, zero_lt_one; intro x; simp
-                 · use 1, zero_lt_one; intro x; simp
+                 · use 1, one_pos; intro x; simp
+                 · use 1, one_pos; intro x; simp
   · case succ k =>
     unfold norme_sup norme_taxi; constructor
-    · use 1, zero_lt_one; intro x; apply csSup_le
+    · use 1, one_pos; intro x; apply csSup_le
       · apply Kn_nonempty (Nat.succ_pos k)
       · intro b hb; rcases hb with ⟨i, hi⟩; rw [one_mul, ←hi]
         apply Finset.single_le_sum (f := i ↦ |x.p i|ₖ)
@@ -539,11 +539,11 @@ open Real in
 lemma sup_equiv_eucl : norme_sup ≃ norme_euclid on K^n := by
   cases n
   · case zero => constructor
-                 · use 1, zero_lt_one; intro x; simp
-                 · use 1, zero_lt_one; intro x; simp
+                 · use 1, one_pos; intro x; simp
+                 · use 1, one_pos; intro x; simp
   · case succ k =>
     unfold norme_sup norme_euclid; constructor
-    · use 1, zero_lt_one; intro x; apply csSup_le
+    · use 1, one_pos; intro x; apply csSup_le
       · apply Kn_nonempty (Nat.succ_pos k)
       · intro b hb; rcases hb with ⟨i, hi⟩
         rw [one_mul, ←hi, le_sqrt (abs_nonneg (x.p i))]
@@ -646,7 +646,7 @@ def fermee (A : Partie X) := ouverte (Ω \ A)
 -- a)
 
 @[simp] theorem ouverte_of_uni : ouverte (X := X) Ω := by
-  intro x hx; use 1, zero_lt_one; simp
+  intro x hx; use 1, one_pos; simp
 
 @[simp] theorem ouverte_of_vide : ouverte (X := X) ∅ := by
   intro x hx; absurd hx; simp
@@ -834,7 +834,7 @@ def S : Partie ℝ := [0 ≤__< 1]
 abbrev Sᵢ : Partie ℝ := Induite S
 
 example : ouverte (S : Partie Sᵢ) := ouverte_of_self_ind S
-example : ¬ ouverte (S : Partie ℝ) := Ico_pas_ouverte zero_lt_one
+example : ¬ ouverte (S : Partie ℝ) := Ico_pas_ouverte one_pos
 
 lemma in_Z_induite : ∀ n : ℕ, ↑n ∈ Z := by
   intro n; use n; rw [Int.cast_natCast]
@@ -1084,7 +1084,7 @@ theorem conv_of_inv : let u : ℕ → ℝ := n ↦ 1 / (n + 1); converges_to u 0
 -- b)
 
 theorem bornee_of_conv (u : ℕ → X) (h : converges u) : seq_bornee u := by
-  rcases h with ⟨l, hl⟩; rcases hl 1 zero_lt_one with ⟨N, hN⟩
+  rcases h with ⟨l, hl⟩; rcases hl 1 one_pos with ⟨N, hN⟩
   have bdd : BddAbove {d(u n, l) | n : Fin N} := by
     apply SupReal.bddabove_of_fin_image
   rcases bdd with ⟨M, hM⟩; unfold seq_bornee
