@@ -634,12 +634,12 @@ R > r → Bf a r ⊆ Bₒ a R := by
 
 def ouverte (A : Partie X) := ∀ x ∈ A, ∃ r > 0, Bₒ x r ⊆ A
 
-def fermee (A : Partie X) := ouverte (Ω \ A)
+def fermee (A : Partie X) := ouverte Aᶜ
 
 @[simp] lemma ouverte_def (A : Partie X) : ouverte A ↔ ∀ x ∈ A, ∃ r > 0,
   Bₒ x r ⊆ A := by rfl
 
-@[simp] lemma fermee_def (A : Partie X) : fermee A ↔ ouverte (Ω \ A) := by rfl
+@[simp] lemma fermee_def (A : Partie X) : fermee A ↔ ouverte Aᶜ := by rfl
 
 -- Exemple 1.8.
 
@@ -652,10 +652,10 @@ def fermee (A : Partie X) := ouverte (Ω \ A)
   intro x hx; absurd hx; simp
 
 @[simp] theorem fermee_of_vide : fermee (X := X) ∅ := by
-  rw [fermee_def, Set.diff_empty]; apply ouverte_of_uni
+  rw [fermee_def, Set.compl_empty]; apply ouverte_of_uni
 
 @[simp] theorem fermee_of_uni : fermee (X := X) Ω := by
-  rw [fermee_def, Set.diff_self]; apply ouverte_of_vide
+  rw [fermee_def, Set.compl_univ]; apply ouverte_of_vide
 
 abbrev Z_induite : Partie ℝ := Induite Z
 
@@ -699,7 +699,7 @@ lemma Iio_ouverte (b : ℝ) : ouverte [-∞ <__< b] := by
   dsimp at y_in; rw [abs_sub_lt_iff] at y_in; dsimp; linarith
 
 lemma Icc_fermee (a b : ℝ) : fermee [a ≤__≤ b] := by
-  have int_compl : Ω \ [a ≤__≤ b] = {x | x < a ∨ x > b} := by
+  have int_compl : [a ≤__≤ b]ᶜ = {x | x < a ∨ x > b} := by
     ext x; simp [-not_and, not_and_or]
   rw [fermee_def, int_compl]; intro x x_in
   apply Or.by_cases x_in
@@ -711,12 +711,12 @@ lemma Icc_fermee (a b : ℝ) : fermee [a ≤__≤ b] := by
                use r, r_pos; intro y y_in; apply Or.inr (hr y_in)
 
 lemma Ici_fermee (a : ℝ) : fermee [a ≤__< +∞] := by
-  have int_compl : Ω \ [a ≤__< +∞] = {x | x < a} := by
+  have int_compl : [a ≤__< +∞]ᶜ = {x | x < a} := by
     ext x; simp
   rw [fermee_def, int_compl]; exact Iio_ouverte a
 
 lemma Iic_fermee (b : ℝ) : fermee [-∞ <__≤ b] := by
-  have int_compl : Ω \ [-∞ <__≤ b] = {x | x > b} := by
+  have int_compl : [-∞ <__≤ b]ᶜ = {x | x > b} := by
     ext x; simp
   rw [fermee_def, int_compl]; exact Ioi_ouverte b
 
@@ -745,7 +745,7 @@ lemma Iic_pas_ouverte (b : ℝ) : ¬ ouverte [-∞ <__≤ b] := by
   apply And.intro (by linarith) (by linarith)
 
 lemma Ioo_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__< b] := by
-  have int_compl : Ω \ [a <__< b] = {x | x ≤ a ∨ x ≥ b} := by
+  have int_compl : [a <__< b]ᶜ = {x | x ≤ a ∨ x ≥ b} := by
     ext; simp [-not_and, not_and_or]
   rw [fermee_def, int_compl, ouverte_def]; push_neg
   use a, (by simp); intro r r_pos; rw [Set.not_subset]
@@ -761,12 +761,12 @@ lemma Ioo_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__< b] := by
   · dsimp; push_neg; apply And.intro (by linarith) (by linarith)
 
 lemma Ioi_pas_fermee (a : ℝ) : ¬ fermee [a <__< +∞] := by
-  have int_compl : Ω \ [a <__< +∞] = {x | x ≤ a} := by
+  have int_compl : [a <__< +∞]ᶜ = {x | x ≤ a} := by
     ext x; simp
   rw [fermee_def, int_compl]; exact Iic_pas_ouverte a
 
 lemma Iio_pas_fermee (b : ℝ) : ¬ fermee [-∞ <__< b] := by
-  have int_compl : Ω \ [-∞ <__< b] = {x | x ≥ b} := by
+  have int_compl : [-∞ <__< b]ᶜ = {x | x ≥ b} := by
     ext x; simp
   rw [fermee_def, int_compl]; exact Ici_pas_ouverte b
 
@@ -779,7 +779,7 @@ lemma Ioc_pas_ouverte {a b : ℝ} (h : a < b) : ¬ ouverte [a <__≤ b] := by
   apply And.intro (by linarith) (by linarith)
 
 lemma Ioc_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__≤ b] := by
-  have int_compl : Ω \ [a <__≤ b] = {x | x ≤ a ∨ x > b} := by
+  have int_compl : [a <__≤ b]ᶜ = {x | x ≤ a ∨ x > b} := by
     ext; simp [-not_and, not_and_or]
   rw [fermee_def, int_compl, ouverte_def]; push_neg
   use a, (by simp); intro r r_pos; rw [Set.not_subset]
@@ -803,7 +803,7 @@ lemma Ico_pas_ouverte {a b : ℝ} (h : a < b) : ¬ ouverte [a ≤__< b] := by
   apply And.intro (by linarith) (by linarith)
 
 lemma Ico_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a ≤__< b] := by
-  have int_compl : Ω \ [a ≤__< b] = {x | x < a ∨ x ≥ b} := by
+  have int_compl : [a ≤__< b]ᶜ = {x | x < a ∨ x ≥ b} := by
     ext; simp [-not_and, not_and_or]
   rw [fermee_def, int_compl, ouverte_def]; push_neg
   use b, (by simp); intro r r_pos; rw [Set.not_subset]

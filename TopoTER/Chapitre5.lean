@@ -22,14 +22,14 @@ lemma baire_ouvert (hb : baire X) (v : Set X) : est_ouvert v → baire (Induite 
       rcases h with ⟨w, hw, h'⟩
       simp [h', inter_ouvert hv hw]
     · rw [est_ouvert_iff_compl_est_ferme, compl_compl]
-      exact adh_ferme v
+      exact adh_ferme
 
   have Udens : ∀ (n : ℕ), dense X (U n) := by
     intro n
     rw [dense_iff_inter_ouvert_nonempty]
     intro W W_ouv W_ne
     rcases W_ne with ⟨x, hx⟩
-    have W_vois : est_vois x W := by -- ⟨W, hx, W_ouv, by simp⟩
+    have W_vois : est_vois x W := by --⟨W, ⟨hx, W_ouv, by simp⟩⟩
       use W
       exact ⟨hx, W_ouv, by simp⟩
     let W_sub : Set (Induite v) := Subtype.val ⁻¹' W
@@ -173,6 +173,33 @@ lemma crois_equ [EspaceMetrique X] {F : ℕ → Partie X} :
       · exact h laetitia
       · exact hr
 
+lemma diam_0_singl_or_empty [EspaceMetrique X] {A : Partie X} :
+A.Nonempty → diam A = 0 → ∃ x : X, A = {x} := by
+  rintro ⟨x, hx⟩ diam_0
+  use x
+  ext y
+  constructor
+  · intro hy
+    unfold diam at diam_0
+    dsimp at diam_0
+    split_ifs at diam_0 with h
+    · let S := {d | ∃ a ∈ A, ∃ b ∈ A, EspaceMetrique.d a b = d}
+      have d_diam : EspaceMetrique.d x y ≤ sSup S := le_csSup h ⟨x, hx, y, hy, rfl⟩
+      rw [diam_0] at d_diam
+      have d_0 : EspaceMetrique.d x y = 0 := le_antisymm d_diam (EspaceMetrique.is_dist.nneg x y)
+      rw [(EspaceMetrique.is_dist.sep x y).mp d_0]
+      rfl
+    · linarith
+  · intro hy
+    rw [hy]
+    exact hx
+
+lemma conv_equ [EspaceMetrique X] {u : ℕ → X} {l : X} :
+converge_vers u l ↔ converges_to u l := sorry
+
+lemma conv_ge_N_equ [EspTop X] {u : ℕ → X} {v : ℕ → X} {l : X} {N : ℕ} :
+(∀ n ≥ N, u n = v n) → (converge_vers u l ↔ converge_vers v l) := sorry
+
 theorem pre_thm_baire [EspaceMetrique X] {F : ℕ → Partie X} : complet X →
 (∀ n : ℕ, F n ≠ ∅) → (∀ n : ℕ, fermee (F n)) → (∀ n m : ℕ, m ≥ n → (F m) ⊆ (F n)) →
 converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
@@ -232,13 +259,34 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     intro n m hm
     exact (F_decrois n) m hm (hx m)
 
+  have inter_fer : fermee (⋂ n : ℕ, F n) := by
+    change est_ferme (⋂ n, F n)
+    exact inter_est_ferme F_fer
+
   have lfn : l ∈ ⋂ n : ℕ, F n := by
     rw [mem_iInter]
     intro n
-    have ⟨m, hm⟩ : ∃ m : ℕ, m ≥ n := exists_nat_ge n
-    have h : (x m) ∈ (F n) := mem_preimage.mp (hF n m hm)
-    sorry
-
+    have ⟨N, hN⟩ : ∃ m : ℕ, m ≥ n := exists_nat_ge n
+    have h : (x N) ∈ (F n) := mem_preimage.mp (hF n N hN)
+    change ∀ (n : ℕ), est_ferme (F n) at F_fer
+    specialize F_fer n
+    rw [ferme_iff_adh] at F_fer
+    rw [←F_fer, in_adh_suite]
+    let y : ℕ → X := m ↦ if m < n then x n else x m
+    use y
+    constructor
+    · intro m
+      by_cases m_n : m < n
+      · simp only [m_n, ↓reduceIte, y]
+        exact hF n n (by rfl)
+      · simp only [m_n, ↓reduceIte, y]
+        push_neg at m_n
+        exact hF n m m_n
+    · have x_eq_y : ∀ m ≥ n, x m = y m := by
+        intro m hm
+        simp [y, hm]
+      rw [←conv_ge_N_equ x_eq_y, conv_equ]
+      exact hl
   have mborn : ∃ N : ℕ, ∀ n : ℕ, n ≥ N → diam_bornee (F n) := by
     rcases lim 0.5 (by linarith) with ⟨N, hN⟩
     dsimp at hN
@@ -282,7 +330,7 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
 
   have diam_0 : diam (⋂ n : ℕ, F n) = 0 := le_antisymm h_le diam_pos
 
-  sorry
+  exact diam_0_singl_or_empty ⟨l, lfn⟩ diam_0
 
 lemma h_split {n : ℕ} : Set.Icc 0 (n + 1) = insert (n + 1) (Set.Icc 0 n) := by
   ext x
@@ -437,70 +485,10 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
     simp [B, h'']
     linarith [(Bn_ok n).1]
 
-  have B_diam' : ∀ n : ℕ, diam (B n) ≤ 1/(n + 1) := by
+  have B_diam_pos : ∀ n : ℕ, diam (B n) ≥ 0 := by
     intro n
-    by_cases! h : diam (B n) = -1
-    · rw [h]
-      trans 0
-      · linarith
-      · apply one_div_nonneg.mpr ?_
-        linarith
-    · unfold diam
-      dsimp
-      split_ifs with h'
-      · apply csSup_le
-        · use 0
-          use c n
-          have h'' : EspaceMetrique.d (c n) (c n) = 0 := by
-            rw [EspaceMetrique.is_dist.sep (c n) (c n)]
-          exact ⟨c_B n, c n, c_B n, h''⟩
-        · simp only [mem_setOf_eq, one_div, forall_exists_index, and_imp]
-          intro d x hx y hy h
-          have h_dist : ∀ z : X, z ∈ B n → EspaceMetrique.d z (c n) ≤ (min (r n) (1 / (2*(↑n + 1))))
-          := by
-            intro z hz
-            simp only [boule_fermee.eq_1, mem_setOf_eq, B] at hz
-            simp only [one_div, mul_inv_rev, le_inf_iff]
-            constructor
-            · exact hz
-            · specialize Bn_ok n
-              rcases Bn_ok with ⟨h1, h2, h3⟩
-              apply hz.trans
-              have h_calc : 1 / (2 * ((n : ℝ) + 1)) = ((n : ℝ) + 1)⁻¹ * 2⁻¹ := by field_simp
-              rw [←h_calc]
-              exact h2
-          rw [←h]
-          calc EspaceMetrique.d x y
-            ≤ EspaceMetrique.d x (c n) + EspaceMetrique.d (c n) y :=
-              EspaceMetrique.is_dist.ineq x (c n) y
-            _ ≤ (min (r n) (1 / (2*(↑n + 1)))) + (min (r n) (1 / (2*(↑n + 1)))) :=
-              add_le_add (h_dist x hx) (by rw [EspaceMetrique.is_dist.symm]; exact (h_dist y hy))
-            _ = 2 * (min (r n) (1 / (2*(↑n + 1)))) := by ring
-            _ ≤ 2 * (1 / (2*(↑n + 1))) := mul_le_mul_of_nonneg_left (min_le_right _ _) (by norm_num)
-            _ ≤ (↑n + 1)⁻¹ := by field_simp; rfl
-      · trans 0
-        · linarith
-        · apply one_div_nonneg.mpr ?_
-          linarith
-
-  have B_diam : converges_to (n ↦ (diam (B n))) 0 := by
-    unfold converges_to
-    intro ε ε_pos
-    obtain ⟨N, hN⟩ := exists_nat_one_div_lt ε_pos
-    use N
-    intro n hn
-    change |((fun n ↦ diam (B n)) n) - 0| ≤ ε
-    simp only [sub_zero]
-    specialize B_diam' n
     rcases diam_nneg (B n) with h | h
-    · rw [abs_le]
-      constructor
-      · linarith
-      · apply B_diam'.trans
-        apply le_of_lt at hN
-        trans 1 / (↑N + 1)
-        · gcongr
-        · exact hN
+    · exact h
     · have B_in_boule : in_boule (B n) := by
         use (c n), 2*(r n)
         simp only [gt_iff_lt, Nat.ofNat_pos, mul_pos_iff_of_pos_left, boule_ouverte]
@@ -509,6 +497,48 @@ theorem thm_baire [EspaceMetrique X] : complet X → baire X := by
       unfold diam_bornee at B_in_boule
       have nh : diam (B n) ≠ -1 := ne_of_gt B_in_boule.2
       contradiction
+
+  have B_diam_le_inv : ∀ n : ℕ, diam (B n) ≤ 1/(n + 1) := by
+    intro n
+    unfold diam
+    dsimp
+    split_ifs with h'
+    · apply csSup_le
+      · use 0, c n
+        have h'' : EspaceMetrique.d (c n) (c n) = 0 := by
+          rw [EspaceMetrique.is_dist.sep (c n) (c n)]
+        exact ⟨c_B n, c n, c_B n, h''⟩
+      · simp only [mem_setOf_eq, one_div, forall_exists_index, and_imp]
+        intro d x hx y hy h
+        have h_dist : ∀ z : X, z ∈ B n → EspaceMetrique.d z (c n) ≤ (min (r n) (1 / (2*(↑n + 1))))
+        := by
+          intro z hz
+          simp only [boule_fermee.eq_1, mem_setOf_eq, B] at hz
+          simp only [one_div, mul_inv_rev, le_inf_iff]
+          constructor
+          · exact hz
+          · specialize Bn_ok n
+            rcases Bn_ok with ⟨h1, h2, h3⟩
+            apply hz.trans
+            have h_calc : 1 / (2 * ((n : ℝ) + 1)) = ((n : ℝ) + 1)⁻¹ * 2⁻¹ := by field_simp
+            rw [←h_calc]
+            exact h2
+        rw [←h]
+        calc EspaceMetrique.d x y
+          ≤ EspaceMetrique.d x (c n) + EspaceMetrique.d (c n) y :=
+            EspaceMetrique.is_dist.ineq x (c n) y
+          _ ≤ (min (r n) (1 / (2*(↑n + 1)))) + (min (r n) (1 / (2*(↑n + 1)))) :=
+            add_le_add (h_dist x hx) (by rw [EspaceMetrique.is_dist.symm]; exact (h_dist y hy))
+          _ = 2 * (min (r n) (1 / (2*(↑n + 1)))) := by ring
+          _ ≤ 2 * (1 / (2*(↑n + 1))) := mul_le_mul_of_nonneg_left (min_le_right _ _) (by norm_num)
+          _ ≤ (↑n + 1)⁻¹ := by field_simp; rfl
+    · trans 0
+      · linarith
+      · apply one_div_nonneg.mpr ?_
+        linarith
+
+  have B_diam : converges_to (n ↦ (diam (B n))) 0 := by
+    exact conv_of_le_inv (n ↦ diam (B n)) B_diam_pos B_diam_le_inv
 
   apply pre_thm_baire X_compl at B_diam
 

@@ -119,10 +119,9 @@ lemma union_fini_ferme' {ι : Type} {u : ι → Set X} [Finite ι]
 
 open Metrique
 instance {X : Type} [EspaceMetrique X] : EspTop X where
-  est_ouvert := A ↦ ouverte A
+  est_ouvert := ouverte
   univ_ouvert := ouverte_of_uni
   empty_ouvert := ouverte_of_vide
-
   union_ouvert := ouverte_of_union
   inter_ouvert := ouverte_of_inter
 
@@ -185,32 +184,42 @@ lemma adh_eq_inter (s : Set X) : adh s = ⋂₀ {F : Set X | est_ferme F ∧ s �
   apply Nonempty.mono HVUS
   by_contra! h;
   have hVc : est_ferme Vᶜ := est_ouvert_iff_compl_est_ferme.mp h2
-  rw[← Set.subset_empty_iff, ← Set.disjoint_iff, ← subset_compl_iff_disjoint_left] at h
+  rw[← subset_empty_iff, ← Set.disjoint_iff, ← subset_compl_iff_disjoint_left] at h
   have : x ∈ Vᶜ := by
     apply hx
     exact mem_sep hVc h
   exact this h1
 
-lemma adh_ferme (s : Set X) : est_ferme (adh s) := by
+lemma adh_ferme {s : Set X} : est_ferme (adh s) := by
   rw [adh_eq_inter, sInter_eq_iInter]
   apply inter_est_ferme
   intro F
   exact F.property.1
 
+lemma ferme_iff_adh {A : Set X} : est_ferme A ↔ (adh A) = A := by
+  constructor
+  · intro hA
+    rw [adh_eq_inter]
+    exact Subset.antisymm (sInter_subset_of_mem ⟨hA, (by rfl)⟩)
+                          (fun x hx ↦ mem_sInter.mp (fun F hF ↦ hF.2 hx))
+  · intro hA
+    rw [←hA]
+    exact adh_ferme
+
 ----------------------------------------------------------------------------------------------
 @[simp]
 def int (s : Set X) := {x | est_vois x s}
 
-lemma ouvert_iff_int (U : Set X) : est_ouvert U ↔ (int U) = U := by
+lemma ouvert_iff_int {A : Set X} : est_ouvert A ↔ (int A) = A := by
   constructor
-  · intro hU
+  · intro hA
     unfold int
     ext x
     constructor
     · intro hx
       rcases hx with ⟨_,⟨h1, _, h2⟩⟩
       exact mem_of_subset_of_mem h2 h1
-    · exact fun hx ↦ ⟨U, hx, hU, by simp⟩
+    · exact fun hx ↦ ⟨A, hx, hA, by simp⟩
   rw [ouvert_ssi_vois]
   intro h x hx
   rw [<-h] at hx
