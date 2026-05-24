@@ -154,25 +154,120 @@ lemma lip_continu (f : E → F) : k_lipschitz f → unif_continu f := by
         _ = ε/2 := by field
         _ ≤ ε := by linarith
 
+-- Définition 3.18.
 
+variable {ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)]
 
-def top_init {X ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)] (f : (i : ι) → X → Y i) : EspTop X :=
-  topo_engendree {A : Set X | ∃ i : ι, ∃ U : Partie (Y i), est_ouvert U ∧ A = (f i) ⁻¹' U}
+def top_init {X : Type} (f : (i : ι) → X → Y i) : EspTop X := topo_engendree
+  {A : Set X | ∃ i : ι, ∃ U : Partie (Y i), est_ouvert U ∧ A = (f i) ⁻¹' U}
 
-instance top_prod {ι : Type} (Y : ι → Type) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) :=
-  top_init (fun i ↦ x ↦ x i)
+instance top_prod : EspTop (Π i, Y i) := top_init (fun i ↦ x ↦ x i)
 
-instance top_prod_fini {n : ℕ} (Y : Fin n → Type) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) :=
-  top_init (fun i ↦ x ↦ x i)
+--instance top_prod_fini {n : ℕ} (Y : Fin n → Type) [∀ i, EspTop (Y i)] :
+--  EspTop (Π i, Y i) := top_init (fun i ↦ x ↦ x i)
 
-
-lemma ouvert_pref_projections {X ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)]
-  (f : (i : ι) → X → Y i) (i : ι) (U : Set (Y i)) (hU : est_ouvert U) :
+lemma ouvert_pref_projections {X : Type} (f : (i : ι) → X → Y i) (i : ι)
+  (U : Set (Y i)) (hU : est_ouvert U) :
   @est_ouvert X (top_init f) ((f i) ⁻¹' U) := by
   apply ouv_top_engendree.ouvS
-  dsimp
-  exact ⟨i, U, hU, rfl⟩
+  dsimp; exact ⟨i, U, hU, rfl⟩
 
+def proj : (i : ι) → (Π i, Y i) → Y i := i ↦ x ↦ (x i)
+
+def prod_espaces (V : (i : ι) → Partie Y i) := ⋂ i, (proj i) ⁻¹' V i
+
+omit [(i : ι) → EspTop (Y i)] in
+lemma mem_prod_espaces (x : Π i, Y i) (V : (i : ι) → Partie Y i) :
+  x ∈ prod_espaces V ↔ ∀ i, x i ∈ V i := by
+  apply Iff.intro
+  · intro h i; rw [prod_espaces, mem_iInter] at h; exact h i
+  · intro h; rw [prod_espaces, mem_iInter]; intro i; exact h i
+
+def prod_ouverts (U : Partie (Π i, Y i)) (V : (i : ι) → Partie Y i) :=
+  (∀ i, est_ouvert (V i)) ∧ U = prod_espaces V
+
+def ouv_elementaire (U : Partie (Π i, Y i)) := ∃ V : (i : ι) → Partie Y i,
+  prod_ouverts U V ∧ (∃ J : Set ι, Finite J ∧ ∀ i ∉ J, V i = Ω)
+
+lemma ouv_of_ouv_elem (U : Partie (Π i, Y i)) (h : ouv_elementaire U) :
+  est_ouvert U := by
+  rcases h with ⟨V, ⟨V_ouv, hV⟩, ⟨J, J_fin, hJ⟩⟩
+  have eq : U = ⋂ i ∈ J, (proj i) ⁻¹' V i := by
+    rw [hV, prod_espaces, ←biInter_univ, ←union_compl_self J]
+    have eq_univ : ⋂ i ∈ Jᶜ, (proj i) ⁻¹' V i = Ω := by
+      simp only [iInter_eq_univ]; intro i hi
+      rw [hJ i hi, preimage_univ]
+    rw [biInter_union, eq_univ, inter_univ]
+  rw [eq]; apply inter_fini_ouvert; intro i hi
+  apply ouvert_pref_projections; exact V_ouv i
+
+-- Théorème 3.19.
+
+-- a)
+
+theorem vois_of_prod (X : Partie (Π i, Y i)) (x : Π i, Y i) : est_vois x X ↔
+  ∃ U ⊆ X, ouv_elementaire U ∧ x ∈ U := by
+  apply Iff.intro
+  · intro h; rcases h with ⟨V, ⟨x_in, V_ouv, V_in⟩⟩
+    sorry
+  · intro h; rcases h with ⟨U, U_in, U_ouv, x_in⟩
+    use U; constructor
+    · exact x_in
+    · exact ouv_of_ouv_elem U U_ouv
+    · exact U_in
+
+-- b)
+
+lemma est_vois_of_preimage_of_vois (x : Π i, Y i) {i : ι} {V : Partie Y i}
+  (h : est_vois (x i) V) : est_vois x (proj i ⁻¹' V) := by
+  rcases h with ⟨U, ⟨x_in, hU, U_in⟩⟩
+  use proj i ⁻¹' U; constructor
+  · exact x_in
+  · apply ouvert_pref_projections; exact hU
+  · intro x hx; exact U_in hx
+
+theorem conv_vers_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converge_vers u l ↔
+  ∀ i, converge_vers (n ↦ (u n) i) (l i) := by
+  apply Iff.intro
+  · intro h i V hV; let U := proj i ⁻¹' V
+    have hU := est_vois_of_preimage_of_vois l hV
+    rcases h U hU with ⟨N, hN⟩; use N; intro m hm
+    exact hN m hm
+  · intro h V hV; rw [vois_of_prod] at hV
+    rcases hV with ⟨U, U_in, ⟨W, ⟨W_ouv, hW⟩, ⟨J, J_fin, hJ⟩⟩, l_in⟩
+    have vois_im : ∀ i, est_vois (l i) (W i) := by
+      intro i; apply ouv_est_vois (W_ouv i)
+      rw [hW, prod_espaces, mem_iInter] at l_in; exact l_in i
+    choose! f hf using h; let g := i ↦ f i (W i)
+--
+    have exists_N : ∀ i, ∀ n ≥ g i, (u n) i ∈ W i := by
+      intro i; exact hf i (W i) (vois_im i)
+    have exists_max : ∃ N, ∀ i ∈ J, N ≥ g i := by
+      suffices h : BddAbove {g i | i ∈ J} by
+        rcases h with ⟨M, hM⟩; use M; intro i hi
+        apply hM; use i, hi
+      apply SupReal.bddabove_of_finite_image
+    rcases exists_max with ⟨N, hN⟩; use N; intro n n_ge
+--
+    apply U_in; rw [hW, mem_prod_espaces]; intro i
+    by_cases in_J : i ∈ J
+    · case pos => apply exists_N; linarith [hN i in_J]
+    · case neg => rw [hJ i in_J]; apply mem_univ
+
+-- c)
+
+theorem separe_of_prod_separe [S : ∀ i, EspSepareT2 (Y i)] : EspSepareT2 (Π i, Y i)
+  := by
+  constructor; intro x y h
+  have exists_ne : ∃ i, x i ≠ y i := by
+    contrapose h; push_neg at h; ext i; exact h i
+  rcases exists_ne with ⟨i, hi⟩
+  rcases (S i).est_separe (x i) (y i) hi with ⟨U, V, hU, hV, x_in, y_in, disj⟩
+  let U' := (proj i) ⁻¹' U; let V' := (proj i) ⁻¹' V
+  use U', V', ouvert_pref_projections proj i U hU,
+      ouvert_pref_projections proj i V hV, x_in, y_in
+  rw [eq_empty_iff_forall_notMem]; intro z z_in
+  rw [←mem_empty_iff_false (z i), ←disj]; exact z_in
 
 --def est_ouvert_elementaire (s : Set (X × X)) :=
 --  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)

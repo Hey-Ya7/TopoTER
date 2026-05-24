@@ -26,7 +26,7 @@ variable {X Y : Type} [EspTop X] [EspTop Y]
 namespace EspTop
 
 inductive ouv_top_engendree (S : Set (Set X)) : Set X → Prop
-  | ouvS (U : Set X) (hU : U ∈ S): ouv_top_engendree S U
+  | ouvS (U : Set X) (hU : U ∈ S) : ouv_top_engendree S U
   | univS : ouv_top_engendree S Ω
   | emptyS : ouv_top_engendree S ∅
   | unionS {U : Famille X} (hU : ∀ O ∈ U, ouv_top_engendree S O) :
