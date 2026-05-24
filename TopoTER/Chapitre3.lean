@@ -158,9 +158,74 @@ open Set.Notation
 
 -- lire l'intro de Mathlib.Data.Set.Subset
 
+<<<<<<< HEAD
 def est_ouvert_elementaire (s : Set (X × X)) :=
   ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
+=======
+instance {s : Partie X} : EspTop (Induite s) where
+  est_ouvert := fun u ↦ ∃ v, est_ouvert v ∧ u = s ↓∩ v
+  univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
+  empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
+--
+  union_ouvert := by
+    intro F h; choose! u h_ouv h_int using h
+    use ⋃ i, u (F.u i); apply And.intro
+    · apply iunion_ouvert; intro i; apply h_ouv; use i
+    · rw [preimage_iUnion]; dsimp [Famille.iUnion]
+      congr; ext i x; nth_rw 1 [h_int (F.u i)]; use i
+--
+  inter_ouvert := by
+    rintro u v ⟨U, ⟨Uouv, hU⟩⟩ ⟨V, ⟨Vouv, hV⟩⟩
+    use U ∩ V; constructor
+    · exact inter_ouvert Uouv Vouv
+    · simp [hU, hV]
 
---instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
---  est_ouvert := fun w ↦ (w = ⋂ i, u i) ∧ (∀ i, est_ouvert_elementaire (u i))
---  univ_ouvert :=
+--def est_ouvert_elementaire (s : Set (X × X)) :=
+--  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
+--def top_final {X ι : Type*} (Y : ι → Type*) [∀ i, EspTop (Y i)] (f : (i : ι) → (Y i) → X  ) : EspTop X where
+--est_ouvert := fun (A : Partie X) ↦ ∀ i : ι, est_ouvert ((f i) ⁻¹' A)
+--univ_ouvert := fun i ↦ univ_ouvert
+--empty_ouvert := fun i ↦ empty_ouvert
+--inter_ouvert := fun {u v} hu hv i ↦ by
+--                                      -- 1. Propriété de l'image réciproque : f⁻¹(u ∩ v) = f⁻¹(u) ∩ f⁻¹(v)
+--                                      rw [Set.preimage_inter]
+--                                      -- 2. On applique l'axiome d'intersection de l'espace topologique (Y i)
+--                                      apply EspTop.inter_ouvert
+--                                      · exact hu i
+--                                      · exact hv i
+--union_ouvert := fun {κ} {F} hA i ↦ by
+--                                    erw [Set.preimage_iUnion]
+>>>>>>> refs/remotes/origin/master
+
+
+def top_init {X ι : Type*} {Y : ι → Type*} [∀ i, EspTop (Y i)] (f : (i : ι) → X → Y i) : EspTop X :=
+  topo_engendree {A : Set X | ∃ i : ι, ∃ U : Partie (Y i), est_ouvert U ∧ A = (f i) ⁻¹' U}
+
+instance top_prod {ι : Type*} (Y : ι → Type*) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) :=
+  top_init (fun i ↦ x ↦ x i)
+
+instance top_prod_fini {n : ℕ} (Y : Fin n → Type*) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) :=
+  top_init (fun i ↦ x ↦ x i)
+
+
+lemma ouvert_pref_projections {X ι : Type*} {Y : ι → Type*} [∀ i, EspTop (Y i)]
+  (f : (i : ι) → X → Y i) (i : ι) (U : Set (Y i)) (hU : est_ouvert U) :
+  @est_ouvert X (top_init f) ((f i) ⁻¹' U) := by
+  apply ouv_top_engendree.ouvS
+  dsimp
+  exact ⟨i, U, hU, rfl⟩
+
+--def est_ouvert_elementaire {ι : Type*} (Y : ι → Type*) [∀ i, EspTop (Y i)] (s : Set (Π i, Y i)) :=
+ -- ∃ (U : ι → Set (Y i))
+
+--def est_ouvert_elementaire {ι : Type*} (Y : ι → Type*) [∀ i, EspTop (Y i)] (A : Set ((i : ι) → Y i)) : Prop :=
+--  ∃ (J : Finset ι) (U : (i : ι) → Set (Y i)),
+--    (∀ i ∈ J, EspTop.est_ouvert (U i)) ∧
+--    A = {x : (i : ι) → Y i | ∀ i, i ∈ J → x i ∈ U i}
+
+--inductive ouv_elementaire {ι : Type*} (Y : ι → Type*) [∀ i, EspTop (Y i)] : Set ((i : ι) → Y i) → Prop
+--| de_base (J : Finset ι) (U : (i : ι) → Set (Y i)) (hU : ∀ i ∈ J, EspTop.est_ouvert (U i)) : ouv_elementaire {x : (i : ι) → Y i | ∀ i, i ∈ J → x i ∈ U i}
+
+
+--instance top_prod_bis {ι : Type*} (Y : ι → Type*) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) where
+--  est_ouvert := fun U ↦ ∃ est_ouvert_elementaire Y
