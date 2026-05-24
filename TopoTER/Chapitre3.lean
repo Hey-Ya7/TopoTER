@@ -154,8 +154,28 @@ lemma lip_continu (f : E → F) : k_lipschitz f → unif_continu f := by
         _ = ε/2 := by field
         _ ≤ ε := by linarith
 
-def est_ouvert_elementaire (s : Set (X × X)) :=
-  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
+
+
+def top_init {X ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)] (f : (i : ι) → X → Y i) : EspTop X :=
+  topo_engendree {A : Set X | ∃ i : ι, ∃ U : Partie (Y i), est_ouvert U ∧ A = (f i) ⁻¹' U}
+
+instance top_prod {ι : Type} (Y : ι → Type) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) :=
+  top_init (fun i ↦ x ↦ x i)
+
+instance top_prod_fini {n : ℕ} (Y : Fin n → Type) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) :=
+  top_init (fun i ↦ x ↦ x i)
+
+
+lemma ouvert_pref_projections {X ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)]
+  (f : (i : ι) → X → Y i) (i : ι) (U : Set (Y i)) (hU : est_ouvert U) :
+  @est_ouvert X (top_init f) ((f i) ⁻¹' U) := by
+  apply ouv_top_engendree.ouvS
+  dsimp
+  exact ⟨i, U, hU, rfl⟩
+
+
+--def est_ouvert_elementaire (s : Set (X × X)) :=
+--  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
 
 --instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
 --  est_ouvert := fun w ↦ (w = ⋂ i, u i) ∧ (∀ i, est_ouvert_elementaire (u i))
