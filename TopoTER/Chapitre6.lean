@@ -24,9 +24,11 @@ lemma sous_couvre_of_couvre (F : Famille X) (A : Partie X) (h : couvrement F A) 
   rcases h hx with ⟨B, hB, x_in⟩; rcases hB with ⟨i, hi⟩
   use B, (by use ⟨i, by simp⟩), x_in
 
+def est_compact (A : Partie X) := ∀ C : Famille X, (∀ P ∈ C, est_ouvert P)
+  → couvrement C A → ∃ J, J.Finite ∧ sous_couvrement C J A
+
 class EspCompact (X : Type) [EspTop X] [EspSepareT2 X] where
-  compact : ∀ C : Famille X, (∀ A ∈ C, est_ouvert A) → couvrement C Ω
-    → ∃ J, J.Finite ∧ sous_couvrement C J Ω
+  compact : est_compact (X := X) Ω
 
 -- b)
 
@@ -59,8 +61,58 @@ lemma compact_iff_comp_f : EspCompact X ↔ est_compact_f X := by
 
 -- 6.2.
 
-def est_compact (A : Partie X) := ∀ C : Famille X, (∀ P ∈ C, est_ouvert P)
-  → couvrement C A → ∃ J, J.Finite ∧ sous_couvrement C J A
+-- a)
+
+open Set.Notation in
+instance comp_induite_of_comp {A : Partie X} {comp : est_compact A} :
+  EspCompact (Induite A) where
+  compact := by
+    rw [←self_induite]; intro F F_ouvert F_couvre
+    have exists_ouv : ∀ i : F.ι, ∃ U, est_ouvert U ∧ F.u i = A ↓∩ U := by
+      intro i; rcases F_ouvert (F.u i) (by use i) with ⟨U, hU⟩
+      use U, hU.1, hU.2
+    choose! f hf using exists_ouv
+--
+    let C : Famille X := ⟨F.ι, f⟩
+    have C_ouvert : ∀ P ∈ C, est_ouvert P := by
+      intro P hP; rcases hP with ⟨i, hi⟩
+      dsimp at hi; rw [←hi]; exact (hf i).left
+    have C_couvre : couvrement C A := by
+      intro x hx; rw [mem_union_famille]; let X : A := ⟨x, hx⟩
+      rcases F_couvre X.prop with ⟨B, hB, X_in⟩
+      rcases hB with ⟨i, hi⟩; use C.u i, (by use i)
+      dsimp at hi; rwa [←hi, (hf i).2] at X_in
+--
+    rcases comp C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
+    use J, hJ; intro x hx; rw [mem_union_famille]
+    rcases J_couvre hx with ⟨B, hB, x_in⟩
+    rcases hB with ⟨i, hi⟩; use F.u i, (by use i)
+    dsimp [C] at hi; rwa [(hf i).2, hi]
+
+open Set.Notation in
+theorem comp_iff_comp_induite (A : Partie X) : EspCompact (Induite A) ↔
+  est_compact A := by
+  apply Iff.intro
+  · case mp => intro ⟨h⟩ C C_ouvert C_couvre
+               let F : Famille A := ⟨C.ι, i ↦ A ↓∩ C.u i⟩
+               have F_ouvert : ∀ P ∈ F, est_ouvert P := by
+                intro P hP; rcases hP with ⟨i, hi⟩
+                dsimp [F] at hi; rw [←hi]; use C.u i
+                apply And.intro _ (refl _); apply C_ouvert; use i
+               have F_couvre : couvrement F Ω := by
+                intro x hx; rw [←self_induite] at hx
+                rcases C_couvre hx with ⟨B, hB, x_in⟩
+                rcases hB with ⟨i, hi⟩
+                dsimp at hi; rw [mem_union_famille]
+                use (A ↓∩ C.u i), (by use i); rwa [←hi] at x_in
+--
+               rcases h F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
+               use J, hJ; intro x hx; rw [mem_union_famille]
+               let X : A := ⟨x, hx⟩; rw [←self_induite] at J_couvre
+               rcases J_couvre X.prop with ⟨B, hB, X_in⟩
+               rcases hB with ⟨i, hi⟩; use C.u i, (by use i)
+               dsimp at hi; rwa [←hi] at X_in
+  · case mpr => intro h; apply comp_induite_of_comp; exact h
 
 -- b)
 
@@ -132,7 +184,7 @@ theorem compact_of_ferme [EspCompact X] {A : Partie X} (h : est_ferme A)
 -- Théorème 6.5.
 
 omit [EspSepareT2 X] in
-theorem comp_of_continu_image {f : X → Y} (h : est_continu f) {A : Partie X}
+theorem compact_of_continu_image {f : X → Y} (h : est_continu f) {A : Partie X}
   (comp : est_compact A) : est_compact (f '' A) := by
   intro C h₁ h₂
   let F : Famille X := ⟨C.ι, i ↦ f ⁻¹' (C.u i)⟩
@@ -161,17 +213,17 @@ variable {E F : Type} [M₁ : EspaceMetrique E] [M₂ : EspaceMetrique F]
 
 -- Proposition 6.7.
 
-theorem bornee_of_compact [Cmp : EspCompact E] : bornee E := by
+theorem borne_of_compact {A : Partie E} (h : est_compact A) : est_borne A := by
   let C : Famille E := ⟨E, x ↦ Bₒ x 1⟩
   have C_ouvert : ∀ A ∈ C, est_ouvert A := by
     intro A hA; rcases hA with ⟨x, hx⟩
     dsimp [C] at hx; rw [←hx]; unfold est_ouvert;
     exact ouv_of_boule_ouv x 1
-  have C_couvre : couvrement C Ω := by
+  have C_couvre : couvrement C A := by
     intro x hx; rw [mem_union_famille]; use Bₒ x 1, (by use x)
     exact centre_in_boule x one_pos
 --
-  rcases Cmp.compact C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
+  rcases h C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
   let S := {d(x, y) | (x ∈ J) (y ∈ J)}
   have bdd : BddAbove S := by
     let f : E × E → ℝ := I ↦ d(I.1, I.2)
@@ -180,7 +232,7 @@ theorem bornee_of_compact [Cmp : EspCompact E] : bornee E := by
     · intro s hs; rcases hs with ⟨x, hx, y, hy, hs⟩
       use (x, y), (mem_prod.mp ⟨hx, hy⟩), hs
     · exact Set.Finite.prod hJ hJ
-  rcases bdd with ⟨M, hM⟩; unfold bornee
+  rcases bdd with ⟨M, hM⟩; unfold est_borne
   rw [←bdd_iff_bdd_by_nneg]; use M + 2; intro x hx y hy
 --
   rcases J_couvre hx with ⟨A, hA, x_in⟩; rcases hA with ⟨i, hi⟩
@@ -252,7 +304,7 @@ theorem seq_comp_of_compact (E : Type) [EspaceMetrique E] : EspCompact E →
     rcases hx with ⟨φ, hφ, conv⟩
     use φ, hφ, x; rwa [←conv_vers_iff_conv_to]
   apply inter_decr_non_vide
-  · intro i; exact adh_ferme (X i)
+  · intro i; exact adh_ferme
   · intro i; apply adh_contenu_adh; intro x hx
     rcases hx with ⟨n, n_ge, hn⟩; use n, (by linarith), hn
   · intro i h; rw [adh_vide] at h
@@ -323,6 +375,17 @@ theorem compact_iff_seq_comp (E : Type) [EspaceMetrique E] : EspCompact E ↔
   apply Iff.intro (seq_comp_of_compact E)
   intro hyp; apply compact_of_lebesgue_comp
   exact lebesgue_comp_of_seq_comp E hyp
+
+-- Corollaire 6.10.
+
+theorem compact_iff_ferme_borne (A : Partie ℝ) : est_compact A ↔ est_ferme A ∧
+  est_borne A := by
+  apply Iff.intro
+  · case mp => intro h; apply And.intro
+               · exact ferme_of_compact h
+               · exact borne_of_compact h
+  · case mpr => intro h; rw [←comp_iff_comp_induite]
+                rw [compact_iff_seq_comp]
 
 -- 6.4. Compacts d'un e.v.n. de dimension finie
 

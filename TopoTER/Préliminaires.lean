@@ -24,7 +24,13 @@ macro_rules (kind := for_all)
 abbrev Ω {α} : Set α := Set.univ
 notation "Partie " X => Set X
 
-abbrev Induite {X : Type*} (A : Partie X) : Partie X := A
+abbrev Induite {X : Type} (A : Partie X) : Partie X := A
+
+instance {X : Type} {A : Partie X} : Coe (Partie X) (Partie Induite A) where
+  coe := S ↦ {x | (x : X) ∈ S}
+
+lemma self_induite {X} {A : Partie X} : (A : Partie Induite A) = Ω := by
+  ext x; unfold Induite; simp
 
 abbrev Z : Partie ℝ := {k | k : ℤ}
 abbrev Q : Partie ℝ := {q | q : ℚ}
@@ -86,6 +92,12 @@ theorem exists_by_induction' {α : Type} (P : ℕ → α → Prop) (Q : ℕ → 
   have key : ∀ n, P n (Nat.recOn n f₀ F) := n ↦ Nat.rec hf₀ ((n ih) ↦ hF n _ ih) n
   exact ⟨n ↦ Nat.recOn n f₀ F, n ↦ ⟨key n, hF' n _ (key n)⟩⟩
 
+theorem exists_recOn {α : Type} (Q : ℕ → α → α → Prop) (h₀ : Nonempty α) (ih : ∀ n,
+  ∀ a, ∃ a', Q n a a') : ∃ f : ℕ → α, ∀ n, Q n (f n) (f (n + 1)) := by
+  let f₀ : α := Nonempty.some h₀
+  choose! f hf using ih
+  use n ↦ Nat.recOn n f₀ f; intro n; apply hf
+
 theorem exists_by_piecewise {α : Type} (P : α → α → Prop) (h₀ : Nonempty α)
   (ih : ∀ n, ∀ u : Fin n → α, ∃ a', ∀ i, P (u i) a') : ∃ f : ℕ → α, ∀ n, ∀ i < n,
   P (f i) (f n) := by
@@ -141,6 +153,33 @@ notation "[" a "<__<" "+∞]" => Interval₅ a
 notation "[" a "≤__<" "+∞]" => Interval₆ a
 notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
+
+def really_converges_to (u : ℕ → ℝ) (l : ℝ) := ∀ ε > 0, ∃ N, ∀ n ≥ N, |u n - l| ≤ ε
+
+def really_converges (u : ℕ → ℝ) := ∃ l, really_converges_to u l
+
+def extraction (φ : ℕ → ℕ) := ∀ m n, m < n → φ m < φ n
+
+lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1) := by
+  let P (m : ℕ) (n : ℕ) := φ m < φ n
+  rw [←eq_forall_iff_eq_add_one P]
+  · apply Iff.intro
+    · intro h n m hmn; exact h m n hmn
+    · intro h m n hmn; exact h n m hmn
+  · intro _ _ _ h₁ h₂; exact lt_trans h₁ h₂
+
+lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
+  intro n; induction n
+  · case zero => apply zero_le
+  · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
+                      apply lt_of_le_of_lt hk; apply h; linarith
+
+lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N,
+  φ n ≥ A := by
+  intro A; use A; intro n hn
+  trans n
+  · exact n_le_extr_n h n
+  · exact hn
 
 structure Famille (X : Type) where
   ι : Type
@@ -216,7 +255,7 @@ namespace SupReal
 @[simp] instance : HSMul ℝ (Set ℝ) (Set ℝ) where
   hSMul := r ↦ S ↦ {r * s | s ∈ S}
 
-theorem image_of_fin {α J : Type*} (f : J → α) [Finite J] : Finite {f i | i} := by
+theorem image_of_fin {α J : Type} (f : J → α) [Finite J] : Finite {f i | i} := by
   apply Set.Finite.of_surjOn f (s := Set.univ)
   · intro x hx; rcases hx with ⟨i, hi⟩; use i, by simp
   · apply Set.finite_univ
@@ -266,6 +305,94 @@ theorem sSup_le_sSup {S T : Set ℝ} (hs : S.Nonempty) (ht : BddAbove T)
   apply csSup_le hs; intro s s_in
   rcases h s s_in with ⟨t, t_in, le_t⟩
   apply le_csSup_of_le ht t_in le_t
+
+theorem conv_of_increasing (u : ℕ → ℝ) (incr : ∀ n, u n ≤ u (n + 1)) (bdd :
+  ∃ M, ∀ n, u n ≤ M) : really_converges u := by
+  let S := {u n | n}; rcases bdd with ⟨M, hM⟩
+  have bounded : BddAbove S := by
+    use M; intro s hs; rcases hs with ⟨n, hn⟩
+    rw [←hn]; apply hM
+  use (sSup S); intro ε ε_pos
+  have le_lim : ∀ n, u n ≤ sSup S := by
+    intro n; apply le_csSup bounded; use n
+  have exists_N : ∃ N, u N ≥ sSup S - ε := by
+    by_contra contra; push_neg at contra
+    have lim_le : sSup S ≤ sSup S - ε := by
+      apply csSup_le
+      · use (u 0), by use 0
+      · intro s hs; rcases hs with ⟨n, hn⟩; rw [←hn]
+        apply le_of_lt (contra n)
+    linarith
+--
+  rcases exists_N with ⟨N, hN⟩; use N+1; intro n hn
+  rw [abs_sub_comm, abs_of_nonneg (by linarith [le_lim n])]
+  have incr' : ∀ n, ∀ m < n, u m ≤ u n := by
+    rw [eq_forall_iff_eq_add_one]
+    · intro n; exact incr n
+    · intro _ _ _ h₁ h₂; exact le_trans h₁ h₂
+  linarith [incr' n N (by linarith)]
+
+-- (il y a une façon plus intelligente de traîter cela mais je ne veux pas
+--  mettre l'effort nécessaire)
+theorem conv_of_decreasing (u : ℕ → ℝ) (decr : ∀ n, u n ≥ u (n + 1)) (bdd :
+  ∃ M, ∀ n, u n ≥ M) : really_converges u := by
+  let S := {u n | n}; rcases bdd with ⟨M, hM⟩
+  have bounded : BddBelow S := by
+    use M; intro s hs; rcases hs with ⟨n, hn⟩
+    rw [←hn]; apply hM
+  use (sInf S); intro ε ε_pos
+  have le_lim : ∀ n, u n ≥ sInf S := by
+    intro n; apply csInf_le bounded; use n
+  have exists_N : ∃ N, u N ≤ sInf S + ε := by
+    by_contra contra; push_neg at contra
+    have lim_le : sInf S ≥ sInf S + ε := by
+      apply le_csInf
+      · use (u 0), by use 0
+      · intro s hs; rcases hs with ⟨n, hn⟩; rw [←hn]
+        apply le_of_lt (contra n)
+    linarith
+--
+  rcases exists_N with ⟨N, hN⟩; use N+1; intro n hn
+  rw [abs_of_nonneg (by linarith [le_lim n])]
+  have incr' : ∀ n, ∀ m < n, u m ≥ u n := by
+    rw [eq_forall_iff_eq_add_one]
+    · intro n; exact decr n
+    · intro _ _ _ h₁ h₂; exact le_trans h₂ h₁
+  linarith [incr' n N (by linarith)]
+
+theorem bolzano_weierstrass (u : ℕ → ℝ) (bdd : ∃ M, ∀ n, |u n| ≤ M) : ∃ φ,
+  extraction φ ∧ really_converges (u ∘ φ) := by
+  rcases bdd with ⟨M, hM⟩
+  have bounded (n : ℕ) := abs_le.mp (hM n)
+  by_cases h : ∃ N, ∀ n > N, ∃ m > n, u m ≥ u n
+  · case pos => rcases h with ⟨N, hN⟩
+                let P (k m : ℕ) := m > N
+                let Q (k m n : ℕ) := m < n ∧ u m ≤ u n
+                have h₀ : ∃ a, P 0 a := by use (N + 1), by linarith
+                have ih : ∀ n a, P n a → ∃ a', P (n + 1) a' ∧ Q n a a' := by
+                  intro n a h; rcases hN a h with ⟨a', ha'⟩
+                  use a', (by linarith), ha'.1, ha'.2
+                rcases exists_by_induction' P Q h₀ ih with ⟨φ, hφ⟩
+                use φ; apply And.intro
+                · rw [extract_equiv]; intro n; linarith [(hφ n).2.1]
+                · apply conv_of_increasing
+                  · intro n; exact (hφ n).2.2
+                  · use M; intro n; exact (bounded (φ n)).2
+--
+  · case neg => push_neg at h
+                let P (k m : ℕ) := ∀ n > m, u n < u m
+                let Q (k m n : ℕ) := m < n
+                have h₀ : ∃ a, P 0 a := by rcases h 0 with ⟨a, ha⟩; use a, ha.2
+                have ih : ∀ n a, P n a → ∃ a', P (n + 1) a' ∧ Q n a a' := by
+                  intro n a h'; rcases h a with ⟨a', ha'⟩
+                  use a', ha'.2, ha'.1
+                rcases exists_by_induction' P Q h₀ ih with ⟨φ, hφ⟩
+                use φ; apply And.intro
+                · rw [extract_equiv]; intro n; linarith [(hφ n).2]
+                · apply conv_of_decreasing
+                  · intro n; apply le_of_lt; apply (hφ n).1
+                    exact (hφ n).2
+                  · use -M; intro n; exact (bounded (φ n)).1
 
 end SupReal
 
@@ -325,7 +452,7 @@ end Complex
 
 namespace Valuation
 
-class ValuationField (K : Type*) extends Field K where
+class ValuationField (K : Type) extends Field K where
   abs : K → ℝ
   isAbv : IsAbsoluteValue abs
 
@@ -349,7 +476,7 @@ scoped syntax : max (name := abs) atomic("|" noWs) term "|ₖ" : term
 macro_rules (kind := abs)
   | `(|$x|ₖ) => `(ValuationField.abs $x)
 
-variable {K : Type*} [VF : ValuationField K]
+variable {K : Type} [VF : ValuationField K]
 
 theorem abs_nonneg (k : K) : 0 ≤ |k|ₖ := by
   apply VF.isAbv.abv_nonneg
@@ -388,7 +515,7 @@ theorem abs_le_zero (k : K) (hk : |k|ₖ ≤ 0) : k = 0 := by
 
 end Valuation
 
-theorem Finset.eq_sum_of_additive {α β : Type*} [AddCommGroup α] [AddCommGroup β]
+theorem Finset.eq_sum_of_additive {α β : Type} [AddCommGroup α] [AddCommGroup β]
   (n : ℕ) (f : α → β) (g : Fin n → α) : f 0 = 0 → (∀ x y, f (x + y) = f x + f y) →
   f (∑ i, g i) = ∑ i, f (g i) := by
   intro eq_zero additive; induction n
@@ -399,7 +526,7 @@ theorem Finset.eq_sum_of_additive {α β : Type*} [AddCommGroup α] [AddCommGrou
 
 namespace VectorSpace
 
-class Euclidean (E : Type*) [AddCommGroup E] extends Module ℝ E,
+class Euclidean (E : Type) [AddCommGroup E] extends Module ℝ E,
   FiniteDimensional ℝ E where
   scalar : E → E → ℝ
   symm (u v : E) : scalar u v = scalar v u
@@ -409,13 +536,13 @@ class Euclidean (E : Type*) [AddCommGroup E] extends Module ℝ E,
   definie (u : E) : scalar u u = 0 ↔ u = 0
 
 @[ext]
-structure K_n (K : Type*) [Field K] (n : ℕ) where
+structure K_n (K : Type) [Field K] (n : ℕ) where
   p : Fin n → K
 
 notation : max K : max "^" n : max => K_n K n
 
 namespace K_n
-variable {K : Type*} {n : ℕ} [Field K]
+variable {K : Type} {n : ℕ} [Field K]
 
 @[simp] instance : HAdd K^n K^n K^n where
   hAdd := x ↦ y ↦ ⟨x.p + y.p⟩
@@ -542,7 +669,7 @@ instance : Module K K^n where
         · congr
         · intro x y; congr
 
-def canonBasis (K : Type*) [Field K] (i : Fin n) : K^n where
+def canonBasis (K : Type) [Field K] (i : Fin n) : K^n where
   p := k ↦ if i = k then 1 else 0
 
 theorem inCanonBasis (x : K^n) : x = ∑ i, (x.p i) • canonBasis K i := by
@@ -559,7 +686,7 @@ scoped syntax (name := dot_prod) "⟨" term ", " term "⟩" : term
 macro_rules (kind := dot_prod)
   | `(⟨$x, $y⟩) => `(Euclidean.scalar $x $y)
 
-variable {E : Type*} [AddCommGroup E] [EuclidE : Euclidean E]
+variable {E : Type} [AddCommGroup E] [EuclidE : Euclidean E]
 
 theorem prod_symm (u v : E) : ⟨u, v⟩ = ⟨v, u⟩ := EuclidE.symm u v
 

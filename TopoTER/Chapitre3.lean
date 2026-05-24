@@ -158,24 +158,6 @@ open Set.Notation
 
 -- lire l'intro de Mathlib.Data.Set.Subset
 
-instance {s : Partie X} : EspTop (Induite s) where
-  est_ouvert := fun u ↦ ∃ v, est_ouvert v ∧ u = s ↓∩ v
-  univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
-  empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
---
-  union_ouvert := by
-    intro F h; choose! u h_ouv h_int using h
-    use ⋃ i, u (F.u i); apply And.intro
-    · apply iunion_ouvert; intro i; apply h_ouv; use i
-    · rw [preimage_iUnion]; dsimp [Famille.iUnion]
-      congr; ext i x; nth_rw 1 [h_int (F.u i)]; use i
---
-  inter_ouvert := by
-    rintro u v ⟨U, ⟨Uouv, hU⟩⟩ ⟨V, ⟨Vouv, hV⟩⟩
-    use U ∩ V; constructor
-    · exact inter_ouvert Uouv Vouv
-    · simp [hU, hV]
-
 def est_ouvert_elementaire (s : Set (X × X)) :=
   ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
 

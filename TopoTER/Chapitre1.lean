@@ -191,13 +191,6 @@ instance : EspaceMetrique (Induite A) where
   d := induite_dist A
   is_dist := dist_of_induite A
 
-instance : Coe (Partie X) (Partie Induite A) where
-  coe := S ↦ {x | (x : X) ∈ S}
-
-omit M in
-@[simp] lemma self_induite : (A : Partie Induite A) = Ω := by
-  ext x; unfold Induite; simp
-
 end Metrique
 
 -- Définition 1.3.
@@ -1010,13 +1003,20 @@ lemma bdd_iff_in_boule (A : Partie X) : Nonempty X ∧ dist_bornee A ↔
                 apply le_trans (ineq x a y); apply le_of_lt
                 rw [symm a y]; exact add_lt_add (in_B hx) (in_B hy)
 
-def bornee (X : Type) [EspaceMetrique X] := dist_bornee_nneg (X := X) Ω
+def est_borne (A : Partie X) := dist_bornee_nneg A
+
+abbrev borne (X : Type) [EspaceMetrique X] := est_borne (X := X) Ω
 
 -- Définition 1.11.
 
 def converges_to (u : ℕ → X) (l : X) := ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u n, l) ≤ ε
 
 def converges (u : ℕ → X) := ∃ l, converges_to u l
+
+lemma conv_to_iff_really_conv_to (u : ℕ → ℝ) (l : ℝ) : converges_to u l ↔
+  really_converges_to u l := by rfl
+
+lemma conv_iff_really_conv (u : ℕ → ℝ) : converges u ↔ really_converges u := by rfl
 
 def seq_bornee (u : ℕ → X) := dist_bornee {u n | n}
 
@@ -1128,41 +1128,6 @@ theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : seq_bornee u := by
   sorry
 
 -- c)
-
-def extraction (φ : ℕ → ℕ) := ∀ m n, m < n → φ m < φ n
-
-lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1) := by
-  constructor
-  · intro hφ; unfold extraction at hφ; intro n
-    specialize hφ n (n+1) (by linarith); exact hφ
-  · intro h; unfold extraction
-    intro m n hlt; rw [Nat.lt_iff_add_one_le] at hlt
-    induction n
-    · case zero => linarith
-    · case succ n hn =>
-        by_cases h1 : m+1 = n+1
-        · rw [←h1]; specialize h m; exact h
-        · have m_lt_n : m < n := by
-            push_neg at h1; rw [lt_iff_le_and_ne]
-            apply And.intro (by linarith)
-            rwa [←Nat.add_one_ne_add_one_iff]
-          rw [Nat.lt_iff_add_one_le] at m_lt_n
-          have hφmn : φ m < φ n := hn m_lt_n
-          apply lt_trans hφmn (h n)
-
-lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
-  intro n; induction n
-  · case zero => apply zero_le
-  · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
-                      apply lt_of_le_of_lt hk; apply h; linarith
-
-lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N,
-  φ n ≥ A := by
-  intro A; use A
-  intro n hn
-  trans n
-  · exact n_le_extr_n h n
-  · exact hn
 
 theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
   (hφ : extraction φ) (conv : converges (u ∘ φ)) : converges u := by
