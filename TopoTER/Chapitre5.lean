@@ -3,7 +3,7 @@ set_option linter.style.emptyLine false
 
 open TER Set EspTop
 
-variable {X Y : Type} [EspTop X] [EspTop Y] [EspSepareT2 Y]
+variable {X Y: Type} [EspTop X] [EspTop Y] [EspSepareT2 Y]
 
 def prop_baire {X : Type} [EspTop X] (u : ℕ → Set X) := (∀ (n : ℕ),
   dense X (u n) ∧ est_ouvert (u n)) → dense X (⋂ n : ℕ, u n)
@@ -119,7 +119,7 @@ variable {X : Type}
 open Metrique
 
 lemma cauchy_unif_continu_cauchy [EspaceMetrique X] [EspaceMetrique Y] (f : X → Y)
-(hcont : unif_continu f) (u : ℕ → X) (h : cauchy u): cauchy (f ∘ u) := by
+(hcont : unif_continu f) (u : ℕ → X) (h : cauchy u) : cauchy (f ∘ u) := by
   unfold cauchy at *
   unfold unif_continu at hcont
   intro ε ε_pos
@@ -133,89 +133,21 @@ lemma cauchy_unif_continu_cauchy [EspaceMetrique X] [EspaceMetrique Y] (f : X �
   specialize hconvδ (u m) (u n) hnN
   exact hconvδ
 
-lemma diag_inter_empty {W : Type*} (U : Set W) (V : Set W) :
-  let Δ : Set (W×W) := {p : W×W | p.1 = p.2}
-  U ∩ V = ∅ ↔ (U ×ˢ V) ⊆ Δᶜ := by
-    constructor
-    · intro huv (x, y) hxy hf
-      dsimp at hf
-      simp_all
-      rw[← mem_inter_iff] at hxy
-      simp_all
-    · contrapose!
-      intro hne h
-      rcases hne with ⟨p, hp⟩
-      have hpint : (p,p) ∈ U ×ˢ V := mem_prod.mpr hp
-      exact false_of_ne fun a ↦ h hpint a
 
---lemma voisinage_produit_fini {X : Type} [EspTop X] (H : Set (Fin 2 → X)) (hH : est_ouvert H) (f : Fin 2 → X) (hf : f ∈ H) :
---  ∃ (U V : Set X), est_ouvert U ∧ est_ouvert V ∧ f 0 ∈ U ∧ f 1 ∈ V ∧ {g | g 0 ∈ U} ∩ {g | g 1 ∈ V} ⊆ H := by
---    change ouv_top_engendree _ H at hH
+theorem prolongement_unif_continu [EspaceMetrique X] [EspaceMetrique Y] (A : Partie X) (f : A → Y)
+(hf : unif_continu f) (hY : complet Y) :
+  ∃!(g : adh A → Y), (∀ x : A, f x = g ⟨x.1, contenu_adh A x.2⟩) ∧ unif_continu g := by
+    have cvg_in_Y : ∀ u : ℕ → A, cauchy u → converges (f ∘ u) := by
+      intro u hu
+      have cauchyf : cauchy (f ∘ u) := cauchy_unif_continu_cauchy f hf u hu
+      exact hY (f ∘ u) cauchyf
+
+    let suite_conv (x : adh A) : ∃ u : ℕ → X, (∀ n : ℕ, u n ∈ A) ∧ converge_vers u x := by
+      refine (in_adh_suite A ↑x).mp x.2
+
+    let g : adh A → Y := fun x ↦ let u := Classical.choose (suite_conv x)
 
 
-
-
-lemma sep_iff_diag_ferme {X : Type} [EspTop X] :
-  --letI E : EspTop (Fin 2 → X) := top_prod_fini (fun i ↦ X)
-  --let Δ : Partie (Fin 2 → X) := {f | f 0 = f 1}
-  --EspSepareT2 X ↔ est_ferme Δ := by
-  False := by stop
-    have h : {f : (Fin 2 → X) | f 0 = (f 1)}ᶜ = {f | f 0 ≠ f 1} := by
-        ext f
-        simp only [mem_compl_iff, mem_setOf_eq]
-    constructor
-    · intro hSep
-      rw[est_ferme]
-      rw[h]
-      rw[ouvert_ssi_vois]
-      intro f hf
-      rw[mem_setOf_eq] at hf
-      have h0 : ∃ (U V : Set X),
-      (est_ouvert U) ∧ (est_ouvert V) ∧ ((f 0) ∈ U) ∧ ((f 1) ∈ V) ∧ (U ∩ V = ∅) := by
-        exact EspSepareT2.est_separe (f 0) (f 1) hf
-      rcases h0 with ⟨U, V, U_ouv, V_ouv, f0U, f1V, U_V⟩
-      use {f | f 0 ∈ U} ∩ {f | f 1 ∈ V}
-      constructor
-      · constructor
-        · exact mem_setOf.mpr f0U
-        · exact mem_setOf.mpr f1V
-      · apply inter_ouvert
-        · apply ouvert_pref_projections
-          exact U_ouv
-        · apply ouvert_pref_projections
-          exact V_ouv
-      · have h_prod : U ×ˢ V ⊆ {p : X × X | p.1 = p.2}ᶜ := by exact (diag_inter_empty U V).mp U_V
-        intro g hg
-        rcases hg with ⟨g0_U, g1_V⟩
-        have h_couple : (g 0, g 1) ∈ U ×ˢ V := ⟨g0_U, g1_V⟩
-        have h_not_diag := h_prod h_couple
-        exact h_not_diag
-    · intro hFerme
-      refine { est_separe := by
-                              intro x y hxy;
-                              rw[est_ferme, h, ouvert_ssi_vois] at hFerme
-                              let proj : Fin 2 → X := fun | 0 => x | 1 => y
-                              have proj_in_ferme : proj ∈ {f | f 0 ≠ f 1} := by
-                                exact mem_setOf.mpr hxy
-                              specialize hFerme proj proj_in_ferme
-                              rcases hFerme with ⟨H, ⟨hprojH, houvH, hHin⟩⟩
-
-                              --rw[est_ouvert] at houvH
-                              intro g hg
-                              rw [←h]
-                              intro hfalg
-                              have ghg : (g 0 ∈ U) ∧ (g 1 ∈ V) := by
-                                simp only [mem_inter_iff, mem_setOf_eq] at hg
-                                exact hg
-                              have g0g1 : g 0 = g 1 := by
-                                exact ((fun a ↦ hfalg) ∘ fun a ↦ X) X
-                              have g0U : g 0 ∈ U ∩ V:= by
-                                constructor
-                                · exact ghg.1
-                                · rw[g0g1]
-                                  exact ghg.2
-                              simp_all
-              }
 
 
 lemma diam_gt_0 [EspaceMetrique X] {A : Partie X} :
