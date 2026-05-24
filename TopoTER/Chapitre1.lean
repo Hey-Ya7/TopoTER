@@ -1003,9 +1003,28 @@ lemma bdd_iff_in_boule (A : Partie X) : Nonempty X ∧ dist_bornee A ↔
                 apply le_trans (ineq x a y); apply le_of_lt
                 rw [symm a y]; exact add_lt_add (in_B hx) (in_B hy)
 
-def est_borne (A : Partie X) := dist_bornee_nneg A
+abbrev est_borne (A : Partie X) := dist_bornee_nneg A
 
 abbrev borne (X : Type) [EspaceMetrique X] := est_borne (X := X) Ω
+
+lemma bornee_iff_bounded (A : Partie ℝ) : est_borne A ↔ ∃ M, ∀ x ∈ A,
+  |x| ≤ M := by
+  apply Iff.intro
+  · intro h; have ne : Nonempty ℝ := by use 1
+    apply And.intro (a := Nonempty ℝ) ne at h
+    rw [est_borne, ←bdd_iff_bdd_by_nneg, bdd_iff_in_boule] at h
+    rcases h with ⟨x, r, r_pos, hr⟩
+    use d(x, 0) + r; intro y hy; rw [←sub_zero y]
+    have ineq₁ : d(y, x) < r := by apply hr hy
+    have ineq₂ := EspaceMetrique.is_dist.ineq y x 0
+    dsimp [instEspaceMetriqueReal] at *; linarith
+  · intro h; apply And.right
+    rw [est_borne, ←bdd_iff_bdd_by_nneg, bdd_iff_in_boule]
+    rcases h with ⟨M, hM⟩; use 0, max 1 (M+1); apply And.intro
+    · apply lt_of_lt_of_le one_pos; apply le_max_left
+    · intro x hx; dsimp [instEspaceMetriqueReal]
+      rw [sub_zero]; apply lt_of_le_of_lt (hM x hx)
+      apply lt_max_of_lt_right; linarith
 
 -- Définition 1.11.
 
@@ -1018,7 +1037,7 @@ lemma conv_to_iff_really_conv_to (u : ℕ → ℝ) (l : ℝ) : converges_to u l 
 
 lemma conv_iff_really_conv (u : ℕ → ℝ) : converges u ↔ really_converges u := by rfl
 
-def seq_bornee (u : ℕ → X) := dist_bornee {u n | n}
+abbrev seq_bornee (u : ℕ → X) := est_borne {u n | n}
 
 lemma converges_iff_c_converges (u : ℕ → X) (l : X) {C : ℝ} (C_pos : C > 0) :
   converges_to u l ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u n, l) ≤ C * ε := by
@@ -1087,8 +1106,8 @@ theorem bornee_of_conv (u : ℕ → X) (h : converges u) : seq_bornee u := by
   rcases h with ⟨l, hl⟩; rcases hl 1 one_pos with ⟨N, hN⟩
   have bdd : BddAbove {d(u n, l) | n : Fin N} := by
     apply SupReal.bddabove_of_fin_image
-  rcases bdd with ⟨M, hM⟩; unfold seq_bornee
-  apply And.right; rw [bdd_iff_in_boule]
+  rcases bdd with ⟨M, hM⟩; dsimp [seq_bornee, est_borne]
+  apply And.right; rw [←bdd_iff_bdd_by_nneg, bdd_iff_in_boule]
   let M' := max (M + 1) 2
   use l, M', lt_max_of_lt_right (zero_lt_two)
   intro x hx; rcases hx with ⟨n, hn⟩; rw [←hn]; dsimp

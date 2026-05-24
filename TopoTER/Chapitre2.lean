@@ -444,10 +444,10 @@ dense X s ↔ ∀ V, est_ouvert V → V.Nonempty → (V ∩ s).Nonempty := by
       specialize h v v_ouv v_ne
       exact Nonempty.mono (inter_subset_inter_left s v_in_u) h
 
-variable {E : Type} [EspTop E]
+variable {E F : Type} [EspTop E] [EspaceMetrique F]
 
 def val_adh (u : ℕ → E) (x : E) : Prop :=
- ∀(V : Set E), est_vois x V → ∀ N : ℕ, ∃ n : ℕ, n ≥ N ∧ (u n) ∈ V
+  ∀ (V : Set E), est_vois x V → ∀ N : ℕ, ∃ n : ℕ, n ≥ N ∧ (u n) ∈ V
 
 lemma val_adh_inter (u : ℕ → E) : let X := k ↦ {x : E | ∃ n ≥ k, u n = x}
   {x : E | val_adh u x} = ⋂ n : ℕ, adh (X n) := by
@@ -486,8 +486,8 @@ lemma val_adh_inter (u : ℕ → E) : let X := k ↦ {x : E | ∃ n ≥ k, u n =
     · exact hnm
     exact mem_of_eq_of_mem huny hyVn
 
-noncomputable def construction_extract_phi {X : Type} [EspaceMetrique X]
-  (u : ℕ → X) (x : X) (h : val_adh u x) : ℕ → ℕ
+noncomputable def construction_extract_phi (u : ℕ → F) (x : F) (h : val_adh u x) :
+  ℕ → ℕ
   | 0 => 0
   | Nat.succ k =>
       let prev := construction_extract_phi u x h k
@@ -509,8 +509,8 @@ noncomputable def construction_extract_phi {X : Type} [EspaceMetrique X]
         rwa [Nat.lt_iff_add_one_le]
       let dec := Classical.decPred (· ∈ A); Nat.find A_ne
 
-theorem val_adh_iff_extraite_conv {X : Type} [EspaceMetrique X] (u : ℕ → X) (x : X) :
-  val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by
+theorem val_adh_iff_extraite_conv (u : ℕ → F) (x : F) : val_adh u x ↔ ∃ φ,
+  extraction φ ∧ converge_vers (u ∘ φ) x := by
  constructor
  · intro hvadhx
    have est_vois_B (k : ℕ) : est_vois x (Bₒ x (1/(k+1))) := by
@@ -558,7 +558,7 @@ theorem val_adh_iff_extraite_conv {X : Type} [EspaceMetrique X] (u : ℕ → X) 
    · apply hN (max N l) (Nat.le_max_left N l)
    · dsimp at huφ; exact huφ
 
-lemma in_inv_vois (k : ℕ) {X : Type} [EspaceMetrique X] (A : Partie X) (x : X)
+lemma in_inv_vois (k : ℕ) (A : Partie F) (x : F)
   (h : x ∈ adh A) : ∃ a ∈ A, a ∈ Bₒ x (1/(k+1)) := by
   have est_vois_B : est_vois x (Bₒ x (1/(k+1))) := by
     apply ouv_est_vois
@@ -568,12 +568,11 @@ lemma in_inv_vois (k : ℕ) {X : Type} [EspaceMetrique X] (A : Partie X) (x : X)
   rw [nonempty_def] at h
   rcases h with ⟨x1, hx1⟩; use x1; rwa [And.comm]
 
-noncomputable def construction_adh {X : Type} [EspaceMetrique X]
-  (A : Partie X) (x : X) (h : x ∈ adh A) : ℕ → X
+noncomputable def construction_adh (A : Partie F) (x : F) (h : x ∈ adh A) : ℕ → F
   | k => Exists.choose (in_inv_vois k A x h)
 
-theorem in_adh_suite {X : Type} [EspaceMetrique X] (A : Partie X) (x : X) : x ∈ adh A ↔
-  ∃ u : ℕ → X, (∀ n, u n ∈ A) ∧ (converge_vers u x) := by
+theorem in_adh_suite (A : Partie F) (x : F) : x ∈ adh A ↔ ∃ u : ℕ → F,
+  (∀ n, u n ∈ A) ∧ (converge_vers u x) := by
   constructor
   · intro hxadh
     let u := construction_adh A x hxadh; use u
@@ -605,9 +604,8 @@ theorem in_adh_suite {X : Type} [EspaceMetrique X] (A : Partie X) (x : X) : x �
     apply inter_nonempty.mpr
     use u n
 
-lemma ferme_iff_lim_suite {X : Type} [EspaceMetrique X] (F : Set X) : est_ferme F ↔
-  ∀ u : ℕ → X, (∀ n, u n ∈ F) →
-  converge u → ∃ l ∈ F, converge_vers u l := by
+lemma ferme_iff_lim_suite (A : Set F) : est_ferme A ↔ ∀ u : ℕ → F, (∀ n, u n ∈ A) →
+  converge u → ∃ l ∈ A, converge_vers u l := by
   rw [ferme_iff_adh]; apply Iff.intro
   · intro h u hu conv; rcases conv with ⟨l, hl⟩
     use l; apply And.intro _ hl
@@ -619,6 +617,6 @@ lemma ferme_iff_lim_suite {X : Type} [EspaceMetrique X] (F : Set X) : est_ferme 
       rcases lim_in_F with ⟨x', x'_in, conv⟩
       have x_eq_x' := unicite_lim u x x' ⟨hu.2, conv⟩
       rwa [x_eq_x']
-    · exact contenu_adh F
+    · exact contenu_adh A
 
 end EspTop

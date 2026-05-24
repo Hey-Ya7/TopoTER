@@ -398,21 +398,15 @@ theorem compact_iff_ferme_borne (A : Partie ℝ) : est_compact A ↔ est_ferme A
                 intro u; rcases hb with ⟨M, M_nneg, hM⟩
                 let u' : ℕ → ℝ := n ↦ u n
                 have seq_bdd : seq_bornee u' := by
-                  use M; intro x hx y hy; apply hM
+                  use M, M_nneg; intro x hx y hy; apply hM
                   · rcases hx with ⟨n, hn⟩; unfold u' at hn
                     rw [←hn]; exact (u n).prop
                   · rcases hy with ⟨n, hn⟩; unfold u' at hn
                     rw [←hn]; exact (u n).prop
---
+                rw [seq_bornee, bornee_iff_bounded] at seq_bdd
                 have bdd : ∃ M, ∀ n, |u' n| ≤ M := by
-                  have ne : Nonempty ℝ := by use 1
-                  apply And.intro (a := Nonempty ℝ) ne at seq_bdd
-                  rw [seq_bornee, bdd_iff_in_boule] at seq_bdd
-                  rcases seq_bdd with ⟨x, r, r_pos, hr⟩
-                  use d(x, 0) + r; intro n; rw [←sub_zero (u' n)]
-                  have ineq₁ : d(u' n, x) < r := by apply hr; use n
-                  have ineq₂ := EspaceMetrique.is_dist.ineq (u' n) x 0
-                  dsimp [instEspaceMetriqueReal] at *; linarith
+                  rcases seq_bdd with ⟨M, hM⟩; use M
+                  intro n; apply hM; use n
                 rcases SupReal.bolzano_weierstrass u' bdd with ⟨φ, hφ, conv⟩
 --
                 use φ, hφ; rw [←conv_iff_really_conv] at conv
@@ -425,6 +419,15 @@ theorem compact_iff_ferme_borne (A : Partie ℝ) : est_compact A ↔ est_ferme A
                   have l_eq_l' := unicite_lim (u'∘φ) l l' ⟨hl', conv.2⟩
                   rw [l_eq_l']; exact conv.left
                 let L : A := ⟨l, in_A⟩; use L; apply hl
+
+-- Exemple 6.12.
+
+-- d)
+
+theorem bornes_atteintes {f : X → ℝ} (h : est_continu f) {A : Partie X}
+  (comp : est_compact A) : ∃ a b, ∀ x ∈ A, f x ∈ [a ≤__≤ b] ∧ ∃ x₁ x₂,
+  f x₁ = a ∧ f x₂ = b := by
+  sorry
 
 -- 6.4. Compacts d'un e.v.n. de dimension finie
 
