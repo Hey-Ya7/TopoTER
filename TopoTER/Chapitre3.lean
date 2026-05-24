@@ -165,196 +165,120 @@ lemma lip_continu (f : E → F) : k_lipschitz f → unif_continu f := by
         _ = ε/2 := by field
         _ ≤ ε := by linarith
 
+-- Définition 3.18.
 
+variable {ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)]
 
-def top_init {X ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)] (f : (i : ι) → X → Y i) : EspTop X :=
-  topo_engendree {A : Set X | ∃ i : ι, ∃ U : Partie (Y i), est_ouvert U ∧ A = (f i) ⁻¹' U}
+def top_init {X : Type} (f : (i : ι) → X → Y i) : EspTop X := topo_engendree
+  {A : Set X | ∃ i : ι, ∃ U : Partie (Y i), est_ouvert U ∧ A = (f i) ⁻¹' U}
 
-instance top_prod {ι : Type} (Y : ι → Type) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) :=
-  top_init (fun i ↦ x ↦ x i)
+instance top_prod : EspTop (Π i, Y i) := top_init (fun i ↦ x ↦ x i)
 
-instance top_prod_fini {n : ℕ} (Y : Fin n → Type) [∀ i, EspTop (Y i)] : EspTop (Π i, Y i) :=
-  top_init (fun i ↦ x ↦ x i)
+--instance top_prod_fini {n : ℕ} (Y : Fin n → Type) [∀ i, EspTop (Y i)] :
+--  EspTop (Π i, Y i) := top_init (fun i ↦ x ↦ x i)
 
-
-lemma ouvert_pref_projections {X ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)]
-  (f : (i : ι) → X → Y i) (i : ι) (U : Set (Y i)) (hU : est_ouvert U) :
+lemma ouvert_pref_projections {X : Type} (f : (i : ι) → X → Y i) (i : ι)
+  (U : Set (Y i)) (hU : est_ouvert U) :
   @est_ouvert X (top_init f) ((f i) ⁻¹' U) := by
   apply ouv_top_engendree.ouvS
-  dsimp
-  exact ⟨i, U, hU, rfl⟩
+  dsimp; exact ⟨i, U, hU, rfl⟩
 
-lemma vois_pref_projections {X ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)]
-  (f : (i : ι) → X → Y i) (i : ι) (x : X) (V : Set (Y i)) (hV : est_vois (f i x) V) :
-  @est_vois X (top_init f) x ((f i) ⁻¹' V) := by
-  letI tX : EspTop X := top_init f
-  -- 1. On extrait l'ouvert témoin U du voisinage V dans l'espace Y i
-  rcases hV with ⟨U, hU⟩
+def proj : (i : ι) → (Π i, Y i) → Y i := i ↦ x ↦ (x i)
 
-  -- 2. On pose que l'ouvert témoin dans X sera l'image réciproque (f i) ⁻¹' U
-  let U_X := (f i) ⁻¹' U
-  use U_X
-  exact ⟨hU.x_dans, ouvert_pref_projections f i U hU.ouv_ouvert , by intro y hy
-                                                                     have hU_V : f i ⁻¹' U ⊆ f i ⁻¹' V := by
-                                                                      intro z hz
-                                                                      rw[Set.mem_preimage] at *
-                                                                      have U_in_V : U ⊆ V :=
-                                                                        hU.ouv_contenu
-                                                                      exact U_in_V hz
-                                                                     exact hU_V hy
-                                                                     ⟩
+def prod_espaces (V : (i : ι) → Partie Y i) := ⋂ i, (proj i) ⁻¹' V i
 
-lemma diag_inter_empty {W : Type*} (U : Set W) (V : Set W) :
-  let Δ : Set (W×W) := {p : W×W | p.1 = p.2}
-  U ∩ V = ∅ ↔ (U ×ˢ V) ⊆ Δᶜ := by
-    constructor
-    · intro huv (x, y) hxy hf
-      dsimp at hf
-      simp_all
-      rw[← mem_inter_iff] at hxy
-      simp_all
-    · contrapose!
-      intro hne h
-      rcases hne with ⟨p, hp⟩
-      have hpint : (p,p) ∈ U ×ˢ V := mem_prod.mpr hp
-      exact false_of_ne fun a ↦ h hpint a
+omit [(i : ι) → EspTop (Y i)] in
+lemma mem_prod_espaces (x : Π i, Y i) (V : (i : ι) → Partie Y i) :
+  x ∈ prod_espaces V ↔ ∀ i, x i ∈ V i := by
+  apply Iff.intro
+  · intro h i; rw [prod_espaces, mem_iInter] at h; exact h i
+  · intro h; rw [prod_espaces, mem_iInter]; intro i; exact h i
 
---lemma voisinage_produit_fini {X : Type} [EspTop X] (H : Set (Fin 2 → X)) (hH : est_ouvert H) (f : Fin 2 → X) (hf : f ∈ H) :
---  ∃ (U V : Set X), est_ouvert U ∧ est_ouvert V ∧ f 0 ∈ U ∧ f 1 ∈ V ∧ {g | g 0 ∈ U} ∩ {g | g 1 ∈ V} ⊆ H := by
---    change ouv_top_engendree _ H at hH
+def prod_ouverts (U : Partie (Π i, Y i)) (V : (i : ι) → Partie Y i) :=
+  (∀ i, est_ouvert (V i)) ∧ U = prod_espaces V
 
+def ouv_elementaire (U : Partie (Π i, Y i)) := ∃ V : (i : ι) → Partie Y i,
+  prod_ouverts U V ∧ (∃ J : Set ι, Finite J ∧ ∀ i ∉ J, V i = Ω)
 
+lemma ouv_of_ouv_elem (U : Partie (Π i, Y i)) (h : ouv_elementaire U) :
+  est_ouvert U := by
+  rcases h with ⟨V, ⟨V_ouv, hV⟩, ⟨J, J_fin, hJ⟩⟩
+  have eq : U = ⋂ i ∈ J, (proj i) ⁻¹' V i := by
+    rw [hV, prod_espaces, ←biInter_univ, ←union_compl_self J]
+    have eq_univ : ⋂ i ∈ Jᶜ, (proj i) ⁻¹' V i = Ω := by
+      simp only [iInter_eq_univ]; intro i hi
+      rw [hJ i hi, preimage_univ]
+    rw [biInter_union, eq_univ, inter_univ]
+  rw [eq]; apply inter_fini_ouvert; intro i hi
+  apply ouvert_pref_projections; exact V_ouv i
 
+-- Théorème 3.19.
 
-lemma sep_iff_diag_ferme {X : Type} [EspTop X] :
-  letI E : EspTop (Fin 2 → X) := top_prod_fini (fun i ↦ X)
-  let Δ : Partie (Fin 2 → X) := {f | f 0 = f 1}
-  EspSepareT2 X ↔ est_ferme Δ := by
-    have h : {f : (Fin 2 → X) | f 0 = (f 1)}ᶜ = {f | f 0 ≠ f 1} := by
-        ext f
-        simp only [mem_compl_iff, mem_setOf_eq]
-    constructor
-    · intro hSep
-      rw[est_ferme]
-      rw[h]
-      rw[ouvert_ssi_vois]
-      intro f hf
-      rw[mem_setOf_eq] at hf
-      have h0 : ∃ (U V : Set X),
-      (est_ouvert U) ∧ (est_ouvert V) ∧ ((f 0) ∈ U) ∧ ((f 1) ∈ V) ∧ (U ∩ V = ∅) := by
-        exact EspSepareT2.est_separe (f 0) (f 1) hf
-      rcases h0 with ⟨U, V, U_ouv, V_ouv, f0U, f1V, U_V⟩
-      use {f | f 0 ∈ U} ∩ {f | f 1 ∈ V}
-      constructor
-      · constructor
-        · exact mem_setOf.mpr f0U
-        · exact mem_setOf.mpr f1V
-      · apply inter_ouvert
-        · apply ouvert_pref_projections
-          exact U_ouv
-        · apply ouvert_pref_projections
-          exact V_ouv
-      · have h_prod : U ×ˢ V ⊆ {p : X × X | p.1 = p.2}ᶜ := by exact (diag_inter_empty U V).mp U_V
-        intro g hg
-        rcases hg with ⟨g0_U, g1_V⟩
-        have h_couple : (g 0, g 1) ∈ U ×ˢ V := ⟨g0_U, g1_V⟩
-        have h_not_diag := h_prod h_couple
-        exact h_not_diag
-    · intro hFerme
-      refine { est_separe := by sorry
-                              --intro x y hxy;
-                              --rw[est_ferme, h, ouvert_ssi_vois] at hFerme
-                              --let proj : Fin 2 → X := fun | 0 => x | 1 => y
-                              --have proj_in_ferme : proj ∈ {f | f 0 ≠ f 1} := by
-                              --  exact mem_setOf.mpr hxy
-                              --specialize hFerme proj proj_in_ferme
-                              --rcases hFerme with ⟨H, ⟨hprojH, houvH, hHin⟩⟩
-                              --rw[est_ouvert] at houvH
+-- a)
 
+theorem vois_of_prod (X : Partie (Π i, Y i)) (x : Π i, Y i) : est_vois x X ↔
+  ∃ U ⊆ X, ouv_elementaire U ∧ x ∈ U := by
+  apply Iff.intro
+  · intro h; rcases h with ⟨V, ⟨x_in, V_ouv, V_in⟩⟩
+    sorry
+  · intro h; rcases h with ⟨U, U_in, U_ouv, x_in⟩
+    use U; constructor
+    · exact x_in
+    · exact ouv_of_ouv_elem U U_ouv
+    · exact U_in
 
-              }
+-- b)
 
+lemma est_vois_of_preimage_of_vois (x : Π i, Y i) {i : ι} {V : Partie Y i}
+  (h : est_vois (x i) V) : est_vois x (proj i ⁻¹' V) := by
+  rcases h with ⟨U, ⟨x_in, hU, U_in⟩⟩
+  use proj i ⁻¹' U; constructor
+  · exact x_in
+  · apply ouvert_pref_projections; exact hU
+  · intro x hx; exact U_in hx
 
-lemma prop_uni_continu {X ι : Type} {Y : ι → Type} [EspTop X] [∀ i, EspTop (Y i)] (f : X → Π i, Y i) : est_continu f ↔ ∀ i : ι, est_continu ((fun y ↦ y i) ∘ f) := by
-  constructor
-  · intro hfcont i
-    apply comp_est_continu
-    · exact hfcont
-    · rw[continu_iff_preim_ouv]
-      intro V hV
-      apply ouvert_pref_projections
-      exact hV
-  · intro h
-    rw [continu_iff_preim_ouv]
-    intro V hV
-    induction hV with
-    | ouvS U hU =>
-        rcases hU with ⟨i, O, hO, rfl⟩
-        rw [← Set.preimage_comp]
-        have hc := h i
-        rw [continu_iff_preim_ouv] at hc
-        exact hc O hO
-    | univS =>
-        rw [preimage_univ]
-        exact univ_ouvert
-    | emptyS =>
-        rw [preimage_empty]
-        exact empty_ouvert
-    | unionS hU ih =>
-        expose_names
-        sorry
-        --rw[preimage_iUnion]
-    | interS hU hV ihU ihV =>
-        rw [preimage_inter]
-        exact inter_ouvert ihU ihV
+theorem conv_vers_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converge_vers u l ↔
+  ∀ i, converge_vers (n ↦ (u n) i) (l i) := by
+  apply Iff.intro
+  · intro h i V hV; let U := proj i ⁻¹' V
+    have hU := est_vois_of_preimage_of_vois l hV
+    rcases h U hU with ⟨N, hN⟩; use N; intro m hm
+    exact hN m hm
+  · intro h V hV; rw [vois_of_prod] at hV
+    rcases hV with ⟨U, U_in, ⟨W, ⟨W_ouv, hW⟩, ⟨J, J_fin, hJ⟩⟩, l_in⟩
+    have vois_im : ∀ i, est_vois (l i) (W i) := by
+      intro i; apply ouv_est_vois (W_ouv i)
+      rw [hW, prod_espaces, mem_iInter] at l_in; exact l_in i
+    choose! f hf using h; let g := i ↦ f i (W i)
+--
+    have exists_N : ∀ i, ∀ n ≥ g i, (u n) i ∈ W i := by
+      intro i; exact hf i (W i) (vois_im i)
+    have exists_max : ∃ N, ∀ i ∈ J, N ≥ g i := by
+      suffices h : BddAbove {g i | i ∈ J} by
+        rcases h with ⟨M, hM⟩; use M; intro i hi
+        apply hM; use i, hi
+      apply SupReal.bddabove_of_finite_image
+    rcases exists_max with ⟨N, hN⟩; use N; intro n n_ge
+--
+    apply U_in; rw [hW, mem_prod_espaces]; intro i
+    by_cases in_J : i ∈ J
+    · case pos => apply exists_N; linarith [hN i in_J]
+    · case neg => rw [hJ i in_J]; apply mem_univ
 
+-- c)
 
-
-lemma fun_eq_dense (f g : X → Y) {A : Partie X} (hA : dense X A) (hf : est_continu f)
-(hg : est_continu g) (hfg : A.restrict f = A.restrict g)
- : f = g := by
-  let Efg : Partie X := {x : X | f x = g x}
-  have hAinEfg : A ⊆ Efg:= by
-    intro x hx
-    rw[mem_setOf]
-    rw[restrict_def] at hfg
-    have h_val := congr_fun hfg ⟨x, hx⟩
-    exact h_val
-  have Efg_ferme : est_ferme Efg := by
-    let proj : X → Fin 2 → Y := x ↦ fun | 0 => f x
-                                        | 1 => g x
-    have proj_cont : est_continu proj := by
-      rw[prop_uni_continu]
-      intro i
-      fin_cases i
-      · change est_continu f
-        exact hf
-      · change est_continu g
-        exact hg
-    rw[continu_iff_preim_ferm] at proj_cont
-    have diag_f : est_ferme {f : Fin 2 → Y | f 0 = f 1} := by
-      (expose_names; exact sep_iff_diag_ferme.mp inst_2)
-    specialize proj_cont ({f | f 0 = f 1}) (diag_f)
-    have eq_preimage_diag : proj ⁻¹' {f | f 0 = f 1} = Efg := preimage_setOf_eq
-    rwa [eq_preimage_diag] at proj_cont
-  have adh_A_in_adh_E : adh A ⊆ adh Efg := adh_contenu_adh A Efg hAinEfg
-  rw[hA] at adh_A_in_adh_E
-  rw[ferme_iff_adh] at Efg_ferme
-  rw[Efg_ferme] at adh_A_in_adh_E
-  have Efg_eq_univ : Efg = univ := Eq.symm (Subset.antisymm adh_A_in_adh_E fun ⦃a⦄ a_1 ↦ trivial)
-  exact (eqOn_univ f g).mp adh_A_in_adh_E
-
-
-
-
-
-
-
-
-
-
-
-
+theorem separe_of_prod_separe [S : ∀ i, EspSepareT2 (Y i)] : EspSepareT2 (Π i, Y i)
+  := by
+  constructor; intro x y h
+  have exists_ne : ∃ i, x i ≠ y i := by
+    contrapose h; push_neg at h; ext i; exact h i
+  rcases exists_ne with ⟨i, hi⟩
+  rcases (S i).est_separe (x i) (y i) hi with ⟨U, V, hU, hV, x_in, y_in, disj⟩
+  let U' := (proj i) ⁻¹' U; let V' := (proj i) ⁻¹' V
+  use U', V', ouvert_pref_projections proj i U hU,
+      ouvert_pref_projections proj i V hV, x_in, y_in
+  rw [eq_empty_iff_forall_notMem]; intro z z_in
+  rw [←mem_empty_iff_false (z i), ←disj]; exact z_in
 
  --def est_ouvert_elementaire (s : Set (X × X)) :=
 --  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)

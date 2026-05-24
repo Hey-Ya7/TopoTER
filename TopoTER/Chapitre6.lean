@@ -21,7 +21,7 @@ omit [EspTop X] in
 lemma sous_couvre_of_couvre (F : Famille X) (A : Partie X) (h : couvrement F A) :
   sous_couvrement F Ω A := by
   intro x hx; rw [mem_union_famille]
-  rcases h hx with ⟨B, hB, x_in⟩; rcases hB with ⟨i, hi⟩
+  rcases h hx with ⟨B, ⟨i, hi⟩, x_in⟩
   use B, (by use ⟨i, by simp⟩), x_in
 
 def est_compact (A : Partie X) := ∀ C : Famille X, (∀ P ∈ C, est_ouvert P)
@@ -79,15 +79,13 @@ instance comp_induite_of_comp {A : Partie X} {comp : est_compact A} :
       dsimp at hi; rw [←hi]; exact (hf i).left
     have C_couvre : couvrement C A := by
       intro x hx; rw [mem_union_famille]; let X : A := ⟨x, hx⟩
-      rcases F_couvre X.prop with ⟨B, hB, X_in⟩
-      rcases hB with ⟨i, hi⟩; use C.u i, (by use i)
-      dsimp at hi; rwa [←hi, (hf i).2] at X_in
+      rcases F_couvre X.prop with ⟨B, ⟨i, hi⟩, X_in⟩
+      use C.u i, (by use i); dsimp at hi; rwa [←hi, (hf i).2] at X_in
 --
     rcases comp C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
     use J, hJ; intro x hx; rw [mem_union_famille]
-    rcases J_couvre hx with ⟨B, hB, x_in⟩
-    rcases hB with ⟨i, hi⟩; use F.u i, (by use i)
-    dsimp [C] at hi; rwa [(hf i).2, hi]
+    rcases J_couvre hx with ⟨B, ⟨i, hi⟩, x_in⟩
+    use F.u i, (by use i); dsimp [C] at hi; rwa [(hf i).2, hi]
 
 open Set.Notation in
 theorem comp_iff_comp_induite (A : Partie X) : EspCompact (Induite A) ↔
@@ -101,17 +99,15 @@ theorem comp_iff_comp_induite (A : Partie X) : EspCompact (Induite A) ↔
                 apply And.intro _ (refl _); apply C_ouvert; use i
                have F_couvre : couvrement F Ω := by
                 intro x hx; rw [←self_induite] at hx
-                rcases C_couvre hx with ⟨B, hB, x_in⟩
-                rcases hB with ⟨i, hi⟩
+                rcases C_couvre hx with ⟨B, ⟨i, hi⟩, x_in⟩
                 dsimp at hi; rw [mem_union_famille]
                 use (A ↓∩ C.u i), (by use i); rwa [←hi] at x_in
 --
                rcases h F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
                use J, hJ; intro x hx; rw [mem_union_famille]
                let X : A := ⟨x, hx⟩; rw [←self_induite] at J_couvre
-               rcases J_couvre X.prop with ⟨B, hB, X_in⟩
-               rcases hB with ⟨i, hi⟩; use C.u i, (by use i)
-               dsimp at hi; rwa [←hi] at X_in
+               rcases J_couvre X.prop with ⟨B, ⟨i, hi⟩, X_in⟩
+               use C.u i, (by use i); dsimp at hi; rwa [←hi] at X_in
   · case mpr => intro h; apply comp_induite_of_comp; exact h
 
 -- b)
@@ -195,9 +191,8 @@ theorem compact_of_continu_image {f : X → Y} (h : est_continu f) {A : Partie X
   have F_couvre : couvrement F A := by
     intro x x_in; rw [mem_union_famille]
     have in_image : f x ∈ f '' A := by use x
-    apply h₂ at in_image; rcases in_image with ⟨B, hB, fx_in⟩
-    use f ⁻¹' B; apply And.intro _ fx_in
-    rcases hB with ⟨i, hi⟩; use i; simp [F, hi]
+    apply h₂ at in_image; rcases in_image with ⟨B, ⟨i, hi⟩, fx_in⟩
+    use f ⁻¹' B; apply And.intro _ fx_in; use i; simp [F, hi]
 --
   rcases comp F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
   use J, hJ; intro y y_in; rcases y_in with ⟨x, x_in, hx⟩
@@ -235,8 +230,8 @@ theorem borne_of_compact {A : Partie E} (h : est_compact A) : est_borne A := by
   rcases bdd with ⟨M, hM⟩; unfold est_borne
   rw [←bdd_iff_bdd_by_nneg]; use M + 2; intro x hx y hy
 --
-  rcases J_couvre hx with ⟨A, hA, x_in⟩; rcases hA with ⟨i, hi⟩
-  rcases J_couvre hy with ⟨B, hB, y_in⟩; rcases hB with ⟨j, hj⟩
+  rcases J_couvre hx with ⟨A, ⟨i, hi⟩, x_in⟩
+  rcases J_couvre hy with ⟨B, ⟨j, hj⟩, y_in⟩
   have ineq₁ := M₁.is_dist.ineq x i.val y
   have ineq₂ := M₁.is_dist.ineq i.val j.val y
   have d_ij_in : d(i.val, j.val) ∈ S := by
@@ -331,9 +326,8 @@ theorem lebesgue_comp_of_seq_comp (E : Type) [EspaceMetrique E] : seq_compact E 
   · by_cases nonempty : Nonempty E
     · case pos => intro F F_ouvert F_couvre; by_contra contra
                   choose! f hf using (exists_next_of_no_lebesgue F contra)
-                  rcases seq_comp f with ⟨φ, hφ, conv⟩
-                  rcases conv with ⟨l, conv_l⟩; have l' := mem_univ l
-                  rcases F_couvre l' with ⟨L, hL, l_in⟩
+                  rcases seq_comp f with ⟨φ, hφ, ⟨l, conv_l⟩⟩
+                  rcases F_couvre (mem_univ l) with ⟨L, hL, l_in⟩
                   rcases F_ouvert L hL l l_in with ⟨ε, ε_pos, hε⟩
                   rcases conv_l (ε/2) (by linarith) with ⟨N₁, hN₁⟩
                   rcases inv_of_le_forall (ε/2) (by linarith) with ⟨N₂, hN₂⟩
@@ -356,14 +350,14 @@ theorem compact_of_lebesgue_comp (E : Type) [EspaceMetrique E] : precompact E �
                 rcases h₁ r r_pos with ⟨J, J_fin, hJ, J_couvre⟩
                 have sousF : ∀ j : J.ι, ∃ i : C.ι, J.u j ⊆ C.u i := by
                   intro j; rcases hJ (J.u j) (by use j) with ⟨x, hx⟩
-                  rw [hx]; rcases hr x with ⟨A, hA, incl_A⟩
-                  rcases hA with ⟨i, hi⟩; use i; dsimp at hi; rwa [hi]
+                  rw [hx]; rcases hr x with ⟨A, ⟨i, hi⟩, incl_A⟩
+                  use i; dsimp at hi; rwa [hi]
                 choose! f hf using sousF; use Set.range f; apply And.intro
                 · apply SupReal.image_of_fin
-                · intro x hx; rcases J_couvre hx with ⟨B, hB, x_in⟩
-                  rcases hB with ⟨j, hj⟩; rw [mem_union_famille]
-                  use C.u (f j), (by use ⟨f j, by use j⟩)
-                  apply hf; dsimp at hj; rwa [hj]
+                · intro x hx; rcases J_couvre hx with ⟨B, ⟨j, hj⟩, x_in⟩
+                  rw [mem_union_famille]; use C.u (f j); apply And.intro
+                  · use ⟨f j, by use j⟩
+                  · apply hf; dsimp at hj; rwa [hj]
   · case neg => rw [not_nonempty_iff] at nonempty
                 use Ω; apply And.intro
                 · have fin := @Fintype.ofIsEmpty C.ι nonempty
