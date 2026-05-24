@@ -260,14 +260,33 @@ theorem image_of_fin {α J : Type} (f : J → α) [Finite J] : Finite {f i | i} 
   · intro x hx; rcases hx with ⟨i, hi⟩; use i, by simp
   · apply Set.finite_univ
 
-theorem bddabove_of_finite_image {α β} [Nonempty α] [Preorder α] [IsDirectedOrder α]
-  {J : Set β} [Finite J] (f : β → α) : BddAbove {f i | i ∈ J} := by
+theorem bddabove_of_finite_image {α β : Type} [Nonempty α] [Preorder α]
+  [IsDirectedOrder α] {J : Set β} [Finite J] (f : β → α) : BddAbove {f i | i ∈ J}
+  := by
   let f' : J → α := j ↦ f j
   have eq : {f i | i ∈ J} = {f' j | j} := by
     ext x; apply Iff.intro
     · intro ⟨i, i_in, hi⟩; use ⟨i, i_in⟩
     · intro ⟨j, hj⟩; use j.val, j.prop, hj
-  rw [eq]; apply Set.Finite.bddAbove; apply Set.toFinite
+  rw [eq]; apply Set.Finite.bddAbove; apply image_of_fin
+
+theorem bddbelow_of_finite_image {α β : Type} [Nonempty α] [Preorder α]
+  [IsCodirectedOrder α] {J : Set β} [Finite J] (f : β → α) : BddBelow {f i | i ∈ J}
+  := by
+  let f' : J → α := j ↦ f j
+  have eq : {f i | i ∈ J} = {f' j | j} := by
+    ext x; apply Iff.intro
+    · intro ⟨i, i_in, hi⟩; use ⟨i, i_in⟩
+    · intro ⟨j, hj⟩; use j.val, j.prop, hj
+  rw [eq]; apply Set.Finite.bddBelow; apply image_of_fin
+
+theorem bddabove_of_finite_image' {α β : Type} [Nonempty α] [Preorder α]
+  [IsDirectedOrder α] [Finite β] (f : β → α) : BddAbove {f i | i} := by
+  apply Set.Finite.bddAbove; apply image_of_fin
+
+theorem bddbelow_of_finite_image' {α β : Type} [Nonempty α] [Preorder α]
+  [IsCodirectedOrder α] [Finite β] (f : β → α) : BddBelow {f i | i} := by
+  apply Set.Finite.bddBelow; apply image_of_fin
 
 theorem bddabove_of_fin_image {n} (f : Fin n → ℝ) : BddAbove {f i | i} := by
   apply Set.Finite.bddAbove; apply image_of_fin

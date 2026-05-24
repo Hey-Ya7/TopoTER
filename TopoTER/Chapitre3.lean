@@ -269,6 +269,52 @@ theorem separe_of_prod_separe [S : ∀ i, EspSepareT2 (Y i)] : EspSepareT2 (Π i
   rw [eq_empty_iff_forall_notMem]; intro z z_in
   rw [←mem_empty_iff_false (z i), ←disj]; exact z_in
 
+-- Exemple 3.21.
+
+-- a)
+
+noncomputable def metrique_of_prod_metrique [M : ∀ i, EspaceMetrique (Y i)]
+  [h : Nonempty ι] [Finite ι] : EspaceMetrique (Π i, Y i) := by
+  let S (x y : (Π i, Y i)) : Set ℝ := {d(x i, y i) | i}
+  have bdd_above (x y : (Π i, Y i)) : BddAbove {d(x i, y i) | i} := by
+    apply SupReal.bddabove_of_finite_image'
+  have bdd_below (x y : (Π i, Y i)) : BddBelow {d(x i, y i) | i} := by
+    apply SupReal.bddbelow_of_finite_image'
+  let d : (Π i, Y i) → (Π i, Y i) → ℝ := x ↦ y ↦ sSup {d(x i, y i) | i}
+--
+  use d; rcases h with ⟨i⟩; constructor
+  · intro x y; apply le_csSup_of_le (b := d(x i, y i))
+    · exact bdd_above x y
+    · use i
+    · apply (M i).is_dist.nneg
+--
+  · intro x y; apply Iff.intro
+    · intro eq; ext i; rw [←(M i).is_dist.sep]
+      apply le_antisymm _ ((M i).is_dist.nneg (x i) (y i))
+      rw [←eq]; apply le_csSup (bdd_above x y); use i
+    · intro eq; apply SupReal.sSup_const
+      · use d(x i, y i); use i
+      · intro d ⟨i, hi⟩; rw [←hi, (M i).is_dist.sep, eq]
+--
+  · intro x y; unfold d; congr 1; ext d; apply Iff.intro
+    · intro ⟨i, hi⟩; use i; rw [←hi, (M i).is_dist.symm]
+    · intro ⟨i, hi⟩; use i; rw [←hi, (M i).is_dist.symm]
+--
+  · intro x y z; have bdd_add :=
+      SupReal.add_bddabove (bdd_above x y) (bdd_above y z)
+    apply le_trans (b := sSup (S x y + S y z)) _
+    · apply SupReal.sSup_add_ineq _ (bdd_above x y) _ (bdd_above y z)
+      · use d(x i, y i); use i
+      · use d(y i, z i); use i
+    · unfold d; apply csSup_le
+      · use d(x i, z i); use i
+      · intro d₁ ⟨i, hi⟩
+        apply le_csSup_of_le (b := d(x i, y i) + d(y i, z i)) bdd_add
+        · use ⟨d(x i, y i), d(y i, z i)⟩; apply And.intro
+          · use (by use i); use i
+          · ring
+        · rw [←hi]; apply (M i).is_dist.ineq
+
 --def est_ouvert_elementaire (s : Set (X × X)) :=
 --  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
 
