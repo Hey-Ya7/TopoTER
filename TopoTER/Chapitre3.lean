@@ -11,8 +11,8 @@ def est_continu_point {X Y : Type} [EspTop X] [EspTop Y] (f : X → Y) (x : X) :
 def est_continu {X Y : Type} [EspTop X] [EspTop Y] (f : X → Y) : Prop :=
   ∀(x : X), est_continu_point f x
 
-theorem continu_iff_preim_ouv (f : X → Y) :
-  est_continu f ↔ ∀ (V : Set Y), est_ouvert V → est_ouvert (f ⁻¹' V) := by
+theorem continu_iff_preim_ouv (f : X → Z) :
+  est_continu f ↔ ∀ (V : Set Z), est_ouvert V → est_ouvert (f ⁻¹' V) := by
   constructor
   · intro h V Vouv
     rw [ouvert_ssi_vois]
@@ -40,6 +40,16 @@ theorem continu_iff_preim_ouv (f : X → Y) :
       exact ⟨fxV, fVouv, by rfl⟩
     · trans V; simp; exact VinW
 
+lemma comp_est_continu {X Y Z : Type}  [EspTop X] [EspTop Y] [EspTop Z] (f : X → Y) (g : Y → Z) (hf : est_continu f) (hg : est_continu g) :
+  est_continu (g ∘ f) := by
+    rw[continu_iff_preim_ouv] at *
+    intro V hV
+    rw[Set.preimage_comp]
+    apply hf
+    apply hg
+    exact hV
+
+omit [EspSepareT2 Y] in
 theorem continu_ouv_ferm (f : X → Y) : (∀ (V : Set Y),
 (est_ouvert V → est_ouvert (f ⁻¹' V)))  ↔ (∀(F : Set Y), est_ferme F → est_ferme (f ⁻¹' F)) := by
   constructor
@@ -54,6 +64,7 @@ theorem continu_ouv_ferm (f : X → Y) : (∀ (V : Set Y),
     rw[preimage_compl] at h
     exact h
 
+omit [EspSepareT2 Y] in
 theorem continu_iff_preim_ferm (f : X → Y) :
 est_continu f ↔ ∀ (F : Set Y), est_ferme F → est_ferme (f ⁻¹' F) := by
   rw[continu_iff_preim_ouv]

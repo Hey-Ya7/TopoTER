@@ -26,20 +26,21 @@ variable {X Y : Type} [EspTop X] [EspTop Y]
 namespace EspTop
 
 inductive ouv_top_engendree (S : Set (Set X)) : Set X → Prop
-  | ouvS (U : Set X) (hU : U ∈ S) : ouv_top_engendree S U
-  | univS : ouv_top_engendree S Ω
+  | ouvS (U : Set X) (hU : U ∈ S): ouv_top_engendree S U
+  | univS : ouv_top_engendree S univ
   | emptyS : ouv_top_engendree S ∅
   | unionS {U : Famille X} (hU : ∀ O ∈ U, ouv_top_engendree S O) :
      ouv_top_engendree S (⋃ᵢ U)
   | interS {U V : Set X} (hU : ouv_top_engendree S U) (hV : ouv_top_engendree S V) :
      ouv_top_engendree S (U ∩ V)
 
-def topo_engendree (S : Set (Set X)) : EspTop X where
+instance topo_engendree (S : Set (Set X)) : EspTop X where
   est_ouvert := fun U ↦ ouv_top_engendree S U
   univ_ouvert := ouv_top_engendree.univS
   empty_ouvert := ouv_top_engendree.emptyS
   union_ouvert := fun hu ↦ ouv_top_engendree.unionS hu
   inter_ouvert := fun hU hV ↦ ouv_top_engendree.interS hU hV
+
 
 lemma iunion_ouvert {ι : Type} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
@@ -618,5 +619,6 @@ lemma ferme_iff_lim_suite (A : Set F) : est_ferme A ↔ ∀ u : ℕ → F, (∀ 
       have x_eq_x' := unicite_lim u x x' ⟨hu.2, conv⟩
       rwa [x_eq_x']
     · exact contenu_adh A
+
 
 end EspTop
