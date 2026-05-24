@@ -29,10 +29,10 @@ inductive ouv_top_engendree (S : Set (Set X)) : Set X → Prop
   | ouvS (U : Set X) (hU : U ∈ S): ouv_top_engendree S U
   | univS : ouv_top_engendree S Ω
   | emptyS : ouv_top_engendree S ∅
+  | unionS {U : Famille X} (hU : ∀ O ∈ U, ouv_top_engendree S O) :
+     ouv_top_engendree S (⋃ᵢ U)
   | interS {U V : Set X} (hU : ouv_top_engendree S U) (hV : ouv_top_engendree S V) :
      ouv_top_engendree S (U ∩ V)
-  | unionS {ι : Type u_1} {U : Famille ι X} (hU : ∀ O ∈ U, ouv_top_engendree S O) :
-     ouv_top_engendree S (⋃ᵢ U)
 
 def topo_engendree (S : Set (Set X)) : EspTop X where
   est_ouvert := fun U ↦ ouv_top_engendree S U
@@ -41,7 +41,7 @@ def topo_engendree (S : Set (Set X)) : EspTop X where
   union_ouvert := fun hu ↦ ouv_top_engendree.unionS hu
   inter_ouvert := fun hU hV ↦ ouv_top_engendree.interS hU hV
 
-lemma iunion_ouvert {ι : Type u_1} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
+lemma iunion_ouvert {ι : Type} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
   let F : Famille X := ⟨ι, u⟩
   have eq : ⋃ᵢ F = ⋃ i, u i := by rfl
@@ -193,6 +193,23 @@ lemma ouv_est_vois {x : X} {u : Set X} : est_ouvert u → x ∈ u → est_vois x
 
 lemma univ_est_vois (x : X) : est_vois x Ω := by
   exact ouv_est_vois (univ_ouvert) (mem_univ x)
+
+open Set.Notation in
+lemma ouv_of_ind_iff_ouv_of_metrique_ind {X : Type} [M : EspaceMetrique X]
+  (A : Partie X) : ∀ s : Partie (Induite A), instElemInduite.est_ouvert s ↔
+  instOfEspaceMetrique.est_ouvert s := by
+  intro s; apply Iff.intro
+  · intro h; rcases h with ⟨U, U_ouv, hU⟩
+    intro x hx; specialize U_ouv x (by rwa [hU] at hx)
+    rcases U_ouv with ⟨r, r_pos, hr⟩; use r, r_pos
+    intro a ha; rw [hU]; exact hr ha
+  · intro h; rw [ouvert_ssi_vois]; intro x hx
+    rcases h x hx with ⟨r, r_pos, hr⟩; use Bₒ x r
+    constructor
+    · exact centre_in_boule x r_pos
+    · use Bₒ x r, ouv_of_boule_ouv x.val r
+      ext a; exact ⟨id, id⟩
+    · exact hr
 
 @[simp] def adh (s : Set X) := {x | ∀ u, est_vois x u → (u ∩ s).Nonempty}
 
@@ -349,8 +366,6 @@ lemma conv_vers_iff_conv_to {X : Type} [EspaceMetrique X] (u : ℕ → X) (l : X
   · case mpr => intro h V ⟨⟨u, hu⟩, V_ouv⟩; apply h V V_ouv
                 exact hu.ouv_contenu hu.x_dans
 
---lemma ferme_suite (F : Set X) : est_ferme F ↔ (∀ u : ℕ → F, ∃ l : F, converge_vers u l)
-
 class EspSepareT2 (X : Type) [EspTop X] where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),
     (est_ouvert U) ∧ (est_ouvert V) ∧ (x ∈ U) ∧ (y ∈ V) ∧ (U ∩ V = ∅)
@@ -385,8 +400,8 @@ instance [T : EspSepareT2 X] {A : Partie X} : EspSepareT2 (Induite A) where
     use A ↓∩ U, A ↓∩ V, (by use U), (by use V), x_in, y_in
     rw [←preimage_inter, disj, preimage_empty]
 
-lemma unicite_lim (u : ℕ → Z) (l l' : Z) :
-(converge_vers u l ∧ converge_vers u l') → l = l' := by
+lemma unicite_lim (u : ℕ → Z) (l l' : Z) : (converge_vers u l ∧ converge_vers u l')
+  → l = l' := by
   contrapose!
   intro hll' hul
   unfold converge_vers at *
@@ -558,7 +573,7 @@ noncomputable def construction_adh {X : Type} [EspaceMetrique X]
   | k => Exists.choose (in_inv_vois k A x h)
 
 theorem in_adh_suite {X : Type} [EspaceMetrique X] (A : Partie X) (x : X) : x ∈ adh A ↔
-  ∃(u : ℕ → X), (∀n, u n ∈ A) ∧ (converge_vers u x) := by
+  ∃ u : ℕ → X, (∀ n, u n ∈ A) ∧ (converge_vers u x) := by
   constructor
   · intro hxadh
     let u := construction_adh A x hxadh; use u
@@ -589,5 +604,21 @@ theorem in_adh_suite {X : Type} [EspaceMetrique X] (A : Partie X) (x : X) : x �
     specialize hu_in_a n
     apply inter_nonempty.mpr
     use u n
+
+lemma ferme_iff_lim_suite {X : Type} [EspaceMetrique X] (F : Set X) : est_ferme F ↔
+  ∀ u : ℕ → X, (∀ n, u n ∈ F) →
+  converge u → ∃ l ∈ F, converge_vers u l := by
+  rw [ferme_iff_adh]; apply Iff.intro
+  · intro h u hu conv; rcases conv with ⟨l, hl⟩
+    use l; apply And.intro _ hl
+    rw [←h, in_adh_suite]; use u, hu, hl
+  · intro h; apply eq_of_subset_of_subset
+    · intro x hx; rw [in_adh_suite] at hx
+      rcases hx with ⟨u, hu⟩
+      have lim_in_F := h u hu.1 (by use x, hu.2)
+      rcases lim_in_F with ⟨x', x'_in, conv⟩
+      have x_eq_x' := unicite_lim u x x' ⟨hu.2, conv⟩
+      rwa [x_eq_x']
+    · exact contenu_adh F
 
 end EspTop

@@ -148,17 +148,18 @@ lemma diag_inter_empty {W : Type*} (U : Set W) (V : Set W) :
       have hpint : (p,p) ∈ U ×ˢ V := mem_prod.mpr hp
       exact false_of_ne fun a ↦ h hpint a
 
-lemma voisinage_produit_fini {X : Type*} [EspTop X] (H : Set (Fin 2 → X)) (hH : est_ouvert H) (f : Fin 2 → X) (hf : f ∈ H) :
-  ∃ (U V : Set X), est_ouvert U ∧ est_ouvert V ∧ f 0 ∈ U ∧ f 1 ∈ V ∧ {g | g 0 ∈ U} ∩ {g | g 1 ∈ V} ⊆ H := by
-    change ouv_top_engendree _ H at hH
+--lemma voisinage_produit_fini {X : Type} [EspTop X] (H : Set (Fin 2 → X)) (hH : est_ouvert H) (f : Fin 2 → X) (hf : f ∈ H) :
+--  ∃ (U V : Set X), est_ouvert U ∧ est_ouvert V ∧ f 0 ∈ U ∧ f 1 ∈ V ∧ {g | g 0 ∈ U} ∩ {g | g 1 ∈ V} ⊆ H := by
+--    change ouv_top_engendree _ H at hH
 
 
 
 
-lemma sep_iff_diag_ferme {X : Type*} [EspTop X] :
-  letI E : EspTop (Fin 2 → X) := top_prod_fini (fun i ↦ X)
-  let Δ : Partie (Fin 2 → X) := {f | f 0 = f 1}
-  EspSepareT2 X ↔ est_ferme Δ := by
+lemma sep_iff_diag_ferme {X : Type} [EspTop X] :
+  --letI E : EspTop (Fin 2 → X) := top_prod_fini (fun i ↦ X)
+  --let Δ : Partie (Fin 2 → X) := {f | f 0 = f 1}
+  --EspSepareT2 X ↔ est_ferme Δ := by
+  False := by stop
     have h : {f : (Fin 2 → X) | f 0 = (f 1)}ᶜ = {f | f 0 ≠ f 1} := by
         ext f
         simp only [mem_compl_iff, mem_setOf_eq]
@@ -200,31 +201,21 @@ lemma sep_iff_diag_ferme {X : Type*} [EspTop X] :
                               rcases hFerme with ⟨H, ⟨hprojH, houvH, hHin⟩⟩
 
                               --rw[est_ouvert] at houvH
-
-
-
-
-
-
-
-
-             }
-
-
-intro g hg
-        rw[←h]
-        intro hfalg
-        have ghg : (g 0 ∈ U) ∧ (g 1 ∈ V) := by
-          simp only [mem_inter_iff, mem_setOf_eq] at hg
-          exact hg
-        have g0g1 : g 0 = g 1 := by
-          exact ((fun a ↦ hfalg) ∘ fun a ↦ X) X
-        have g0U : g 0 ∈ U ∩ V:= by
-          constructor
-          · exact ghg.1
-          · rw[g0g1]
-            exact ghg.2
-        simp_all
+                              intro g hg
+                              rw [←h]
+                              intro hfalg
+                              have ghg : (g 0 ∈ U) ∧ (g 1 ∈ V) := by
+                                simp only [mem_inter_iff, mem_setOf_eq] at hg
+                                exact hg
+                              have g0g1 : g 0 = g 1 := by
+                                exact ((fun a ↦ hfalg) ∘ fun a ↦ X) X
+                              have g0U : g 0 ∈ U ∩ V:= by
+                                constructor
+                                · exact ghg.1
+                                · rw[g0g1]
+                                  exact ghg.2
+                              simp_all
+              }
 
 
 lemma diam_gt_0 [EspaceMetrique X] {A : Partie X} :

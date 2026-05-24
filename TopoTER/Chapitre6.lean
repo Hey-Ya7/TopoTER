@@ -384,8 +384,47 @@ theorem compact_iff_ferme_borne (A : Partie ℝ) : est_compact A ↔ est_ferme A
   · case mp => intro h; apply And.intro
                · exact ferme_of_compact h
                · exact borne_of_compact h
-  · case mpr => intro h; rw [←comp_iff_comp_induite]
-                rw [compact_iff_seq_comp]
+  · case mpr => intro ⟨hf, hb⟩; rw [←comp_iff_comp_induite]
+                suffices h : seq_compact (Induite A) by
+                  rw [←compact_iff_seq_comp] at h; constructor
+                  have cmp := h.compact; intro C C_ouvert C_couvre
+                  have C_ouvert' :
+                        ∀ P ∈ C, instOfEspaceMetrique.est_ouvert P := by
+                    intro P hP; rw [←ouv_of_ind_iff_ouv_of_metrique_ind]
+                    exact C_ouvert P hP
+                  rcases cmp C C_ouvert' C_couvre with ⟨J, hJ, J_couvre⟩
+                  use J, hJ, J_couvre
+--
+                intro u; rcases hb with ⟨M, M_nneg, hM⟩
+                let u' : ℕ → ℝ := n ↦ u n
+                have seq_bdd : seq_bornee u' := by
+                  use M; intro x hx y hy; apply hM
+                  · rcases hx with ⟨n, hn⟩; unfold u' at hn
+                    rw [←hn]; exact (u n).prop
+                  · rcases hy with ⟨n, hn⟩; unfold u' at hn
+                    rw [←hn]; exact (u n).prop
+--
+                have bdd : ∃ M, ∀ n, |u' n| ≤ M := by
+                  have ne : Nonempty ℝ := by use 1
+                  apply And.intro (a := Nonempty ℝ) ne at seq_bdd
+                  rw [seq_bornee, bdd_iff_in_boule] at seq_bdd
+                  rcases seq_bdd with ⟨x, r, r_pos, hr⟩
+                  use d(x, 0) + r; intro n; rw [←sub_zero (u' n)]
+                  have ineq₁ : d(u' n, x) < r := by apply hr; use n
+                  have ineq₂ := EspaceMetrique.is_dist.ineq (u' n) x 0
+                  dsimp [instEspaceMetriqueReal] at *; linarith
+                rcases SupReal.bolzano_weierstrass u' bdd with ⟨φ, hφ, conv⟩
+--
+                use φ, hφ; rw [←conv_iff_really_conv] at conv
+                rcases conv with ⟨l, hl⟩
+                have hl' := (conv_vers_iff_conv_to (u'∘φ) l).mpr hl
+                have in_A : l ∈ A := by
+                  rw [ferme_iff_lim_suite] at hf
+                  specialize hf (u'∘φ) (n ↦ (u (φ n)).prop) (by use l)
+                  rcases hf with ⟨l', conv⟩
+                  have l_eq_l' := unicite_lim (u'∘φ) l l' ⟨hl', conv.2⟩
+                  rw [l_eq_l']; exact conv.left
+                let L : A := ⟨l, in_A⟩; use L; apply hl
 
 -- 6.4. Compacts d'un e.v.n. de dimension finie
 
