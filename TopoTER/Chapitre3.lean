@@ -510,12 +510,21 @@ lemma conv_vers_metrique_iff_conv_vers_top (u : ℕ → Π i, Y i) (l : Π i, Y 
 theorem conv_to_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converges_to u l ↔ ∀ i,
   converges_to (n ↦ (u n) i) (l i) := by
   apply Iff.intro
-  · intro h; rw [←conv_vers_iff_conv_to] at h
-    rw [conv_vers_metrique_iff_conv_vers_top, conv_vers_in_prod] at h
-    simp only [←conv_vers_iff_conv_to]; exact h
-  · intro h; simp only [←conv_vers_iff_conv_to] at *
-    simp only [conv_vers_metrique_iff_conv_vers_top]
-    rwa [←conv_vers_in_prod] at h
+  · unfold converges_to at *; intro conv_l i; intro ε ε_pos ; specialize conv_l ε ε_pos; rcases conv_l with ⟨N, hN⟩;
+    use N; intro n hn; specialize hN n hn;
+    calc
+      d((fun n ↦ u n i) n,  (l i)) ≤ d((u n), l) := by apply le_prod_dist (u n) l
+      _ ≤ ε := hN
+  · expose_names; intro h ε ε_pos; have h_chaque : ∀ (i : ι), ∃ N, ∀ n ≥ N, d((fun n ↦ u n i) n, (l i)) ≤ ε := by
+                                    intro i
+                                    specialize h i
+                                    exact h ε ε_pos
+    choose N hN using h_chaque
+    let rang_N : Finset ℕ :=  Finset.image N ι
+
+    --simp only [←conv_vers_iff_conv_to] at *
+    --simp only [conv_vers_metrique_iff_conv_vers_top]
+    --rwa [←conv_vers_in_prod] at h
 
 theorem converges_in_prod (u : ℕ → Π i, Y i) : converges u ↔ ∀ i, converges
   (n ↦ (u n) i) := by
