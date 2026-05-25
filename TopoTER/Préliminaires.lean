@@ -65,6 +65,15 @@ lemma Z_eq_of_sub_lt_one (x y : Z) (h : |(x : ℝ) - y| < 1) : x = y := by
   · rw [abs_sub_comm, ←Int.cast_sub] at h; apply lt_of_abs_lt at h
     rw [Int.cast_lt] at h; linarith
 
+lemma inv_of_le_forall : let u : ℕ → ℝ := n ↦ 1 / (n + 1); ∀ ε > 0, ∃ N,
+  ∀ n ≥ N, u n ≤ ε := by
+  intro u ε ε_pos
+  have arch := Real.instArchimedean.arch 1 ε_pos
+  rcases arch with ⟨N, hN⟩; use N; intro n hn
+  unfold u; field_simp; apply le_trans hN; rw [nsmul_eq_mul]
+  apply mul_le_mul_of_nonneg_right _ (by linarith)
+  rw [←Nat.cast_add_one, Nat.cast_le]; linarith
+
 theorem eq_forall_iff_eq_add_one (P : ℕ → ℕ → Prop) (h : ∀ k, ∀ m < k, P m k →
   P k (k + 1) → P m (k + 1)) : (∀ n, ∀ m < n, P m n) ↔ ∀ n, P n (n + 1) := by
   apply Iff.intro
@@ -424,6 +433,48 @@ theorem bolzano_weierstrass (u : ℕ → ℝ) (bdd : ∃ M, ∀ n, |u n| ≤ M) 
                   · intro n; apply le_of_lt; apply (hφ n).1
                     exact (hφ n).2
                   · use -M; intro n; exact (bounded (φ n)).1
+
+lemma sequentiel_of_sSup (S : Set ℝ) (ne : S.Nonempty) (bdd : BddAbove S) : ∃ u :
+  ℕ → ℝ, (∀ n, u n ∈ S) ∧ really_converges_to u (sSup S) := by
+  have sSup_sub_le : ∀ k : ℕ, ∃ m ∈ S, sSup S - m < 1/(k+1) := by
+    intro k; by_contra contra; push_neg at contra
+    have ineq : ∀ m ∈ S, m ≤ sSup S - 1/(k+1) := by
+      intro m hm; linarith [contra m hm]
+    have pos : 0 < 1/(k+1 : ℝ) := by field_simp; linarith
+    rw [←csSup_le_iff bdd ne] at ineq; linarith
+--
+  let P (k : ℕ) (m : ℝ) := m ∈ S ∧ (sSup S) - m < 1/(k+1)
+  have h₀ : ∃ a, P 0 a := sSup_sub_le 0
+  have ih : ∀ n a, P n a → ∃ a', P (n+1) a' := by
+    intro n a h; rcases sSup_sub_le (n+1) with ⟨a', ha'⟩; use a'
+  rcases exists_by_induction P h₀ ih with ⟨u, hu⟩
+  use u, (n ↦ (hu n).1); intro ε ε_pos
+  rcases inv_of_le_forall ε ε_pos with ⟨N, hN⟩; use N
+  intro n hn; rw [abs_of_nonpos, neg_sub]
+  · have ineq₁ := hN n hn; dsimp at ineq₁
+    have ineq₂ := (hu n).2; linarith
+  · linarith [le_csSup bdd (hu n).1]
+
+lemma sequentiel_of_sInf (S : Set ℝ) (ne : S.Nonempty) (bdd : BddBelow S) : ∃ u :
+  ℕ → ℝ, (∀ n, u n ∈ S) ∧ really_converges_to u (sInf S) := by
+  have sInf_add_ge : ∀ k : ℕ, ∃ m ∈ S, m - sInf S < 1/(k+1) := by
+    intro k; by_contra contra; push_neg at contra
+    have ineq : ∀ m ∈ S, m ≥ sInf S + 1/(k+1) := by
+      intro m hm; linarith [contra m hm]
+    have pos : 0 < 1/(k+1 : ℝ) := by field_simp; linarith
+    rw [←le_csInf_iff bdd ne] at ineq; linarith
+--
+  let P (k : ℕ) (m : ℝ) := m ∈ S ∧ m - (sInf S) < 1/(k+1)
+  have h₀ : ∃ a, P 0 a := sInf_add_ge 0
+  have ih : ∀ n a, P n a → ∃ a', P (n+1) a' := by
+    intro n a h; rcases sInf_add_ge (n+1) with ⟨a', ha'⟩; use a'
+  rcases exists_by_induction P h₀ ih with ⟨u, hu⟩
+  use u, (n ↦ (hu n).1); intro ε ε_pos
+  rcases inv_of_le_forall ε ε_pos with ⟨N, hN⟩; use N
+  intro n hn; rw [abs_of_nonneg]
+  · have ineq₁ := hN n hn; dsimp at ineq₁
+    have ineq₂ := (hu n).2; linarith
+  · linarith [csInf_le bdd (hu n).1]
 
 end SupReal
 

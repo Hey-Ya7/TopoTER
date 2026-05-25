@@ -198,7 +198,7 @@ lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
 
 variable {A : Partie X}
 
-instance : EspaceMetrique (Induite A) where
+instance ofMetInd : EspaceMetrique (Induite A) where
   d := induite_dist A
   is_dist := dist_of_induite A
 
@@ -312,6 +312,19 @@ noncomputable def norme_sup : K^n → ℝ := x ↦ sSup {|x.p i|ₖ | i}
 
 lemma Kn_nonempty {n : ℕ} (h : n > 0) (x : K^n) : let s := {|x.p i|ₖ | i};
   s.Nonempty := by use |x.p ⟨0, h⟩|ₖ, ⟨0, h⟩
+
+lemma norme_basis {n} (h : n > 0) (i : Fin n) : norme_sup (canonBasis K i) = 1 := by
+  cases n
+  · case zero => linarith
+  · case succ k =>
+    unfold canonBasis norme_sup; apply le_antisymm
+    · apply csSup_le (by use 1, i; simp)
+      intro b hb; dsimp at hb; rcases hb with ⟨i, hi⟩
+      rw [apply_ite (f := x ↦ |x|ₖ)] at hi; rw [←hi]; split
+      · rw [Valuation.abs_one]
+      · rw [Valuation.abs_zero]; linarith
+    · apply le_csSup _ (by use i; simp)
+      apply SupReal.bddabove_of_fin_image
 
 open SupReal in
 @[simp] lemma norme_sup_zero : norme_sup (0 : K^n) = 0 := by
@@ -1082,6 +1095,19 @@ lemma bornee_iff_bounded (A : Partie ℝ) : est_borne A ↔ ∃ M, ∀ x ∈ A,
       apply lt_of_le_of_lt (hM x hx)
       apply lt_max_of_lt_right; linarith
 
+lemma bornee_iff_in_pave (A : Partie ℝ) : est_borne A ↔ ∃ r : ℝ, ∀ x ∈ A,
+  x ∈ [-r ≤__≤ r] := by
+  rw [bornee_iff_bounded]; apply Iff.intro
+  · intro ⟨M, hM⟩; use M; intro x hx; specialize hM x hx; rwa [abs_le] at hM
+  · intro ⟨r, hr⟩; use r; intro x hx; specialize hr x hx; rwa [abs_le]
+
+lemma bornee_of_pave (α β : ℝ) : est_borne [α ≤__≤ β] := by
+  rw [bornee_iff_in_pave]; use max |α| |β|
+  intro x ⟨h₁, h₂⟩; apply And.intro
+  · apply le_trans _ h₁; apply le_trans _ (neg_abs_le α)
+    rw [neg_le_neg_iff]; apply le_max_left
+  · apply le_trans h₂ _; apply le_trans (le_abs_self β); apply le_max_right
+
 -- Définition 1.11.
 
 def converges_to (u : ℕ → X) (l : X) := ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u n, l) ≤ ε
@@ -1135,17 +1161,8 @@ theorem lim_iff_lim_vois (u : ℕ → X) (l : X) : converges_to u l ↔
 
 -- a)
 
-lemma inv_of_le_forall : let u : ℕ → ℝ := n ↦ 1 / (n + 1); ∀ ε > 0, ∃ N,
-  ∀ n ≥ N, u n ≤ ε := by
-  intro u ε ε_pos
-  have arch := Real.instArchimedean.arch 1 ε_pos
-  rcases arch with ⟨N, hN⟩; use N; intro n hn
-  unfold u; field_simp; apply le_trans hN; rw [nsmul_eq_mul]
-  apply mul_le_mul_of_nonneg_right _ (by linarith)
-  rw [←Nat.cast_add_one, Nat.cast_le]; linarith
-
-lemma conv_of_le_inv (v : ℕ → ℝ) (hv : ∀ n, v n ≥ 0) (h : ∀ n, v n ≤ 1 / (n + 1))
-  : converges_to v 0 := by
+lemma conv_of_le_inv (v : ℕ → ℝ) (hv : ∀ n, v n ≥ 0) (h : ∀ n, v n ≤ 1 / (n + 1)) :
+  converges_to v 0 := by
   intro ε ε_pos
   have exists_N := inv_of_le_forall ε ε_pos
   rcases exists_N with ⟨N, hN⟩; use N; intro n hn
