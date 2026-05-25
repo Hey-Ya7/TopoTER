@@ -206,6 +206,10 @@ def transport_index {i j : ι} (h : i = j) (A : Partie Y i) : Partie Y j :=
   cast (by rw [h]) A
 -- @Eq.rec Type (Partie Y i) (X ↦ _ ↦ X) A (Partie Y j) (by rw [h])
 
+lemma ouv_elem_of_finite (u : Partie Π i, Y i) [Finite ι] (V : (i : ι) → Partie Y i)
+  (hV : prod_ouverts u V) : ouv_elementaire u := by
+  use V, hV; use Ω, finite_univ; intro i hi; absurd hi; apply mem_univ
+
 open Classical in
 lemma ouv_elem_of_preimage {i : ι} (A : Partie Y i) (h : est_ouvert A) :
   ouv_elementaire (proj i ⁻¹' A) := by
@@ -443,11 +447,27 @@ noncomputable instance instProdFin {n : ℕ} {h : n > 0} {F : Fin n → Type} [�
   have ne : Nonempty (Fin n) := by use 0
   apply metrique_of_prod_metrique
 
-lemma ouv_of_metrique_iff_ouv_of_top_prod [M : ∀ i, EspaceMetrique (Y i)]
-  [h : Nonempty ι] [Finite ι] : ∀ s : Partie Π i, Y i, ofMet.est_ouvert s ↔
-  (@top_prod _ _ (i ↦ ofMet)).est_ouvert s := by
+variable [∀ i, EspaceMetrique (Y i)] [nempty : Nonempty ι] [Finite ι]
+
+lemma ouv_elem_of_boule (a : Π i, Y i) (r : ℝ) : @ouv_elementaire _ _ (_ ↦ ofMet)
+  (Bₒ a r) := by
+  apply ouv_elem_of_finite (V := i ↦ Bₒ (a i) r)
+  dsimp; apply And.intro
+  · intro i; exact ouv_of_boule_ouv (a i) r
+  · ext x; apply Iff.intro
+    · intro h; rw [mem_iInter]; intro i; dsimp
+      exact lt_of_le_of_lt (le_prod_dist x a i) h
+    · intro h; dsimp; rw [prod_dist, Finite.csSup_lt_iff]
+      · intro z ⟨i, hi⟩; rw [←hi]; rw [mem_iInter] at h; exact h i
+      · apply SupReal.image_of_fin
+      · let i := Nonempty.some nempty; use d(x i, a i); use i
+
+lemma ouv_of_metrique_iff_ouv_of_top_prod : ∀ s : Partie Π i, Y i, ofMet.est_ouvert s
+  ↔ (@top_prod _ _ (_ ↦ ofMet)).est_ouvert s := by
   intro s; apply Iff.intro
-  · intro h; sorry
+  · intro h; rw [ouvert_ssi_vois]; intro x hx
+    rw [vois_of_prod]; rcases h x hx with ⟨r, r_pos, hr⟩
+    use Bₒ x r, hr, ouv_elem_of_boule x r, centre_in_boule x r_pos
 --
   · intro h a ha; rw [ouvert_ssi_vois] at h
     specialize h a ha; rw [vois_of_prod] at h
@@ -457,7 +477,7 @@ lemma ouv_of_metrique_iff_ouv_of_top_prod [M : ∀ i, EspaceMetrique (Y i)]
       intro i; apply p_ouv i; exact a_in i
     choose f hf₁ hf₂ using exists_r; let S := Set.range f
 --
-    let i := Nonempty.some h
+    let i := Nonempty.some nempty
     have hn : S.Nonempty := by use (f i); use i
     have hf : Finite S := by apply SupReal.image_of_fin
     use sInf S; apply And.intro
@@ -469,21 +489,33 @@ lemma ouv_of_metrique_iff_ouv_of_top_prod [M : ∀ i, EspaceMetrique (Y i)]
       · apply lt_of_lt_of_le hx; apply csInf_le _ (by use j)
         apply SupReal.bddbelow_of_finite_image'
 
-variable [∀ i, EspaceMetrique (Y i)] [Nonempty ι] [Finite ι]
-
-theorem conv_vers_metrique_iff_conv_vers_top (u : ℕ → Π i, Y i) (l : Π i, Y i) :
-  ofMet.converge_vers u l ↔ (@top_prod _ _ (i ↦ ofMet)).converge_vers u l := by
+lemma vois_of_metrique_iff_vois_of_top (x : Π i, Y i) (X : Partie Π i, Y i) :
+  ofMet.est_vois x X ↔ (@top_prod _ _ (_ ↦ ofMet)).est_vois x X := by
   apply Iff.intro
-  · intro h; sorry
-  sorry
+  · intro h; rcases h with ⟨U, ⟨x_in, hU, U_in⟩⟩
+    rw [ouv_of_metrique_iff_ouv_of_top_prod] at hU
+    use U, x_in, hU, U_in
+  · intro h; rcases h with ⟨U, ⟨x_in, hU, U_in⟩⟩
+    rw [←ouv_of_metrique_iff_ouv_of_top_prod] at hU
+    use U, x_in, hU, U_in
+
+lemma conv_vers_metrique_iff_conv_vers_top (u : ℕ → Π i, Y i) (l : Π i, Y i) :
+  ofMet.converge_vers u l ↔ (@top_prod _ _ (_ ↦ ofMet)).converge_vers u l := by
+  apply Iff.intro
+  · intro h U hU; rw [←vois_of_metrique_iff_vois_of_top] at hU
+    rcases h U hU with ⟨n, hn⟩; use n, hn
+  · intro h U hU; rw [vois_of_metrique_iff_vois_of_top] at hU
+    rcases h U hU with ⟨n, hn⟩; use n, hn
 
 theorem conv_to_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converges_to u l ↔ ∀ i,
   converges_to (n ↦ (u n) i) (l i) := by
   apply Iff.intro
-  · intro h i; rw [←conv_vers_iff_conv_to] at *
-    --rw [conv_vers_in_prod (Y := Y)] at h
-    sorry
-  sorry
+  · intro h; rw [←conv_vers_iff_conv_to] at h
+    rw [conv_vers_metrique_iff_conv_vers_top, conv_vers_in_prod] at h
+    simp only [←conv_vers_iff_conv_to]; exact h
+  · intro h; simp only [←conv_vers_iff_conv_to] at *
+    simp only [conv_vers_metrique_iff_conv_vers_top]
+    rwa [←conv_vers_in_prod] at h
 
 theorem converges_in_prod (u : ℕ → Π i, Y i) : converges u ↔ ∀ i, converges
   (n ↦ (u n) i) := by
