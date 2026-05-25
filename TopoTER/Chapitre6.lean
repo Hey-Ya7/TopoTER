@@ -195,19 +195,19 @@ open Set.Notation in
 theorem compact_of_ferme {A : Partie X} [C : EspCompact X] (hf : est_ferme A) :
   est_compact A := by
   rw [←comp_iff_comp_induite, compact_iff_comp_f] at *
-  intro F F_ferme F_inter
+  intro F F_ferme F_inter; stop
   have exists_f : ∀ i : F.ι, ∃ P, est_ferme P ∧ F.u i = P := by
     intro i; specialize F_ferme (F.u i) (by use i)
-    use toSubtype (s := A) (F.u i), ferme_of_ferme_induite hf F_ferme
-  choose f hf₁ hf₂ using exists_f
+    use toSubtype (s := A) (F.u i), --ferme_of_ferme_induite hf F_ferme
+  --choose f hf₁ hf₂ using exists_f
 --
-  let G : Famille X := ⟨F.ι, f⟩
+  let G : Famille X := ⟨F.ι, f⟩ sorry
   have G_ferme : ∀ P ∈ G, est_ferme P := by
-    intro P ⟨i, hi⟩; dsimp at hi; rw [←hi]; exact hf₁ i
+    intro P ⟨i, hi⟩; dsimp at hi; rw [←hi]; exact hf₁ i sorry
   have G_inter : ⋂ᵢ G = ∅ := by
     rw [eq_empty_iff_forall_notMem]; intro x hx
     rw [mem_inter_famille] at hx
-  rcases C F F_ferme F_inter with ⟨J, hJ, J_inter⟩
+  --rcases C F F_ferme F_inter with ⟨J, hJ, J_inter⟩
   use J, hJ, J_inter
 
 -- Théorème 6.5.
@@ -446,10 +446,32 @@ lemma compact_of_pave (α β : ℝ) : est_compact [α ≤__≤ β] := by
 
 -- d)
 
-theorem bornes_atteintes {f : X → ℝ} (h : est_continu f) {A : Partie X}
-  (comp : est_compact A) : ∃ a b, (∀ x ∈ A, f x ∈ [a ≤__≤ b]) ∧ ∃ x₁ ∈ A, ∃ x₂ ∈ A,
-  f x₁ = a ∧ f x₂ = b := by
-  sorry
+omit [EspSepareT2 X] in
+theorem bornes_atteintes {f : X → ℝ} (h : est_continu f) {A : Partie X} (ne :
+  A.Nonempty) (comp : est_compact A) : ∃ α β, (∀ x ∈ A, f x ∈ [α ≤__≤ β]) ∧
+  ∃ x₁ ∈ A, ∃ x₂ ∈ A, f x₁ = α ∧ f x₂ = β := by
+  let S := f '' A
+  have comp : est_compact S := by
+    exact compact_of_continu_image h comp
+  rw [compact_iff_ferme_borne, bornee_iff_bounded] at comp
+  rcases comp with ⟨hf, M, hM⟩
+--
+  rcases ne with ⟨a⟩
+  have nonempty : S.Nonempty := by use (f a); use a
+  have bdd_above : BddAbove S := by
+    use M; intro x hx; specialize hM x hx
+    rw [abs_le] at hM; exact hM.right
+  have bdd_below : BddBelow S := by
+    use -M; intro x hx; specialize hM x hx
+    rw [abs_le] at hM; exact hM.left
+--
+  use (sInf S), (sSup S); apply And.intro
+  · intro x hx; exact ⟨csInf_le bdd_below (by use x),
+                       le_csSup bdd_above (by use x)⟩
+  · have α_att := inf_atteint_of_ferme S S hf (refl S) nonempty bdd_below
+    have β_att := sup_atteint_of_ferme S S hf (refl S) nonempty bdd_above
+    rcases α_att with ⟨x₁, x₁_in, hx₁⟩; rcases β_att with ⟨x₂, x₂_in, hx₂⟩
+    use x₁, x₁_in, x₂, x₂_in, hx₁, hx₂
 
 -- Proposition 6.13.
 
@@ -505,6 +527,8 @@ theorem borel_lebesgue {n : ℕ} (h : n > 0) (A : Partie ℝ ^ n) : est_compact 
 open Valuation VectorSpace K_n EspaceNorme
 
 variable {n : ℕ} {K : Type} [ValuationField K]
+
+lemma dist_norme_Kn (x y : K ^ n) : d(x, y) = norme_sup (x - y) := by rfl
 
 -- Lemme 6.23.
 
@@ -567,8 +591,7 @@ theorem K_norm_equiv_sup {N : ℝ ^ n → ℝ} (h : estNorme (K := ℝ) N) :
     have hb : est_borne U := by
       use 2, zero_le_two; intro x hx y hy
       have eq : ∀ z ∈ U, d(z, 0) = 1 := by
-        dsimp; rw [dist_norme]
-        intro z hz; rw [sub_zero, hz]
+        intro z hz; rw [dist_norme_Kn, sub_zero, hz]
       have ineq := EspaceMetrique.is_dist.ineq x 0 y
       rw [EspaceMetrique.is_dist.symm 0 y] at ineq
       linarith [eq x hx, eq y hy]
@@ -578,8 +601,13 @@ theorem K_norm_equiv_sup {N : ℝ ^ n → ℝ} (h : estNorme (K := ℝ) N) :
       rw [←hz, eq, norme_sup_zero]
     have hc : est_compact U := by
       rw [borel_lebesgue hyp]; exact ⟨hf, hb⟩
-    rcases bornes_atteintes hN hc with
-                    ⟨α, β, bdd, ⟨x₁, hx₁, x₂, hx₂, h₁, h₂⟩⟩
+    have ne : U.Nonempty := by
+      let i : Fin n := ⟨0, hyp⟩
+      use (K_n.canonBasis ℝ i); unfold U
+      rw [←norme_basis (K := ℝ) hyp i]; rfl
+    rcases bornes_atteintes hN ne hc with
+          ⟨α, β, bdd, ⟨x₁, hx₁, x₂, hx₂, h₁, h₂⟩⟩
+--
     have α_pos : α > 0 := by
       rw [←h₁]; apply lt_of_le_of_ne (h.nneg x₁)
       intro eq; symm at eq; rw [h.definie] at eq

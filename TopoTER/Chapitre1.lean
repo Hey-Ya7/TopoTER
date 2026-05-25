@@ -313,6 +313,19 @@ noncomputable def norme_sup : K^n → ℝ := x ↦ sSup {|x.p i|ₖ | i}
 lemma Kn_nonempty {n : ℕ} (h : n > 0) (x : K^n) : let s := {|x.p i|ₖ | i};
   s.Nonempty := by use |x.p ⟨0, h⟩|ₖ, ⟨0, h⟩
 
+lemma norme_basis {n} (h : n > 0) (i : Fin n) : norme_sup (canonBasis K i) = 1 := by
+  cases n
+  · case zero => linarith
+  · case succ k =>
+    unfold canonBasis norme_sup; apply le_antisymm
+    · apply csSup_le (by use 1, i; simp)
+      intro b hb; dsimp at hb; rcases hb with ⟨i, hi⟩
+      rw [apply_ite (f := x ↦ |x|ₖ)] at hi; rw [←hi]; split
+      · rw [Valuation.abs_one]
+      · rw [Valuation.abs_zero]; linarith
+    · apply le_csSup _ (by use i; simp)
+      apply SupReal.bddabove_of_fin_image
+
 open SupReal in
 @[simp] lemma norme_sup_zero : norme_sup (0 : K^n) = 0 := by
   unfold norme_sup; cases n
@@ -1146,17 +1159,8 @@ theorem lim_iff_lim_vois (u : ℕ → X) (l : X) : converges_to u l ↔
 
 -- a)
 
-lemma inv_of_le_forall : let u : ℕ → ℝ := n ↦ 1 / (n + 1); ∀ ε > 0, ∃ N,
-  ∀ n ≥ N, u n ≤ ε := by
-  intro u ε ε_pos
-  have arch := Real.instArchimedean.arch 1 ε_pos
-  rcases arch with ⟨N, hN⟩; use N; intro n hn
-  unfold u; field_simp; apply le_trans hN; rw [nsmul_eq_mul]
-  apply mul_le_mul_of_nonneg_right _ (by linarith)
-  rw [←Nat.cast_add_one, Nat.cast_le]; linarith
-
-lemma conv_of_le_inv (v : ℕ → ℝ) (hv : ∀ n, v n ≥ 0) (h : ∀ n, v n ≤ 1 / (n + 1))
-  : converges_to v 0 := by
+lemma conv_of_le_inv (v : ℕ → ℝ) (hv : ∀ n, v n ≥ 0) (h : ∀ n, v n ≤ 1 / (n + 1)) :
+  converges_to v 0 := by
   intro ε ε_pos
   have exists_N := inv_of_le_forall ε ε_pos
   rcases exists_N with ⟨N, hN⟩; use N; intro n hn

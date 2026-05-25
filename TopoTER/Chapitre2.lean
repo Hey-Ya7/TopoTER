@@ -685,5 +685,21 @@ lemma ferme_iff_lim_suite (A : Set F) : est_ferme A ↔ ∀ u : ℕ → F, (∀ 
       rwa [x_eq_x']
     · exact contenu_adh A
 
+lemma limite_atteint_in_ferme {A : Set F} (hf : est_ferme A) {u : ℕ → F} {l : F}
+  (h : ∀ n, u n ∈ A) (conv : converge_vers u l) : l ∈ A := by
+  rw [ferme_iff_lim_suite] at hf; specialize hf u h (by use l)
+  rcases hf with ⟨l', l_in, conv'⟩; rwa [unicite_lim u l' l ⟨conv', conv⟩] at l_in
+
+lemma sup_atteint_of_ferme (A B : Set ℝ) (hf : est_ferme A) (h : B ⊆ A) (ne : B.Nonempty)
+  (bdd : BddAbove B) : sSup B ∈ A := by
+  rcases SupReal.sequentiel_of_sSup B ne bdd with ⟨u, hu, conv⟩
+  rw [←conv_to_iff_really_conv_to, ←conv_vers_iff_conv_to] at conv
+  exact limite_atteint_in_ferme hf (n ↦ h (hu n)) conv
+
+lemma inf_atteint_of_ferme (A B : Set ℝ) (hf : est_ferme A) (h : B ⊆ A) (ne : B.Nonempty)
+  (bdd : BddBelow B) : sInf B ∈ A := by
+  rcases SupReal.sequentiel_of_sInf B ne bdd with ⟨u, hu, conv⟩
+  rw [←conv_to_iff_really_conv_to, ←conv_vers_iff_conv_to] at conv
+  exact limite_atteint_in_ferme hf (n ↦ h (hu n)) conv
 
 end EspTop
