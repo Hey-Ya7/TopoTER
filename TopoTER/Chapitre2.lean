@@ -207,7 +207,6 @@ lemma adh_ferme {s : Set X} : est_ferme (adh s) := by
   intro F
   exact F.property.1
 
-<<<<<<< HEAD
 lemma adh_contenu_of_contenu_ferme (s t : Set X) (h : s ⊆ t) (hf : est_ferme t) :
   adh s ⊆ t := by
   rw [adh_eq_inter]; exact sInter_subset_of_mem ⟨hf, h⟩
@@ -215,8 +214,8 @@ lemma adh_contenu_of_contenu_ferme (s t : Set X) (h : s ⊆ t) (hf : est_ferme t
 lemma adh_contenu_adh (s t : Set X) (h : s ⊆ t) : adh s ⊆ adh t := by
   apply adh_contenu_of_contenu_ferme
   · exact subset_trans h (contenu_adh t)
-  · exact adh_ferme t
-=======
+  · exact adh_ferme
+
 lemma ferme_iff_adh {A : Set X} : est_ferme A ↔ (adh A) = A := by
   constructor
   · intro hA
@@ -226,7 +225,6 @@ lemma ferme_iff_adh {A : Set X} : est_ferme A ↔ (adh A) = A := by
   · intro hA
     rw [←hA]
     exact adh_ferme
->>>>>>> 269c16848b9963ab2234d36fdfa30aecd284cc5e
 
 ----------------------------------------------------------------------------------------------
 @[simp]
