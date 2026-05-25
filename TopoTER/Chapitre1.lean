@@ -191,13 +191,6 @@ instance : EspaceMetrique (Induite A) where
   d := induite_dist A
   is_dist := dist_of_induite A
 
-instance : Coe (Partie X) (Partie Induite A) where
-  coe := S ↦ {x | (x : X) ∈ S}
-
-omit M in
-@[simp] lemma self_induite : (A : Partie Induite A) = Ω := by
-  ext x; unfold Induite; simp
-
 end Metrique
 
 -- Définition 1.3.
@@ -227,14 +220,21 @@ structure estNorme (N : E → ℝ) where
   homogen : homogen (K := K) N
   ineq : ineq N
 
-lemma norm_zero {N : E → ℝ} (h : estNorme (K := K) N) : N 0 = 0 := by
+lemma norme_zero {N : E → ℝ} (h : estNorme (K := K) N) : N 0 = 0 := by
   rw [h.definie]
 
-lemma norm_neg {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x, N (-x) = N x
+lemma norme_neg {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x, N (-x) = N x
   := by intro x; rw [←neg_one_smul K, h.homogen, abs_neg_one, one_mul]
 
-lemma norm_symm {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N (x - y) =
-  N (y - x) := by intro x y; rw [←neg_sub, norm_neg h]
+lemma norme_symm {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N (x - y) =
+  N (y - x) := by intro x y; rw [←neg_sub, norme_neg h]
+
+lemma normalise {N : E → ℝ} [Module ℝ E] (h : estNorme (K := ℝ) N) : ∀ x ≠ 0,
+  N ((N x)⁻¹ • x) = 1 := by
+  intro x hx; rw [h.homogen]; dsimp [instValuationFieldReal]
+  rw [abs_of_nonneg, inv_mul_cancel₀]
+  · intro eq; apply hx; rwa [←h.definie]
+  · apply inv_nonneg_of_nonneg; exact h.nneg x
 
 lemma sub_ineq {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N x - N y ≤
   N (x - y) := by
@@ -261,7 +261,7 @@ theorem dist_of_norme (K E : Type) [ValuationField K] [GroupeNorme E]
   rcases V.is_norm with ⟨nneg, defi, homo, ineq⟩; constructor
   · case nneg => intro x y; apply nneg
   · case sep => intro x y; rw [defi, sub_eq_zero]
-  · case symm => intro x y; dsimp; rw [norm_symm V.is_norm]
+  · case symm => intro x y; dsimp; rw [norme_symm V.is_norm]
   · case ineq => intro x y z; dsimp
                  have eq : x - z = (x - y) + (y - z) := by abel
                  rw [eq]; apply ineq
@@ -297,6 +297,15 @@ lemma Kn_nonempty {n : ℕ} (h : n > 0) (x : K^n) : let s := {|x.p i|ₖ | i};
   s.Nonempty := by use |x.p ⟨0, h⟩|ₖ, ⟨0, h⟩
 
 open SupReal in
+@[simp] lemma norme_sup_zero : norme_sup (0 : K^n) = 0 := by
+  unfold norme_sup; cases n
+  · case zero => apply norme_Kzero
+  · case succ k =>
+    have h' := Kn_nonempty (K := K) (Nat.succ_pos k) 0
+    apply sSup_const h'; intro x hx; rcases hx with ⟨i, hi⟩
+    rw [←Valuation.abs_zero (K := K), ←hi]; congr
+
+open SupReal in
 noncomputable instance : GroupeNorme K^n where
   norm := norme_sup
   nneg := by {
@@ -306,20 +315,14 @@ noncomputable instance : GroupeNorme K^n where
   }
 
   definie := by {
-    intro x; unfold norme_sup; rw [eq_zero_iff]
+    intro x; unfold norme_sup
     apply Iff.intro
-    · case mp => intro hi i; apply abs_le_zero
-                 rw [←hi]; apply le_csSup
+    · case mp => rw [eq_zero_iff]; intro hi i
+                 apply abs_le_zero; rw [←hi]
+                 apply le_csSup
                  · apply bddabove_of_fin_image
                  · dsimp; use i
-    · case mpr =>
-        intro h; cases n
-        · case zero => apply norme_Kzero
-        · case succ k =>
-          have h' := Kn_nonempty (Nat.succ_pos k) x
-          apply sSup_const h'; intro x x_in
-          rcases x_in with ⟨i, hi⟩; rw [h i] at hi
-          rw [←Valuation.abs_zero (K := K), hi]
+    · case mpr => intro h; rw [h]; exact norme_sup_zero
   }
 
   ineq := by {
@@ -356,6 +359,9 @@ noncomputable instance : EspaceVecNorme K K^n where
       rw [←sSup_smul_of_nonneg (abs_nonneg a), h]
     ext r; simp [HSMul.hSMul]
   }
+
+theorem sup_est_norme (n : ℕ) : estNorme (K := K) (norme_sup (K := K) (n := n))
+  := instEspaceVecNormeK_n.is_norm
 
 noncomputable instance : EspaceMetrique K^n where
   d := x ↦ y ↦ ‖x - y‖
@@ -1030,7 +1036,28 @@ lemma bdd_iff_in_boule (A : Partie X) : Nonempty X ∧ dist_bornee A ↔
                 apply le_trans (ineq x a y); apply le_of_lt
                 rw [symm a y]; exact add_lt_add (in_B hx) (in_B hy)
 
-def bornee (X : Type) [EspaceMetrique X] := dist_bornee_nneg (X := X) Ω
+abbrev est_borne (A : Partie X) := dist_bornee_nneg A
+
+abbrev borne (X : Type) [EspaceMetrique X] := est_borne (X := X) Ω
+
+lemma bornee_iff_bounded (A : Partie ℝ) : est_borne A ↔ ∃ M, ∀ x ∈ A,
+  |x| ≤ M := by
+  apply Iff.intro
+  · intro h; have ne : Nonempty ℝ := by use 1
+    apply And.intro (a := Nonempty ℝ) ne at h
+    rw [est_borne, ←bdd_iff_bdd_by_nneg, bdd_iff_in_boule] at h
+    rcases h with ⟨x, r, r_pos, hr⟩
+    use d(x, 0) + r; intro y hy; rw [←sub_zero y]
+    have ineq₁ : d(y, x) < r := by apply hr hy
+    have ineq₂ := EspaceMetrique.is_dist.ineq y x 0
+    dsimp [instEspaceMetriqueReal] at *; linarith
+  · intro h; apply And.right
+    rw [est_borne, ←bdd_iff_bdd_by_nneg, bdd_iff_in_boule]
+    rcases h with ⟨M, hM⟩; use 0, max 1 (M+1); apply And.intro
+    · apply lt_of_lt_of_le one_pos; apply le_max_left
+    · intro x hx; dsimp [instEspaceMetriqueReal]
+      rw [sub_zero]; apply lt_of_le_of_lt (hM x hx)
+      apply lt_max_of_lt_right; linarith
 
 -- Définition 1.11.
 
@@ -1038,7 +1065,12 @@ def converges_to (u : ℕ → X) (l : X) := ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u 
 
 def converges (u : ℕ → X) := ∃ l, converges_to u l
 
-def seq_bornee (u : ℕ → X) := dist_bornee {u n | n}
+lemma conv_to_iff_really_conv_to (u : ℕ → ℝ) (l : ℝ) : converges_to u l ↔
+  really_converges_to u l := by rfl
+
+lemma conv_iff_really_conv (u : ℕ → ℝ) : converges u ↔ really_converges u := by rfl
+
+abbrev seq_bornee (u : ℕ → X) := est_borne {u n | n}
 
 lemma converges_iff_c_converges (u : ℕ → X) (l : X) {C : ℝ} (C_pos : C > 0) :
   converges_to u l ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u n, l) ≤ C * ε := by
@@ -1107,8 +1139,8 @@ theorem bornee_of_conv (u : ℕ → X) (h : converges u) : seq_bornee u := by
   rcases h with ⟨l, hl⟩; rcases hl 1 one_pos with ⟨N, hN⟩
   have bdd : BddAbove {d(u n, l) | n : Fin N} := by
     apply SupReal.bddabove_of_fin_image
-  rcases bdd with ⟨M, hM⟩; unfold seq_bornee
-  apply And.right; rw [bdd_iff_in_boule]
+  rcases bdd with ⟨M, hM⟩; dsimp [seq_bornee, est_borne]
+  apply And.right; rw [←bdd_iff_bdd_by_nneg, bdd_iff_in_boule]
   let M' := max (M + 1) 2
   use l, M', lt_max_of_lt_right (zero_lt_two)
   intro x hx; rcases hx with ⟨n, hn⟩; rw [←hn]; dsimp
@@ -1149,40 +1181,11 @@ theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : seq_bornee u := by
 
 -- c)
 
-def extraction (φ : ℕ → ℕ) := ∀ m n, m < n → φ m < φ n
-
-lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1) := by
-  constructor
-  · intro hφ; unfold extraction at hφ; intro n
-    specialize hφ n (n+1) (by linarith); exact hφ
-  · intro h; unfold extraction
-    intro m n hlt; rw [Nat.lt_iff_add_one_le] at hlt
-    induction n
-    · case zero => linarith
-    · case succ n hn =>
-        by_cases h1 : m+1 = n+1
-        · rw [←h1]; specialize h m; exact h
-        · have m_lt_n : m < n := by
-            push_neg at h1; rw [lt_iff_le_and_ne]
-            apply And.intro (by linarith)
-            rwa [←Nat.add_one_ne_add_one_iff]
-          rw [Nat.lt_iff_add_one_le] at m_lt_n
-          have hφmn : φ m < φ n := hn m_lt_n
-          apply lt_trans hφmn (h n)
-
-lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
-  intro n; induction n
-  · case zero => apply zero_le
-  · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
-                      apply lt_of_le_of_lt hk; apply h; linarith
-
-lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N,
-  φ n ≥ A := by
-  intro A; use A
-  intro n hn
-  trans n
-  · exact n_le_extr_n h n
-  · exact hn
+theorem extr_conv_of_conv {u : ℕ → X} {φ : ℕ → ℕ} (hφ : extraction φ)
+  (conv : converges u) : converges (u ∘ φ) := by
+  rcases conv with ⟨l, hl⟩; use l; intro ε ε_pos
+  rcases hl ε ε_pos with ⟨N, hN⟩; use N; intro n n_ge
+  apply hN; apply le_trans n_ge; exact n_le_extr_n hφ n
 
 theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
   (hφ : extraction φ) (conv : converges (u ∘ φ)) : converges u := by

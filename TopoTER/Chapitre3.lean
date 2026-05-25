@@ -11,8 +11,8 @@ def est_continu_point {X Y : Type} [EspTop X] [EspTop Y] (f : X → Y) (x : X) :
 def est_continu {X Y : Type} [EspTop X] [EspTop Y] (f : X → Y) : Prop :=
   ∀(x : X), est_continu_point f x
 
-theorem continu_iff_preim_ouv (f : X → Y) :
-  est_continu f ↔ ∀ (V : Set Y), est_ouvert V → est_ouvert (f ⁻¹' V) := by
+theorem continu_iff_preim_ouv (f : X → Z) :
+  est_continu f ↔ ∀ (V : Set Z), est_ouvert V → est_ouvert (f ⁻¹' V) := by
   constructor
   · intro h V Vouv
     rw [ouvert_ssi_vois]
@@ -40,6 +40,16 @@ theorem continu_iff_preim_ouv (f : X → Y) :
       exact ⟨fxV, fVouv, by rfl⟩
     · trans V; simp; exact VinW
 
+lemma comp_est_continu {X Y Z : Type}  [EspTop X] [EspTop Y] [EspTop Z] (f : X → Y) (g : Y → Z) (hf : est_continu f) (hg : est_continu g) :
+  est_continu (g ∘ f) := by
+    rw[continu_iff_preim_ouv] at *
+    intro V hV
+    rw[Set.preimage_comp]
+    apply hf
+    apply hg
+    exact hV
+
+omit [EspSepareT2 Y] in
 theorem continu_ouv_ferm (f : X → Y) : (∀ (V : Set Y),
 (est_ouvert V → est_ouvert (f ⁻¹' V)))  ↔ (∀(F : Set Y), est_ferme F → est_ferme (f ⁻¹' F)) := by
   constructor
@@ -54,6 +64,7 @@ theorem continu_ouv_ferm (f : X → Y) : (∀ (V : Set Y),
     rw[preimage_compl] at h
     exact h
 
+omit [EspSepareT2 Y] in
 theorem continu_iff_preim_ferm (f : X → Y) :
 est_continu f ↔ ∀ (F : Set Y), est_ferme F → est_ferme (f ⁻¹' F) := by
   rw[continu_iff_preim_ouv]
@@ -93,7 +104,7 @@ lemma norme_lipschitz : lipschitz 1 N(K, G) := by
   apply And.intro
   · apply sub_ineq V.is_norm
   · unfold instEspaceMetriqueEspaceMetNorme; dsimp
-    rw [norm_symm V.is_norm]; apply sub_ineq V.is_norm
+    rw [norme_symm V.is_norm]; apply sub_ineq V.is_norm
 
 lemma unif_continu_cont (f : E → F) : unif_continu f → est_continu f := by
   intro hucf
@@ -154,30 +165,240 @@ lemma lip_continu (f : E → F) : k_lipschitz f → unif_continu f := by
         _ = ε/2 := by field
         _ ≤ ε := by linarith
 
-open Set.Notation
+-- Définition 3.18.
 
--- lire l'intro de Mathlib.Data.Set.Subset
+variable {ι : Type} {Y : ι → Type} [∀ i, EspTop (Y i)]
 
-instance {s : Partie X} : EspTop (Induite s) where
-  est_ouvert := fun u ↦ ∃ v, est_ouvert v ∧ u = s ↓∩ v
-  univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
-  empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
+def top_init {X : Type} (f : (i : ι) → X → Y i) : EspTop X := topo_engendree
+  {A : Set X | ∃ i : ι, ∃ U : Partie (Y i), est_ouvert U ∧ A = (f i) ⁻¹' U}
+
+instance top_prod : EspTop (Π i, Y i) := top_init (fun i ↦ x ↦ x i)
+
+--instance top_prod_fini {n : ℕ} (Y : Fin n → Type) [∀ i, EspTop (Y i)] :
+--  EspTop (Π i, Y i) := top_init (fun i ↦ x ↦ x i)
+
+lemma ouvert_pref_projections {X : Type} (f : (i : ι) → X → Y i) (i : ι)
+  (U : Set (Y i)) (hU : est_ouvert U) :
+  @est_ouvert X (top_init f) ((f i) ⁻¹' U) := by
+  apply ouv_top_engendree.ouvS
+  dsimp; exact ⟨i, U, hU, rfl⟩
+
+def proj : (i : ι) → (Π i, Y i) → Y i := i ↦ x ↦ (x i)
+
+def prod_espaces (V : (i : ι) → Partie Y i) := ⋂ i, (proj i) ⁻¹' V i
+
+omit [(i : ι) → EspTop (Y i)] in
+lemma mem_prod_espaces (x : Π i, Y i) (V : (i : ι) → Partie Y i) :
+  x ∈ prod_espaces V ↔ ∀ i, x i ∈ V i := by
+  apply Iff.intro
+  · intro h i; rw [prod_espaces, mem_iInter] at h; exact h i
+  · intro h; rw [prod_espaces, mem_iInter]; intro i; exact h i
+
+def prod_ouverts (U : Partie (Π i, Y i)) (V : (i : ι) → Partie Y i) :=
+  (∀ i, est_ouvert (V i)) ∧ U = prod_espaces V
+
+def ouv_elementaire (U : Partie (Π i, Y i)) := ∃ V : (i : ι) → Partie Y i,
+  prod_ouverts U V ∧ (∃ J : Set ι, Finite J ∧ ∀ i ∉ J, V i = Ω)
+
+lemma ouv_of_ouv_elem (U : Partie (Π i, Y i)) (h : ouv_elementaire U) :
+  est_ouvert U := by
+  rcases h with ⟨V, ⟨V_ouv, hV⟩, ⟨J, J_fin, hJ⟩⟩
+  have eq : U = ⋂ i ∈ J, (proj i) ⁻¹' V i := by
+    rw [hV, prod_espaces, ←biInter_univ, ←union_compl_self J]
+    have eq_univ : ⋂ i ∈ Jᶜ, (proj i) ⁻¹' V i = Ω := by
+      simp only [iInter_eq_univ]; intro i hi
+      rw [hJ i hi, preimage_univ]
+    rw [biInter_union, eq_univ, inter_univ]
+  rw [eq]; apply inter_fini_ouvert; intro i hi
+  apply ouvert_pref_projections; exact V_ouv i
+
+-- Théorème 3.19.
+
+-- a)
+
+theorem vois_of_prod (X : Partie (Π i, Y i)) (x : Π i, Y i) : est_vois x X ↔
+  ∃ U ⊆ X, ouv_elementaire U ∧ x ∈ U := by
+  apply Iff.intro
+  · intro h; rcases h with ⟨V, ⟨x_in, V_ouv, V_in⟩⟩
+    sorry
+  · intro h; rcases h with ⟨U, U_in, U_ouv, x_in⟩
+    use U; constructor
+    · exact x_in
+    · exact ouv_of_ouv_elem U U_ouv
+    · exact U_in
+
+-- b)
+
+lemma est_vois_of_preimage_of_vois (x : Π i, Y i) {i : ι} {V : Partie Y i}
+  (h : est_vois (x i) V) : est_vois x (proj i ⁻¹' V) := by
+  rcases h with ⟨U, ⟨x_in, hU, U_in⟩⟩
+  use proj i ⁻¹' U; constructor
+  · exact x_in
+  · apply ouvert_pref_projections; exact hU
+  · intro x hx; exact U_in hx
+
+theorem conv_vers_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converge_vers u l ↔
+  ∀ i, converge_vers (n ↦ (u n) i) (l i) := by
+  apply Iff.intro
+  · intro h i V hV; let U := proj i ⁻¹' V
+    have hU := est_vois_of_preimage_of_vois l hV
+    rcases h U hU with ⟨N, hN⟩; use N; intro m hm
+    exact hN m hm
+  · intro h V hV; rw [vois_of_prod] at hV
+    rcases hV with ⟨U, U_in, ⟨W, ⟨W_ouv, hW⟩, ⟨J, J_fin, hJ⟩⟩, l_in⟩
+    have vois_im : ∀ i, est_vois (l i) (W i) := by
+      intro i; apply ouv_est_vois (W_ouv i)
+      rw [hW, prod_espaces, mem_iInter] at l_in; exact l_in i
+    choose! f hf using h; let g := i ↦ f i (W i)
 --
-  union_ouvert := by
-    intro F h; choose! u h_ouv h_int using h
-    use ⋃ i, u (F.u i); apply And.intro
-    · apply iunion_ouvert; intro i; apply h_ouv; use i
-    · rw [preimage_iUnion]; dsimp [Famille.iUnion]
-      congr; ext i x; nth_rw 1 [h_int (F.u i)]; use i
+    have exists_N : ∀ i, ∀ n ≥ g i, (u n) i ∈ W i := by
+      intro i; exact hf i (W i) (vois_im i)
+    have exists_max : ∃ N, ∀ i ∈ J, N ≥ g i := by
+      suffices h : BddAbove {g i | i ∈ J} by
+        rcases h with ⟨M, hM⟩; use M; intro i hi
+        apply hM; use i, hi
+      apply SupReal.bddabove_of_finite_image
+    rcases exists_max with ⟨N, hN⟩; use N; intro n n_ge
 --
-  inter_ouvert := by
-    rintro u v ⟨U, ⟨Uouv, hU⟩⟩ ⟨V, ⟨Vouv, hV⟩⟩
-    use U ∩ V; constructor
-    · exact inter_ouvert Uouv Vouv
-    · simp [hU, hV]
+    apply U_in; rw [hW, mem_prod_espaces]; intro i
+    by_cases in_J : i ∈ J
+    · case pos => apply exists_N; linarith [hN i in_J]
+    · case neg => rw [hJ i in_J]; apply mem_univ
 
-def est_ouvert_elementaire (s : Set (X × X)) :=
-  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
+theorem converge_in_prod (u : ℕ → Π i, Y i) : converge u ↔ ∀ i, converge
+  (n ↦ (u n) i) := by
+  apply Iff.intro
+  · intro ⟨l, hl⟩ i; use l i; rw [conv_vers_in_prod] at hl; exact hl i
+  · intro h; choose l hl using h; use l; rwa [←conv_vers_in_prod] at hl
+
+-- c)
+
+theorem separe_of_prod_separe [S : ∀ i, EspSepareT2 (Y i)] : EspSepareT2 (Π i, Y i)
+  := by
+  constructor; intro x y h
+  have exists_ne : ∃ i, x i ≠ y i := by
+    contrapose h; push_neg at h; ext i; exact h i
+  rcases exists_ne with ⟨i, hi⟩
+  rcases (S i).est_separe (x i) (y i) hi with ⟨U, V, hU, hV, x_in, y_in, disj⟩
+  let U' := (proj i) ⁻¹' U; let V' := (proj i) ⁻¹' V
+  use U', V', ouvert_pref_projections proj i U hU,
+      ouvert_pref_projections proj i V hV, x_in, y_in
+  rw [eq_empty_iff_forall_notMem]; intro z z_in
+  rw [←mem_empty_iff_false (z i), ←disj]; exact z_in
+
+instance [∀ i, EspSepareT2 (Y i)] : EspSepareT2 (Π i, Y i) := separe_of_prod_separe
+
+-- Exemple 3.21.
+
+-- a)
+
+omit [∀ i, EspTop (Y i)]
+
+noncomputable def metrique_of_prod_metrique [M : ∀ i, EspaceMetrique (Y i)]
+  [h : Nonempty ι] [Finite ι] : EspaceMetrique (Π i, Y i) := by
+  let S (x y : (Π i, Y i)) : Set ℝ := {d(x i, y i) | i}
+  have bdd_above (x y : (Π i, Y i)) : BddAbove {d(x i, y i) | i} := by
+    apply SupReal.bddabove_of_finite_image'
+  have bdd_below (x y : (Π i, Y i)) : BddBelow {d(x i, y i) | i} := by
+    apply SupReal.bddbelow_of_finite_image'
+  let d : (Π i, Y i) → (Π i, Y i) → ℝ := x ↦ y ↦ sSup {d(x i, y i) | i}
+--
+  use d; rcases h with ⟨i⟩; constructor
+  · intro x y; apply le_csSup_of_le (b := d(x i, y i))
+    · exact bdd_above x y
+    · use i
+    · apply (M i).is_dist.nneg
+--
+  · intro x y; apply Iff.intro
+    · intro eq; ext i; rw [←(M i).is_dist.sep]
+      apply le_antisymm _ ((M i).is_dist.nneg (x i) (y i))
+      rw [←eq]; apply le_csSup (bdd_above x y); use i
+    · intro eq; apply SupReal.sSup_const
+      · use d(x i, y i); use i
+      · intro d ⟨i, hi⟩; rw [←hi, (M i).is_dist.sep, eq]
+--
+  · intro x y; unfold d; congr 1; ext d; apply Iff.intro
+    · intro ⟨i, hi⟩; use i; rw [←hi, (M i).is_dist.symm]
+    · intro ⟨i, hi⟩; use i; rw [←hi, (M i).is_dist.symm]
+--
+  · intro x y z; have bdd_add :=
+      SupReal.add_bddabove (bdd_above x y) (bdd_above y z)
+    apply le_trans (b := sSup (S x y + S y z)) _
+    · apply SupReal.sSup_add_ineq _ (bdd_above x y) _ (bdd_above y z)
+      · use d(x i, y i); use i
+      · use d(y i, z i); use i
+    · unfold d; apply csSup_le
+      · use d(x i, z i); use i
+      · intro d₁ ⟨i, hi⟩
+        apply le_csSup_of_le (b := d(x i, y i) + d(y i, z i)) bdd_add
+        · use ⟨d(x i, y i), d(y i, z i)⟩; apply And.intro
+          · use (by use i); use i
+          · ring
+        · rw [←hi]; apply (M i).is_dist.ineq
+
+noncomputable instance instProd [∀ i, EspaceMetrique (Y i)] [h : Nonempty ι]
+  [Finite ι] : EspaceMetrique (Π i, Y i) := metrique_of_prod_metrique
+
+noncomputable instance instProdFin {n : ℕ} {h : n > 0} {F : Fin n → Type} [∀ i,
+  EspaceMetrique (F i)] : EspaceMetrique (Π i, F i) := by
+  have ne : Nonempty (Fin n) := by use 0
+  apply metrique_of_prod_metrique
+
+variable [∀ i, EspaceMetrique (Y i)] [Nonempty ι] [Finite ι]
+
+theorem vois_of_prod' (X : Partie (Π i, Y i)) (x : Π i, Y i) : @est_vois _
+  instOfEspaceMetrique x X ↔ ∃ U ⊆ X, @ouv_elementaire
+  _ _ (i ↦ instOfEspaceMetrique) U ∧ x ∈ U := by
+  apply Iff.intro
+  · intro h; rcases h with ⟨V, ⟨x_in, V_ouv, V_in⟩⟩
+    sorry
+  · intro h; rcases h with ⟨U, U_in, U_ouv, x_in⟩
+    sorry
+
+lemma est_vois_of_preimage_of_vois' (x : Π i, Y i) {i : ι} {V : Partie Y i}
+  (h : @est_vois _ instOfEspaceMetrique (x i) V) : @est_vois _ instOfEspaceMetrique
+  x (proj i ⁻¹' V) := by
+  rcases h with ⟨U, ⟨x_in, hU, U_in⟩⟩
+  use proj i ⁻¹' U, x_in
+  sorry
+  sorry
+
+theorem conv_to_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converges_to u l ↔ ∀ i,
+  converges_to (n ↦ (u n) i) (l i) := by
+  simp only [←conv_vers_iff_conv_to]; apply Iff.intro
+  · intro h i V hV; let U := proj i ⁻¹' V
+    have hU := est_vois_of_preimage_of_vois' l hV
+    rcases h U hU with ⟨N, hN⟩; use N; intro m hm
+    exact hN m hm
+  · intro h V hV; rw [vois_of_prod'] at hV
+    rcases hV with ⟨U, U_in, ⟨W, ⟨W_ouv, hW⟩, ⟨J, J_fin, hJ⟩⟩, l_in⟩
+    have vois_im : ∀ i, est_vois (l i) (W i) := by
+      intro i; apply ouv_est_vois (W_ouv i)
+      rw [hW, prod_espaces, mem_iInter] at l_in; exact l_in i
+    choose! f hf using h; let g := i ↦ f i (W i)
+--
+    have exists_N : ∀ i, ∀ n ≥ g i, (u n) i ∈ W i := by
+      intro i; exact hf i (W i) (vois_im i)
+    have exists_max : ∃ N, ∀ i ∈ J, N ≥ g i := by
+      suffices h : BddAbove {g i | i ∈ J} by
+        rcases h with ⟨M, hM⟩; use M; intro i hi
+        apply hM; use i, hi
+      apply SupReal.bddabove_of_finite_image
+    rcases exists_max with ⟨N, hN⟩; use N; intro n n_ge
+--
+    apply U_in; rw [hW, mem_prod_espaces]; intro i
+    by_cases in_J : i ∈ J
+    · case pos => apply exists_N; linarith [hN i in_J]
+    · case neg => rw [hJ i in_J]; apply mem_univ
+
+theorem converges_in_prod (u : ℕ → Π i, Y i) : converges u ↔ ∀ i, converges
+  (n ↦ (u n) i) := by
+  apply Iff.intro
+  · intro ⟨l, hl⟩ i; use l i; rw [conv_to_in_prod] at hl; exact hl i
+  · intro h; choose l hl using h; use l; rwa [←conv_to_in_prod] at hl
+
+--def est_ouvert_elementaire (s : Set (X × X)) :=
+--  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)
 
 --instance top_prod {ι : Type}{u : ι → Set (X × X)} : EspTop (X × X) where
 --  est_ouvert := fun w ↦ (w = ⋂ i, u i) ∧ (∀ i, est_ouvert_elementaire (u i))

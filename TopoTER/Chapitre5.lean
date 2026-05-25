@@ -12,6 +12,35 @@ variable {X : Type}
 
 open Metrique
 
+lemma cauchy_unif_continu_cauchy [EspaceMetrique X] [EspaceMetrique Y] (f : X → Y)
+(hcont : unif_continu f) (u : ℕ → X) (h : cauchy u) : cauchy (f ∘ u) := by
+  unfold cauchy at *
+  unfold unif_continu at hcont
+  intro ε ε_pos
+  specialize hcont ε ε_pos
+  rcases hcont with ⟨δ, ⟨hδ_pos, hconvδ⟩⟩
+  specialize h δ hδ_pos
+  rcases h with ⟨N, hnN⟩
+  use N
+  intro m hm n hn
+  specialize hnN m hm n hn
+  specialize hconvδ (u m) (u n) hnN
+  exact hconvδ
+
+theorem prolongement_unif_continu [EspaceMetrique X] [EspaceMetrique Y] (A : Partie X) (f : A → Y)
+(hf : unif_continu f) (hY : complet Y) :
+  ∃! (g : adh A → Y), (∀ x : A, f x = g ⟨x.1, contenu_adh A x.2⟩) ∧ unif_continu g := by
+    have cvg_in_Y : ∀ u : ℕ → A, cauchy u → converges (f ∘ u) := by
+      intro u hu
+      have cauchyf : cauchy (f ∘ u) := cauchy_unif_continu_cauchy f hf u hu
+      exact hY (f ∘ u) cauchyf
+
+    let suite_conv (x : adh A) : ∃ u : ℕ → X, (∀ n : ℕ, u n ∈ A) ∧ converge_vers u x := by
+      refine (in_adh_suite A ↑x).mp x.2
+
+    let g : adh A → Y := fun x ↦ let u := Classical.choose (suite_conv x); sorry
+    sorry
+
 lemma diam_born_sub [EspaceMetrique X] {A : Partie X} {B : Partie X} :
 diam_bornee B → A ⊆ B → diam_bornee A := by
   intro bornB A_B

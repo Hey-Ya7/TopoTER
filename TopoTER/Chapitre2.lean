@@ -25,6 +25,23 @@ variable {X Y : Type} [EspTop X] [EspTop Y]
 
 namespace EspTop
 
+inductive ouv_top_engendree (S : Set (Set X)) : Set X → Prop
+  | ouvS (U : Set X) (hU : U ∈ S): ouv_top_engendree S U
+  | univS : ouv_top_engendree S univ
+  | emptyS : ouv_top_engendree S ∅
+  | unionS {U : Famille X} (hU : ∀ O ∈ U, ouv_top_engendree S O) :
+     ouv_top_engendree S (⋃ᵢ U)
+  | interS {U V : Set X} (hU : ouv_top_engendree S U) (hV : ouv_top_engendree S V) :
+     ouv_top_engendree S (U ∩ V)
+
+instance topo_engendree (S : Set (Set X)) : EspTop X where
+  est_ouvert := fun U ↦ ouv_top_engendree S U
+  univ_ouvert := ouv_top_engendree.univS
+  empty_ouvert := ouv_top_engendree.emptyS
+  union_ouvert := fun hu ↦ ouv_top_engendree.unionS hu
+  inter_ouvert := fun hU hV ↦ ouv_top_engendree.interS hU hV
+
+
 lemma iunion_ouvert {ι : Type} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
   let F : Famille X := ⟨ι, u⟩
@@ -125,6 +142,26 @@ instance {X : Type} [EspaceMetrique X] : EspTop X where
   union_ouvert := ouverte_of_union
   inter_ouvert := ouverte_of_inter
 
+open Set.Notation in
+-- lire l'intro de Mathlib.Data.Set.Subset
+instance {s : Partie X} : EspTop (Induite s) where
+  est_ouvert := fun u ↦ ∃ v, est_ouvert v ∧ u = s ↓∩ v
+  univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
+  empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
+--
+  union_ouvert := by
+    intro F h; choose! u h_ouv h_int using h
+    use ⋃ i, u (F.u i); apply And.intro
+    · apply iunion_ouvert; intro i; apply h_ouv; use i
+    · rw [preimage_iUnion]; dsimp [Famille.iUnion]
+      congr; ext i x; nth_rw 1 [h_int (F.u i)]; use i
+--
+  inter_ouvert := by
+    rintro u v ⟨U, ⟨Uouv, hU⟩⟩ ⟨V, ⟨Vouv, hV⟩⟩
+    use U ∩ V; constructor
+    · exact inter_ouvert Uouv Vouv
+    · simp [hU, hV]
+
 -- 2.2. Intérieur, adhérence, voisinage
 
 structure est_vois_ouv_dans {X : Type} [EspTop X] (x : X) (s ouv : Set X) where
@@ -157,6 +194,23 @@ lemma ouv_est_vois {x : X} {u : Set X} : est_ouvert u → x ∈ u → est_vois x
 
 lemma univ_est_vois (x : X) : est_vois x Ω := by
   exact ouv_est_vois (univ_ouvert) (mem_univ x)
+
+open Set.Notation in
+lemma ouv_of_ind_iff_ouv_of_metrique_ind {X : Type} [M : EspaceMetrique X]
+  (A : Partie X) : ∀ s : Partie (Induite A), instElemInduite.est_ouvert s ↔
+  instOfEspaceMetrique.est_ouvert s := by
+  intro s; apply Iff.intro
+  · intro h; rcases h with ⟨U, U_ouv, hU⟩
+    intro x hx; specialize U_ouv x (by rwa [hU] at hx)
+    rcases U_ouv with ⟨r, r_pos, hr⟩; use r, r_pos
+    intro a ha; rw [hU]; exact hr ha
+  · intro h; rw [ouvert_ssi_vois]; intro x hx
+    rcases h x hx with ⟨r, r_pos, hr⟩; use Bₒ x r
+    constructor
+    · exact centre_in_boule x r_pos
+    · use Bₒ x r, ouv_of_boule_ouv x.val r
+      ext a; exact ⟨id, id⟩
+    · exact hr
 
 @[simp] def adh (s : Set X) := {x | ∀ u, est_vois x u → (u ∩ s).Nonempty}
 
@@ -313,7 +367,11 @@ lemma conv_vers_iff_conv_to {X : Type} [EspaceMetrique X] (u : ℕ → X) (l : X
   · case mpr => intro h V ⟨⟨u, hu⟩, V_ouv⟩; apply h V V_ouv
                 exact hu.ouv_contenu hu.x_dans
 
---lemma ferme_suite (F : Set X) : est_ferme F ↔ (∀ u : ℕ → F, ∃ l : F, converge_vers u l)
+lemma converge_iff_converges {X : Type} [EspaceMetrique X] (u : ℕ → X) :
+  converge u ↔ converges u := by
+  apply Iff.intro
+  · intro ⟨l, conv⟩; use l; rwa [conv_vers_iff_conv_to] at conv
+  · intro ⟨l, conv⟩; use l; rwa [←conv_vers_iff_conv_to] at conv
 
 class EspSepareT2 (X : Type) [EspTop X] where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),
@@ -339,8 +397,18 @@ instance {X : Type} [M : EspaceMetrique X] : EspSepareT2 X where
     rw [M.is_dist.symm] at ineq₁
     unfold d at ineq₁; unfold d at ineq₂; linarith
 
-lemma unicite_lim (u : ℕ → Z) (l l' : Z) :
-(converge_vers u l ∧ converge_vers u l') → l = l' := by
+open Set.Notation in
+instance [T : EspSepareT2 X] {A : Partie X} : EspSepareT2 (Induite A) where
+  est_separe := by
+    intro x y h
+    have h' : x.val ≠ y.val := by
+      intro h₁; rw [Subtype.val_inj] at h₁; exact h h₁
+    rcases T.est_separe x y h' with ⟨U, V, hU, hV, x_in, y_in, disj⟩
+    use A ↓∩ U, A ↓∩ V, (by use U), (by use V), x_in, y_in
+    rw [←preimage_inter, disj, preimage_empty]
+
+lemma unicite_lim (u : ℕ → Z) (l l' : Z) : (converge_vers u l ∧ converge_vers u l')
+  → l = l' := by
   contrapose!
   intro hll' hul
   unfold converge_vers at *
@@ -383,10 +451,10 @@ dense X s ↔ ∀ V, est_ouvert V → V.Nonempty → (V ∩ s).Nonempty := by
       specialize h v v_ouv v_ne
       exact Nonempty.mono (inter_subset_inter_left s v_in_u) h
 
-variable {E : Type} [EspTop E]
+variable {E F : Type} [EspTop E] [EspaceMetrique F]
 
 def val_adh (u : ℕ → E) (x : E) : Prop :=
- ∀(V : Set E), est_vois x V → ∀ N : ℕ, ∃ n : ℕ, n ≥ N ∧ (u n) ∈ V
+  ∀ (V : Set E), est_vois x V → ∀ N : ℕ, ∃ n : ℕ, n ≥ N ∧ (u n) ∈ V
 
 lemma val_adh_inter (u : ℕ → E) : let X := k ↦ {x : E | ∃ n ≥ k, u n = x}
   {x : E | val_adh u x} = ⋂ n : ℕ, adh (X n) := by
@@ -403,7 +471,6 @@ lemma val_adh_inter (u : ℕ → E) : let X := k ↦ {x : E | ∃ n ≥ k, u n =
     specialize hx V hVVois
     specialize hx i
     rcases hx with ⟨n, ⟨hni, hnV⟩⟩
-    --rw[nonempty_iff_empty_ne]
     have h : u n ∈ X i := by
       rw[Set.mem_setOf]
       use n
@@ -426,8 +493,8 @@ lemma val_adh_inter (u : ℕ → E) : let X := k ↦ {x : E | ∃ n ≥ k, u n =
     · exact hnm
     exact mem_of_eq_of_mem huny hyVn
 
-noncomputable def construction_extract_phi {X : Type} [EspaceMetrique X]
-  (u : ℕ → X) (x : X) (h : val_adh u x) : ℕ → ℕ
+noncomputable def construction_extract_phi (u : ℕ → F) (x : F) (h : val_adh u x) :
+  ℕ → ℕ
   | 0 => 0
   | Nat.succ k =>
       let prev := construction_extract_phi u x h k
@@ -449,8 +516,8 @@ noncomputable def construction_extract_phi {X : Type} [EspaceMetrique X]
         rwa [Nat.lt_iff_add_one_le]
       let dec := Classical.decPred (· ∈ A); Nat.find A_ne
 
-theorem val_adh_iff_extraite_conv {X : Type} [EspaceMetrique X] (u : ℕ → X) (x : X) :
-  val_adh u x ↔ ∃ φ, extraction φ ∧ converge_vers (u ∘ φ) x := by
+theorem val_adh_iff_extraite_conv (u : ℕ → F) (x : F) : val_adh u x ↔ ∃ φ,
+  extraction φ ∧ converge_vers (u ∘ φ) x := by
  constructor
  · intro hvadhx
    have est_vois_B (k : ℕ) : est_vois x (Bₒ x (1/(k+1))) := by
@@ -498,7 +565,7 @@ theorem val_adh_iff_extraite_conv {X : Type} [EspaceMetrique X] (u : ℕ → X) 
    · apply hN (max N l) (Nat.le_max_left N l)
    · dsimp at huφ; exact huφ
 
-lemma in_inv_vois (k : ℕ) {X : Type} [EspaceMetrique X] (A : Partie X) (x : X)
+lemma in_inv_vois (k : ℕ) (A : Partie F) (x : F)
   (h : x ∈ adh A) : ∃ a ∈ A, a ∈ Bₒ x (1/(k+1)) := by
   have est_vois_B : est_vois x (Bₒ x (1/(k+1))) := by
     apply ouv_est_vois
@@ -508,12 +575,11 @@ lemma in_inv_vois (k : ℕ) {X : Type} [EspaceMetrique X] (A : Partie X) (x : X)
   rw [nonempty_def] at h
   rcases h with ⟨x1, hx1⟩; use x1; rwa [And.comm]
 
-noncomputable def construction_adh {X : Type} [EspaceMetrique X]
-  (A : Partie X) (x : X) (h : x ∈ adh A) : ℕ → X
+noncomputable def construction_adh (A : Partie F) (x : F) (h : x ∈ adh A) : ℕ → F
   | k => Exists.choose (in_inv_vois k A x h)
 
-theorem in_adh_suite {X : Type} [EspaceMetrique X] (A : Partie X) (x : X) : x ∈ adh A ↔
-  ∃(u : ℕ → X), (∀n, u n ∈ A) ∧ (converge_vers u x) := by
+theorem in_adh_suite (A : Partie F) (x : F) : x ∈ adh A ↔ ∃ u : ℕ → F,
+  (∀ n, u n ∈ A) ∧ (converge_vers u x) := by
   constructor
   · intro hxadh
     let u := construction_adh A x hxadh; use u
@@ -544,5 +610,21 @@ theorem in_adh_suite {X : Type} [EspaceMetrique X] (A : Partie X) (x : X) : x �
     specialize hu_in_a n
     apply inter_nonempty.mpr
     use u n
+
+lemma ferme_iff_lim_suite (A : Set F) : est_ferme A ↔ ∀ u : ℕ → F, (∀ n, u n ∈ A) →
+  converge u → ∃ l ∈ A, converge_vers u l := by
+  rw [ferme_iff_adh]; apply Iff.intro
+  · intro h u hu conv; rcases conv with ⟨l, hl⟩
+    use l; apply And.intro _ hl
+    rw [←h, in_adh_suite]; use u, hu, hl
+  · intro h; apply eq_of_subset_of_subset
+    · intro x hx; rw [in_adh_suite] at hx
+      rcases hx with ⟨u, hu⟩
+      have lim_in_F := h u hu.1 (by use x, hu.2)
+      rcases lim_in_F with ⟨x', x'_in, conv⟩
+      have x_eq_x' := unicite_lim u x x' ⟨hu.2, conv⟩
+      rwa [x_eq_x']
+    · exact contenu_adh A
+
 
 end EspTop

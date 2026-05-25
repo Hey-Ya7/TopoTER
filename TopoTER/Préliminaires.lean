@@ -24,7 +24,13 @@ macro_rules (kind := for_all)
 abbrev Ω {α} : Set α := Set.univ
 notation "Partie " X => Set X
 
-abbrev Induite {X : Type*} (A : Partie X) : Partie X := A
+abbrev Induite {X : Type} (A : Partie X) : Partie X := A
+
+instance {X : Type} {A : Partie X} : Coe (Partie X) (Partie Induite A) where
+  coe := S ↦ {x | (x : X) ∈ S}
+
+lemma self_induite {X} {A : Partie X} : (A : Partie Induite A) = Ω := by
+  ext x; unfold Induite; simp
 
 abbrev Z : Partie ℝ := {k | k : ℤ}
 abbrev Q : Partie ℝ := {q | q : ℚ}
@@ -86,6 +92,12 @@ theorem exists_by_induction' {α : Type} (P : ℕ → α → Prop) (Q : ℕ → 
   have key : ∀ n, P n (Nat.recOn n f₀ F) := n ↦ Nat.rec hf₀ ((n ih) ↦ hF n _ ih) n
   exact ⟨n ↦ Nat.recOn n f₀ F, n ↦ ⟨key n, hF' n _ (key n)⟩⟩
 
+theorem exists_recOn {α : Type} (Q : ℕ → α → α → Prop) (h₀ : Nonempty α) (ih : ∀ n,
+  ∀ a, ∃ a', Q n a a') : ∃ f : ℕ → α, ∀ n, Q n (f n) (f (n + 1)) := by
+  let f₀ : α := Nonempty.some h₀
+  choose! f hf using ih
+  use n ↦ Nat.recOn n f₀ f; intro n; apply hf
+
 theorem exists_by_piecewise {α : Type} (P : α → α → Prop) (h₀ : Nonempty α)
   (ih : ∀ n, ∀ u : Fin n → α, ∃ a', ∀ i, P (u i) a') : ∃ f : ℕ → α, ∀ n, ∀ i < n,
   P (f i) (f n) := by
@@ -141,6 +153,36 @@ notation "[" a "<__<" "+∞]" => Interval₅ a
 notation "[" a "≤__<" "+∞]" => Interval₆ a
 notation "[-∞" "<__<" b "]" => Interval₇ b
 notation "[-∞" "<__≤" b "]" => Interval₈ b
+
+def really_converges_to (u : ℕ → ℝ) (l : ℝ) := ∀ ε > 0, ∃ N, ∀ n ≥ N, |u n - l| ≤ ε
+
+def really_converges (u : ℕ → ℝ) := ∃ l, really_converges_to u l
+
+def extraction (φ : ℕ → ℕ) := ∀ m n, m < n → φ m < φ n
+
+lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1) := by
+  let P (m : ℕ) (n : ℕ) := φ m < φ n
+  rw [←eq_forall_iff_eq_add_one P]
+  · apply Iff.intro
+    · intro h n m hmn; exact h m n hmn
+    · intro h m n hmn; exact h n m hmn
+  · intro _ _ _ h₁ h₂; exact lt_trans h₁ h₂
+
+lemma extr_of_extract {φ ψ : ℕ → ℕ} (h₁ : extraction φ) (h₂ : extraction ψ) :
+  extraction (φ∘ψ) := by intro m n h; apply h₁; exact h₂ m n h
+
+lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
+  intro n; induction n
+  · case zero => apply zero_le
+  · case succ k hk => apply Nat.le_of_pred_lt; rw [Nat.pred_succ]
+                      apply lt_of_le_of_lt hk; apply h; linarith
+
+lemma extr_conv_infini {φ : ℕ → ℕ} (h : extraction φ) : ∀ A : ℕ, ∃ N : ℕ, ∀ n ≥ N,
+  φ n ≥ A := by
+  intro A; use A; intro n hn
+  trans n
+  · exact n_le_extr_n h n
+  · exact hn
 
 structure Famille (X : Type) where
   ι : Type
@@ -216,10 +258,38 @@ namespace SupReal
 @[simp] instance : HSMul ℝ (Set ℝ) (Set ℝ) where
   hSMul := r ↦ S ↦ {r * s | s ∈ S}
 
-theorem image_of_fin {α J : Type*} (f : J → α) [Finite J] : Finite {f i | i} := by
+theorem image_of_fin {α J : Type} (f : J → α) [Finite J] : Finite {f i | i} := by
   apply Set.Finite.of_surjOn f (s := Set.univ)
   · intro x hx; rcases hx with ⟨i, hi⟩; use i, by simp
   · apply Set.finite_univ
+
+theorem bddabove_of_finite_image {α β : Type} [Nonempty α] [Preorder α]
+  [IsDirectedOrder α] {J : Set β} [Finite J] (f : β → α) : BddAbove {f i | i ∈ J}
+  := by
+  let f' : J → α := j ↦ f j
+  have eq : {f i | i ∈ J} = {f' j | j} := by
+    ext x; apply Iff.intro
+    · intro ⟨i, i_in, hi⟩; use ⟨i, i_in⟩
+    · intro ⟨j, hj⟩; use j.val, j.prop, hj
+  rw [eq]; apply Set.Finite.bddAbove; apply image_of_fin
+
+theorem bddbelow_of_finite_image {α β : Type} [Nonempty α] [Preorder α]
+  [IsCodirectedOrder α] {J : Set β} [Finite J] (f : β → α) : BddBelow {f i | i ∈ J}
+  := by
+  let f' : J → α := j ↦ f j
+  have eq : {f i | i ∈ J} = {f' j | j} := by
+    ext x; apply Iff.intro
+    · intro ⟨i, i_in, hi⟩; use ⟨i, i_in⟩
+    · intro ⟨j, hj⟩; use j.val, j.prop, hj
+  rw [eq]; apply Set.Finite.bddBelow; apply image_of_fin
+
+theorem bddabove_of_finite_image' {α β : Type} [Nonempty α] [Preorder α]
+  [IsDirectedOrder α] [Finite β] (f : β → α) : BddAbove {f i | i} := by
+  apply Set.Finite.bddAbove; apply image_of_fin
+
+theorem bddbelow_of_finite_image' {α β : Type} [Nonempty α] [Preorder α]
+  [IsCodirectedOrder α] [Finite β] (f : β → α) : BddBelow {f i | i} := by
+  apply Set.Finite.bddBelow; apply image_of_fin
 
 theorem bddabove_of_fin_image {n} (f : Fin n → ℝ) : BddAbove {f i | i} := by
   apply Set.Finite.bddAbove; apply image_of_fin
@@ -266,6 +336,94 @@ theorem sSup_le_sSup {S T : Set ℝ} (hs : S.Nonempty) (ht : BddAbove T)
   apply csSup_le hs; intro s s_in
   rcases h s s_in with ⟨t, t_in, le_t⟩
   apply le_csSup_of_le ht t_in le_t
+
+theorem conv_of_increasing (u : ℕ → ℝ) (incr : ∀ n, u n ≤ u (n + 1)) (bdd :
+  ∃ M, ∀ n, u n ≤ M) : really_converges u := by
+  let S := {u n | n}; rcases bdd with ⟨M, hM⟩
+  have bounded : BddAbove S := by
+    use M; intro s hs; rcases hs with ⟨n, hn⟩
+    rw [←hn]; apply hM
+  use (sSup S); intro ε ε_pos
+  have le_lim : ∀ n, u n ≤ sSup S := by
+    intro n; apply le_csSup bounded; use n
+  have exists_N : ∃ N, u N ≥ sSup S - ε := by
+    by_contra contra; push_neg at contra
+    have lim_le : sSup S ≤ sSup S - ε := by
+      apply csSup_le
+      · use (u 0), by use 0
+      · intro s hs; rcases hs with ⟨n, hn⟩; rw [←hn]
+        apply le_of_lt (contra n)
+    linarith
+--
+  rcases exists_N with ⟨N, hN⟩; use N+1; intro n hn
+  rw [abs_sub_comm, abs_of_nonneg (by linarith [le_lim n])]
+  have incr' : ∀ n, ∀ m < n, u m ≤ u n := by
+    rw [eq_forall_iff_eq_add_one]
+    · intro n; exact incr n
+    · intro _ _ _ h₁ h₂; exact le_trans h₁ h₂
+  linarith [incr' n N (by linarith)]
+
+-- (il y a une façon plus intelligente de traîter cela mais je ne veux pas
+--  mettre l'effort nécessaire)
+theorem conv_of_decreasing (u : ℕ → ℝ) (decr : ∀ n, u n ≥ u (n + 1)) (bdd :
+  ∃ M, ∀ n, u n ≥ M) : really_converges u := by
+  let S := {u n | n}; rcases bdd with ⟨M, hM⟩
+  have bounded : BddBelow S := by
+    use M; intro s hs; rcases hs with ⟨n, hn⟩
+    rw [←hn]; apply hM
+  use (sInf S); intro ε ε_pos
+  have le_lim : ∀ n, u n ≥ sInf S := by
+    intro n; apply csInf_le bounded; use n
+  have exists_N : ∃ N, u N ≤ sInf S + ε := by
+    by_contra contra; push_neg at contra
+    have lim_le : sInf S ≥ sInf S + ε := by
+      apply le_csInf
+      · use (u 0), by use 0
+      · intro s hs; rcases hs with ⟨n, hn⟩; rw [←hn]
+        apply le_of_lt (contra n)
+    linarith
+--
+  rcases exists_N with ⟨N, hN⟩; use N+1; intro n hn
+  rw [abs_of_nonneg (by linarith [le_lim n])]
+  have incr' : ∀ n, ∀ m < n, u m ≥ u n := by
+    rw [eq_forall_iff_eq_add_one]
+    · intro n; exact decr n
+    · intro _ _ _ h₁ h₂; exact le_trans h₂ h₁
+  linarith [incr' n N (by linarith)]
+
+theorem bolzano_weierstrass (u : ℕ → ℝ) (bdd : ∃ M, ∀ n, |u n| ≤ M) : ∃ φ,
+  extraction φ ∧ really_converges (u ∘ φ) := by
+  rcases bdd with ⟨M, hM⟩
+  have bounded (n : ℕ) := abs_le.mp (hM n)
+  by_cases h : ∃ N, ∀ n > N, ∃ m > n, u m ≥ u n
+  · case pos => rcases h with ⟨N, hN⟩
+                let P (k m : ℕ) := m > N
+                let Q (k m n : ℕ) := m < n ∧ u m ≤ u n
+                have h₀ : ∃ a, P 0 a := by use (N + 1), by linarith
+                have ih : ∀ n a, P n a → ∃ a', P (n + 1) a' ∧ Q n a a' := by
+                  intro n a h; rcases hN a h with ⟨a', ha'⟩
+                  use a', (by linarith), ha'.1, ha'.2
+                rcases exists_by_induction' P Q h₀ ih with ⟨φ, hφ⟩
+                use φ; apply And.intro
+                · rw [extract_equiv]; intro n; linarith [(hφ n).2.1]
+                · apply conv_of_increasing
+                  · intro n; exact (hφ n).2.2
+                  · use M; intro n; exact (bounded (φ n)).2
+--
+  · case neg => push_neg at h
+                let P (k m : ℕ) := ∀ n > m, u n < u m
+                let Q (k m n : ℕ) := m < n
+                have h₀ : ∃ a, P 0 a := by rcases h 0 with ⟨a, ha⟩; use a, ha.2
+                have ih : ∀ n a, P n a → ∃ a', P (n + 1) a' ∧ Q n a a' := by
+                  intro n a h'; rcases h a with ⟨a', ha'⟩
+                  use a', ha'.2, ha'.1
+                rcases exists_by_induction' P Q h₀ ih with ⟨φ, hφ⟩
+                use φ; apply And.intro
+                · rw [extract_equiv]; intro n; linarith [(hφ n).2]
+                · apply conv_of_decreasing
+                  · intro n; apply le_of_lt; apply (hφ n).1
+                    exact (hφ n).2
+                  · use -M; intro n; exact (bounded (φ n)).1
 
 end SupReal
 
@@ -325,11 +483,11 @@ end Complex
 
 namespace Valuation
 
-class ValuationField (K : Type*) extends Field K where
+class ValuationField (K : Type) extends Field K where
   abs : K → ℝ
   isAbv : IsAbsoluteValue abs
 
-noncomputable instance : ValuationField ℝ where
+@[simp] noncomputable instance : ValuationField ℝ where
   abs := abs
   isAbv := IsAbsoluteValue.abs_isAbsoluteValue
 
@@ -341,7 +499,7 @@ instance module_abs : IsAbsoluteValue module where
   abv_mul' := norm_mul
 
 open Complex in
-noncomputable instance : ValuationField ℂ where
+@[simp] noncomputable instance : ValuationField ℂ where
   abs := module
   isAbv := module_abs
 
@@ -349,7 +507,11 @@ scoped syntax : max (name := abs) atomic("|" noWs) term "|ₖ" : term
 macro_rules (kind := abs)
   | `(|$x|ₖ) => `(ValuationField.abs $x)
 
-variable {K : Type*} [VF : ValuationField K]
+lemma valuation_real (x : ℝ) : |x|ₖ = |x| := by simp
+open Complex in
+lemma valuation_complex (z : ℂ) : |z|ₖ = module z := by simp
+
+variable {K : Type} [VF : ValuationField K]
 
 theorem abs_nonneg (k : K) : 0 ≤ |k|ₖ := by
   apply VF.isAbv.abv_nonneg
@@ -388,7 +550,7 @@ theorem abs_le_zero (k : K) (hk : |k|ₖ ≤ 0) : k = 0 := by
 
 end Valuation
 
-theorem Finset.eq_sum_of_additive {α β : Type*} [AddCommGroup α] [AddCommGroup β]
+theorem Finset.eq_sum_of_additive {α β : Type} [AddCommGroup α] [AddCommGroup β]
   (n : ℕ) (f : α → β) (g : Fin n → α) : f 0 = 0 → (∀ x y, f (x + y) = f x + f y) →
   f (∑ i, g i) = ∑ i, f (g i) := by
   intro eq_zero additive; induction n
@@ -399,7 +561,7 @@ theorem Finset.eq_sum_of_additive {α β : Type*} [AddCommGroup α] [AddCommGrou
 
 namespace VectorSpace
 
-class Euclidean (E : Type*) [AddCommGroup E] extends Module ℝ E,
+class Euclidean (E : Type) [AddCommGroup E] extends Module ℝ E,
   FiniteDimensional ℝ E where
   scalar : E → E → ℝ
   symm (u v : E) : scalar u v = scalar v u
@@ -409,13 +571,13 @@ class Euclidean (E : Type*) [AddCommGroup E] extends Module ℝ E,
   definie (u : E) : scalar u u = 0 ↔ u = 0
 
 @[ext]
-structure K_n (K : Type*) [Field K] (n : ℕ) where
+structure K_n (K : Type) [Field K] (n : ℕ) where
   p : Fin n → K
 
 notation : max K : max "^" n : max => K_n K n
 
 namespace K_n
-variable {K : Type*} {n : ℕ} [Field K]
+variable {K : Type} {n : ℕ} [Field K]
 
 @[simp] instance : HAdd K^n K^n K^n where
   hAdd := x ↦ y ↦ ⟨x.p + y.p⟩
@@ -509,6 +671,11 @@ theorem eq_zero_iff (x : K^n) : x = 0 ↔ ∀ i, x.p i = 0 := by
 theorem zero_of_K_zero (x : K ^ (0 : ℕ)) : x = 0 := by
   rw [eq_zero_iff]; intro i; linarith [i.is_lt]
 
+theorem zero_of_K_zero' {n : ℕ} (h : n = 0) (x : K ^ n) : x = 0 := by
+  cases n
+  · exact zero_of_K_zero x
+  · linarith
+
 instance : AddCommGroup K^n where
   add := x ↦ y ↦ x + y
   add_assoc := add_assoc
@@ -542,7 +709,7 @@ instance : Module K K^n where
         · congr
         · intro x y; congr
 
-def canonBasis (K : Type*) [Field K] (i : Fin n) : K^n where
+def canonBasis (K : Type) [Field K] (i : Fin n) : K^n where
   p := k ↦ if i = k then 1 else 0
 
 theorem inCanonBasis (x : K^n) : x = ∑ i, (x.p i) • canonBasis K i := by
@@ -559,7 +726,7 @@ scoped syntax (name := dot_prod) "⟨" term ", " term "⟩" : term
 macro_rules (kind := dot_prod)
   | `(⟨$x, $y⟩) => `(Euclidean.scalar $x $y)
 
-variable {E : Type*} [AddCommGroup E] [EuclidE : Euclidean E]
+variable {E : Type} [AddCommGroup E] [EuclidE : Euclidean E]
 
 theorem prod_symm (u v : E) : ⟨u, v⟩ = ⟨v, u⟩ := EuclidE.symm u v
 
