@@ -191,12 +191,33 @@ theorem ferme_of_compact {A : Partie X} (h : est_compact A) : est_ferme A := by
 
 -- b)
 
-theorem compact_of_ferme [EspCompact X] {A : Partie X} (h : est_ferme A)
-  : est_compact A := by sorry
+open Set.Notation in
+theorem compact_of_ferme {A B : Partie X} (hc : est_compact A) (h : B ⊆ A)
+  (hf : est_ferme B) : est_compact B := by
+  rw [←comp_iff_comp_induite, compact_iff_comp_f] at *
+  intro F F_ferme F_inter; simp only [ferme_of_induite] at F_ferme
+  have exists_f : ∀ i : F.ι, ∃ P, @est_ferme A ofInd P ∧ F.u i = P := by
+    intro i; rcases F_ferme (F.u i) (by use i) with ⟨u, uf, hu⟩
+    use A ↓∩ u, ferme_of_ferme_induite uf; rw [hu]; ext x
+    apply Iff.intro
+    · intro hyp; use ⟨x.val, h x.prop⟩, hyp
+    · intro hyp; rcases hyp with ⟨a, ha, hx⟩; rwa [mem_preimage, ←hx]
+  choose f hf₁ hf₂ using exists_f
+  let G : Famille (Induite A) := ⟨F.ι, f⟩
+--
+  have G_ferme : ∀ P ∈ G, est_ferme P := by
+    intro P ⟨i, hi⟩; dsimp at hi; rw [←hi]; exact hf₁ i
+  have G_inter : ⋂ᵢ G = ∅ := by
+    rw [eq_empty_iff_forall_notMem]; intro x hx
+    rw [mem_inter_famille] at hx
+    suffices ih : ∀ i, x ∈ F.u i by sorry
+    sorry
+  sorry
+
 
 -- Théorème 6.5.
 
-omit [EspSepareT2 X] in
+omit [EspSepareT2 X] [EspSepareT2 Y] in
 theorem compact_of_continu_image {f : X → Y} (h : est_continu f) {A : Partie X}
   (comp : est_compact A) : est_compact (f '' A) := by
   intro C h₁ h₂
@@ -390,8 +411,7 @@ theorem compact_iff_ferme_borne (A : Partie ℝ) : est_compact A ↔ est_ferme A
                 suffices h : seq_compact (Induite A) by
                   rw [←compact_iff_seq_comp] at h; constructor
                   have cmp := h.compact; intro C C_ouvert C_couvre
-                  have C_ouvert' :
-                        ∀ P ∈ C, instOfEspaceMetrique.est_ouvert P := by
+                  have C_ouvert' : ∀ P ∈ C, ofMet.est_ouvert P := by
                     intro P hP; rw [←ouv_of_ind_iff_ouv_of_metrique_ind]
                     exact C_ouvert P hP
                   rcases cmp C C_ouvert' C_couvre with ⟨J, hJ, J_couvre⟩
@@ -445,7 +465,7 @@ lemma compact_of_prod_two {Y : Fin 2 → Type} [M : ∀ i, EspaceMetrique (Y i)]
 
 theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀ i,
   EspaceMetrique (Y i)] [C : ∀ i, EspCompact (Y i)] : @EspCompact (Π i, Y i)
-  (@instOfEspaceMetrique _ (instProdFin (h := h))) _ := by
+  (@ofMet _ (instProdFin (h := h))) _ := by
   induction n
   · case zero => linarith
   · case succ k hk =>
@@ -456,7 +476,7 @@ theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀
 --
     · case succ k' hk' =>
       let Y' : Fin (k' + 1) → Type := i ↦ Y (Fin.castSucc i)
-      have hyp : @EspCompact (Π i, Y' i) instOfEspaceMetrique _ := by
+      have hyp : @EspCompact (Π i, Y' i) ofMet _ := by
         apply hk; linarith
       specialize C (Fin.last (k' + 1))
       rw [compact_iff_seq_comp] at *; intro u
@@ -540,7 +560,7 @@ theorem K_norm_equiv_sup {N : ℝ ^ n → ℝ} (h : estNorme (K := ℝ) N) :
     have hb : est_borne U := by
       use 2, zero_le_two; intro x hx y hy
       have eq : ∀ z ∈ U, d(z, 0) = 1 := by
-        dsimp [instEspaceMetriqueK_n, instGroupeNormeK_n]
+        dsimp; rw [dist_norme]
         intro z hz; rw [sub_zero, hz]
       have ineq := EspaceMetrique.is_dist.ineq x 0 y
       rw [EspaceMetrique.is_dist.symm 0 y] at ineq

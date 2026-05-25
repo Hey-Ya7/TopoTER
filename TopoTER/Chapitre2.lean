@@ -41,7 +41,6 @@ instance topo_engendree (S : Set (Set X)) : EspTop X where
   union_ouvert := fun hu ↦ ouv_top_engendree.unionS hu
   inter_ouvert := fun hU hV ↦ ouv_top_engendree.interS hU hV
 
-
 lemma iunion_ouvert {ι : Type} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
   let F : Famille X := ⟨ι, u⟩
@@ -135,16 +134,26 @@ lemma union_fini_ferme' {ι : Type} {u : ι → Set X} [Finite ι]
 -- a)
 
 open Metrique
-instance {X : Type} [EspaceMetrique X] : EspTop X where
+instance ofMet {X : Type} [EspaceMetrique X] : EspTop X where
   est_ouvert := ouverte
   univ_ouvert := ouverte_of_uni
   empty_ouvert := ouverte_of_vide
   union_ouvert := ouverte_of_union
   inter_ouvert := ouverte_of_inter
 
-open Set.Notation in
+class EspMetrisable (X : Type) [EspTop X] where
+  metrique : ∃ d : X → X → ℝ, estDistance d
+
+instance [M : EspaceMetrique X] : EspMetrisable X where
+  metrique := by use M.d; exact M.is_dist
+
+noncomputable instance [M : EspMetrisable X] : EspaceMetrique X where
+  d := Exists.choose M.metrique
+  is_dist := by apply Exists.choose_spec
+
+open Set.Notation
 -- lire l'intro de Mathlib.Data.Set.Subset
-instance {s : Partie X} : EspTop (Induite s) where
+instance ofInd {s : Partie X} : EspTop (Induite s) where
   est_ouvert := fun u ↦ ∃ v, est_ouvert v ∧ u = s ↓∩ v
   univ_ouvert := ⟨univ, ⟨univ_ouvert, by simp⟩⟩
   empty_ouvert := ⟨∅, ⟨empty_ouvert, by simp⟩⟩
@@ -161,6 +170,49 @@ instance {s : Partie X} : EspTop (Induite s) where
     use U ∩ V; constructor
     · exact inter_ouvert Uouv Vouv
     · simp [hU, hV]
+
+lemma ferme_of_induite {s : Partie X} (v : Partie (Induite s)) : est_ferme v ↔
+  ∃ u, est_ferme u ∧ v = s ↓∩ u := by
+  simp only [est_ferme]; dsimp [ofInd]
+  apply Iff.intro
+  · intro ⟨t, t_ouv, ht⟩; use tᶜ, (by rwa [compl_compl])
+    rw [preimage_compl, ←ht, compl_compl]
+  · intro ⟨w, w_ouv, hw⟩; use wᶜ, w_ouv
+    rw [preimage_compl, hw]
+
+lemma ouvert_of_subset_induite {s t u : Partie X} (h : s ⊆ t) (hu : @est_ouvert
+  (Induite t) ofInd u) : @est_ouvert s ofInd u := by
+  dsimp [ofInd] at *; rcases hu with ⟨v, vf, hv⟩
+  use v, vf; ext x; apply Iff.intro
+  · intro hx; suffices hs : x.val ∈ v by exact hs
+    have ht : ⟨x.val, h x.prop⟩ ∈ t ↓∩ v := by rwa [←hv]
+    exact ht
+  · intro hx; have ht : ⟨x.val, h x.prop⟩ ∈ t ↓∩ v := by exact hx
+    rwa [←hv] at ht
+
+lemma ferme_of_subset_induite {s t v : Partie X} (h : s ⊆ t) (hv : @est_ferme
+  (Induite t) ofInd v) : @est_ferme s ofInd v := by
+  rw [ferme_of_induite] at *; rcases hv with ⟨u, uf, hu⟩
+  use u, uf; ext x; apply Iff.intro
+  · intro hx; suffices hs : x.val ∈ u by exact hs
+    have ht : ⟨x.val, h x.prop⟩ ∈ t ↓∩ u := by rwa [←hu]
+    exact ht
+  · intro hx; have ht : ⟨x.val, h x.prop⟩ ∈ t ↓∩ u := by exact hx
+    rwa [←hu] at ht
+
+lemma ouvert_of_ouvert_induite {s t : Partie X} (hv : est_ouvert s) : @est_ouvert t
+  ofInd s := by
+  dsimp [ofInd]; use s, hv; ext x
+  apply Iff.intro
+  · intro h; exact h
+  · intro h; exact h
+
+lemma ferme_of_ferme_induite {s t : Partie X} (hv : est_ferme s) : @est_ferme t
+  ofInd s := by
+  rw [ferme_of_induite]; use s, hv; ext x
+  apply Iff.intro
+  · intro h; exact h
+  · intro h; exact h
 
 -- 2.2. Intérieur, adhérence, voisinage
 
@@ -195,10 +247,9 @@ lemma ouv_est_vois {x : X} {u : Set X} : est_ouvert u → x ∈ u → est_vois x
 lemma univ_est_vois (x : X) : est_vois x Ω := by
   exact ouv_est_vois (univ_ouvert) (mem_univ x)
 
-open Set.Notation in
 lemma ouv_of_ind_iff_ouv_of_metrique_ind {X : Type} [M : EspaceMetrique X]
-  (A : Partie X) : ∀ s : Partie (Induite A), instElemInduite.est_ouvert s ↔
-  instOfEspaceMetrique.est_ouvert s := by
+  (A : Partie X) : ∀ s : Partie Induite A, ofInd.est_ouvert s ↔ ofMet.est_ouvert s
+  := by
   intro s; apply Iff.intro
   · intro h; rcases h with ⟨U, U_ouv, hU⟩
     intro x hx; specialize U_ouv x (by rwa [hU] at hx)
@@ -397,7 +448,6 @@ instance {X : Type} [M : EspaceMetrique X] : EspSepareT2 X where
     rw [M.is_dist.symm] at ineq₁
     unfold d at ineq₁; unfold d at ineq₂; linarith
 
-open Set.Notation in
 instance [T : EspSepareT2 X] {A : Partie X} : EspSepareT2 (Induite A) where
   est_separe := by
     intro x y h
