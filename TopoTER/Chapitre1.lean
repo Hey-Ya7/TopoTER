@@ -70,6 +70,8 @@ instance : EspaceMetrique ℝ where
     abs_symm, abs_ineq
   ⟩
 
+lemma dist_real (x y : ℝ) : d(x, y) = |x - y| := by rfl
+
 -- 2.
 noncomputable section Complex
 open Complex
@@ -96,6 +98,8 @@ instance : EspaceMetrique ℂ where
     module_nneg, module_sep,
     module_symm, module_ineq
   ⟩
+
+lemma dist_complex (z w : ℂ) : d(z, w) = ‖z - w‖ᵢ := by rfl
 
 end Complex
 
@@ -127,9 +131,12 @@ instance : EspaceMetrique E where
     euclid_symm, euclid_ineq
   ⟩
 
+lemma dist_eucl (u v : E) : d(u, v) = ‖u - v‖ₑ := by rfl
+
 end Euclidean
 
 -- 4.
+
 noncomputable section Discrete
 open Classical in
 @[simp] def discrete_dist (X : Type) : X → X → ℝ := x ↦ y ↦
@@ -171,6 +178,10 @@ instance : EspaceMetrique (Discrete X) where
     discrete_symm X, discrete_ineq X
   ⟩
 
+omit M in
+open Classical in
+lemma dist_discrete (x y : Discrete X) : d(x, y) = ite (x = y) 0 1 := by rfl
+
 end Discrete
 
 -- 5.
@@ -190,6 +201,8 @@ variable {A : Partie X}
 instance : EspaceMetrique (Induite A) where
   d := induite_dist A
   is_dist := dist_of_induite A
+
+lemma dist_induite (x y : A) : d(x, y) = d(x.val, y.val) := by rfl
 
 end Metrique
 
@@ -231,7 +244,7 @@ lemma norme_symm {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N (x - y) 
 
 lemma normalise {N : E → ℝ} [Module ℝ E] (h : estNorme (K := ℝ) N) : ∀ x ≠ 0,
   N ((N x)⁻¹ • x) = 1 := by
-  intro x hx; rw [h.homogen]; dsimp [instValuationFieldReal]
+  intro x hx; rw [h.homogen, valuation_real]
   rw [abs_of_nonneg, inv_mul_cancel₀]
   · intro eq; apply hx; rwa [←h.definie]
   · apply inv_nonneg_of_nonneg; exact h.nneg x
@@ -282,6 +295,10 @@ instance {K E : Type} [ValuationField K] [GroupeNorme E]
   [EspaceVecNorme K E] : EspaceMetrique Vec⟨K | E⟩ where
   d := x ↦ y ↦ ‖x - y‖
   is_dist := dist_of_norme K E
+
+omit [AddCommGroup E] in
+lemma dist_norme [GroupeNorme E] [EspaceVecNorme K E] (u v : Vec⟨K | E⟩) :
+  d(u, v) = ‖u - v‖ := by rfl
 
 -- Proposition 1.5.
 
@@ -351,7 +368,7 @@ noncomputable instance : GroupeNorme K^n where
   }
 
 open Real in
-noncomputable instance : EspaceVecNorme K K^n where
+noncomputable instance vec_sup : EspaceVecNorme K K^n where
   homogen := by {
     intro x a
     suffices h : {|(a • x).p i|ₖ | i} = |a|ₖ • {|x.p i|ₖ | i} by
@@ -361,7 +378,7 @@ noncomputable instance : EspaceVecNorme K K^n where
   }
 
 theorem sup_est_norme (n : ℕ) : estNorme (K := K) (norme_sup (K := K) (n := n))
-  := instEspaceVecNormeK_n.is_norm
+  := vec_sup.is_norm
 
 noncomputable instance : EspaceMetrique K^n where
   d := x ↦ y ↦ ‖x - y‖
@@ -400,11 +417,14 @@ instance : GroupeNorme (Inf K^n) where
   }
 
 open Real in
-instance : EspaceVecNorme K (Inf K^n) where
+instance vec_taxi : EspaceVecNorme K (Inf K^n) where
   homogen := by {
     intro x a; dsimp [GroupeNorme.norm, norme_taxi]
     rw [Finset.mul_sum]; congr; ext i; rw [abs_mul_homo]; rfl
   }
+
+theorem taxi_est_norme (n : ℕ) : estNorme (K := K) (norme_taxi (K := K) (n := n))
+  := vec_taxi.is_norm
 
 noncomputable def norme_euclid : K^n → ℝ := x ↦ √(∑ i, |x.p i|ₖ^2)
 -- on réduit au cas simple ℝⁿ :
@@ -477,13 +497,16 @@ noncomputable instance : GroupeNorme (Eucl K^n) where
   }
 
 open Real in
-noncomputable instance : EspaceVecNorme K (Eucl K^n) where
+noncomputable instance vec_eucl : EspaceVecNorme K (Eucl K^n) where
   homogen := by {
     intro x a; dsimp [GroupeNorme.norm, norme_euclid]
     rw [←sqrt_sq (Valuation.abs_nonneg a)]
     rw [←sqrt_mul (sq_nonneg |a|ₖ), Finset.mul_sum]
     congr; ext i; simp [sq, SMul.smul, instHSMul]; ring_nf
   }
+
+theorem eucl_est_norme (n : ℕ) : estNorme (K := K) (norme_euclid (K := K) (n := n))
+  := vec_eucl.is_norm
 
 structure NormeEquiv (E : Type) (norm₁ : E → ℝ) (norm₂ : E → ℝ) where
   exists_C : ∃ C > 0, ∀ x, norm₁ x ≤ C * norm₂ x
@@ -687,22 +710,22 @@ lemma Ioo_ouverte (a b : ℝ) : ouverte [a <__< b] := by
   use min ((x - a) / 2) ((b - x) / 2)
   apply And.intro
   · apply lt_min; repeat linarith
-  · intro y y_in; unfold instEspaceMetriqueReal at y_in
-    dsimp at y_in; rw [lt_min_iff] at y_in; apply And.intro
+  · intro y y_in; dsimp at y_in
+    rw [dist_real, lt_min_iff] at y_in; apply And.intro
     · rw [abs_sub_lt_iff] at y_in; linarith
     · nth_rw 2 [abs_sub_lt_iff] at y_in; linarith
 
 lemma Ioi_ouverte (a : ℝ) : ouverte [a <__< +∞] := by
   intro x x_in; dsimp at x_in
   use (x - a) / 2, by linarith
-  intro y y_in; unfold instEspaceMetriqueReal at y_in
-  dsimp at y_in; rw [abs_sub_lt_iff] at y_in; dsimp; linarith
+  intro y y_in; dsimp at y_in
+  rw [dist_real, abs_sub_lt_iff] at y_in; dsimp; linarith
 
 lemma Iio_ouverte (b : ℝ) : ouverte [-∞ <__< b] := by
   intro x x_in; dsimp at x_in
   use (b - x) / 2, by linarith
-  intro y y_in; unfold instEspaceMetriqueReal at y_in
-  dsimp at y_in; rw [abs_sub_lt_iff] at y_in; dsimp; linarith
+  intro y y_in; dsimp at y_in
+  rw [dist_real, abs_sub_lt_iff] at y_in; dsimp; linarith
 
 lemma Icc_fermee (a b : ℝ) : fermee [a ≤__≤ b] := by
   have int_compl : [a ≤__≤ b]ᶜ = {x | x < a ∨ x > b} := by
@@ -731,7 +754,7 @@ lemma Icc_pas_ouverte {a b : ℝ} (h : a ≤ b) : ¬ ouverte [a ≤__≤ b] := b
   apply And.intro ⟨le_refl a, h⟩
   intro r r_pos; rw [Set.not_subset]; use a - r/2
   apply And.intro _ (by simp [r_pos])
-  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  dsimp; rw [dist_real, abs_lt]
   apply And.intro (by linarith) (by linarith)
 
 lemma Ici_pas_ouverte (a : ℝ) : ¬ ouverte [a ≤__< +∞] := by
@@ -739,7 +762,7 @@ lemma Ici_pas_ouverte (a : ℝ) : ¬ ouverte [a ≤__< +∞] := by
   apply And.intro (le_refl a)
   intro r r_pos; rw [Set.not_subset]; use a - r/2
   apply And.intro _ (by simp [r_pos])
-  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  dsimp; rw [dist_real, abs_lt]
   apply And.intro (by linarith) (by linarith)
 
 lemma Iic_pas_ouverte (b : ℝ) : ¬ ouverte [-∞ <__≤ b] := by
@@ -747,7 +770,7 @@ lemma Iic_pas_ouverte (b : ℝ) : ¬ ouverte [-∞ <__≤ b] := by
   apply And.intro (le_refl b)
   intro r r_pos; rw [Set.not_subset]; use b + r/2
   apply And.intro _ (by simp [r_pos])
-  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  dsimp; rw [dist_real, abs_lt]
   apply And.intro (by linarith) (by linarith)
 
 lemma Ioo_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__< b] := by
@@ -762,7 +785,7 @@ lemma Ioo_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__< b] := by
   have ineq₁ : m ≤ b - a := min_le_left (b - a) r
   have ineq₂ : m ≤ r := min_le_right (b - a) r
   use a + m/2; apply And.intro
-  · unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  · dsimp; rw [dist_real, abs_lt]
     apply And.intro (by linarith) (by linarith)
   · dsimp; push_neg; apply And.intro (by linarith) (by linarith)
 
@@ -781,7 +804,7 @@ lemma Ioc_pas_ouverte {a b : ℝ} (h : a < b) : ¬ ouverte [a <__≤ b] := by
   apply And.intro ⟨h, le_refl b⟩
   intro r r_pos; rw [Set.not_subset]; use b + r/2
   apply And.intro _ (by simp [r_pos])
-  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  dsimp; rw [dist_real, abs_lt]
   apply And.intro (by linarith) (by linarith)
 
 lemma Ioc_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__≤ b] := by
@@ -796,7 +819,7 @@ lemma Ioc_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a <__≤ b] := by
   have ineq₁ : m ≤ b - a := min_le_left (b - a) r
   have ineq₂ : m ≤ r := min_le_right (b - a) r
   use a + m/2; apply And.intro
-  · unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  · dsimp; rw [dist_real, abs_lt]
     apply And.intro (by linarith) (by linarith)
   · dsimp; push_neg; apply And.intro (by linarith) (by linarith)
 
@@ -805,7 +828,7 @@ lemma Ico_pas_ouverte {a b : ℝ} (h : a < b) : ¬ ouverte [a ≤__< b] := by
   apply And.intro ⟨le_refl a, h⟩
   intro r r_pos; rw [Set.not_subset]; use a - r/2
   apply And.intro _ (by simp [r_pos])
-  unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  dsimp; rw [dist_real, abs_lt]
   apply And.intro (by linarith) (by linarith)
 
 lemma Ico_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a ≤__< b] := by
@@ -820,7 +843,7 @@ lemma Ico_pas_fermee {a b : ℝ} (h : a < b) : ¬ fermee [a ≤__< b] := by
   have ineq₁ : m ≤ b - a := min_le_left (b - a) r
   have ineq₂ : m ≤ r := min_le_right (b - a) r
   use b - m/2; apply And.intro
-  · unfold instEspaceMetriqueReal; dsimp; rw [abs_lt]
+  · dsimp; rw [dist_real, abs_lt]
     apply And.intro (by linarith) (by linarith)
   · dsimp; push_neg; apply And.intro (by linarith) (by linarith)
 
@@ -853,7 +876,7 @@ example : Bₒ (0 : Z_induite) (1/2) = {0} := boule_in_Z_induite 0
 example : Infinite (Bₒ (0 : ℝ) (1/2)) := by
   let B := Bₒ (0 : ℝ) (1/2)
   have N_to_B : ∀ n : ℕ, (1 : ℝ) / (n + 3) ∈ B := by
-    intro n; unfold B instEspaceMetriqueReal; dsimp
+    intro n; dsimp [B]; rw [dist_real]
     have h : (1 : ℝ) / (n + 3) > 0 := by
       apply div_pos (by linarith) (by linarith)
     rw [sub_zero, abs_of_pos h, div_lt_div_iff_of_pos_left]
@@ -1030,13 +1053,13 @@ lemma bornee_iff_bounded (A : Partie ℝ) : est_borne A ↔ ∃ M, ∀ x ∈ A,
     use d(x, 0) + r; intro y hy; rw [←sub_zero y]
     have ineq₁ : d(y, x) < r := by apply hr hy
     have ineq₂ := EspaceMetrique.is_dist.ineq y x 0
-    dsimp [instEspaceMetriqueReal] at *; linarith
+    simp only [dist_real] at *; linarith
   · intro h; apply And.right
     rw [est_borne, ←bdd_iff_bdd_by_nneg, bdd_iff_in_boule]
     rcases h with ⟨M, hM⟩; use 0, max 1 (M+1); apply And.intro
     · apply lt_of_lt_of_le one_pos; apply le_max_left
-    · intro x hx; dsimp [instEspaceMetriqueReal]
-      rw [sub_zero]; apply lt_of_le_of_lt (hM x hx)
+    · intro x hx; dsimp; rw [dist_real, sub_zero]
+      apply lt_of_le_of_lt (hM x hx)
       apply lt_max_of_lt_right; linarith
 
 -- Définition 1.11.
@@ -1104,8 +1127,7 @@ lemma conv_of_le_inv (v : ℕ → ℝ) (hv : ∀ n, v n ≥ 0) (h : ∀ n, v n �
   intro ε ε_pos
   have exists_N := inv_of_le_forall ε ε_pos
   rcases exists_N with ⟨N, hN⟩; use N; intro n hn
-  dsimp [instEspaceMetriqueReal]
-  rw [sub_zero, abs_of_nonneg (hv n)]
+  rw [dist_real, sub_zero, abs_of_nonneg (hv n)]
   exact le_trans (h n) (hN n hn)
 
 theorem conv_of_inv : let u : ℕ → ℝ := n ↦ 1 / (n + 1); converges_to u 0 := by
