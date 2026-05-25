@@ -104,7 +104,7 @@ lemma norme_lipschitz : lipschitz 1 N(K, G) := by
   apply And.intro
   · apply sub_ineq V.is_norm
   · unfold instEspaceMetriqueEspaceMetNorme; dsimp
-    rw [norm_symm V.is_norm]; apply sub_ineq V.is_norm
+    rw [norme_symm V.is_norm]; apply sub_ineq V.is_norm
 
 lemma unif_continu_cont (f : E → F) : unif_continu f → est_continu f := by
   intro hucf
@@ -265,6 +265,12 @@ theorem conv_vers_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converge_ver
     · case pos => apply exists_N; linarith [hN i in_J]
     · case neg => rw [hJ i in_J]; apply mem_univ
 
+theorem converge_in_prod (u : ℕ → Π i, Y i) : converge u ↔ ∀ i, converge
+  (n ↦ (u n) i) := by
+  apply Iff.intro
+  · intro ⟨l, hl⟩ i; use l i; rw [conv_vers_in_prod] at hl; exact hl i
+  · intro h; choose l hl using h; use l; rwa [←conv_vers_in_prod] at hl
+
 -- c)
 
 theorem separe_of_prod_separe [S : ∀ i, EspSepareT2 (Y i)] : EspSepareT2 (Π i, Y i)
@@ -280,9 +286,13 @@ theorem separe_of_prod_separe [S : ∀ i, EspSepareT2 (Y i)] : EspSepareT2 (Π i
   rw [eq_empty_iff_forall_notMem]; intro z z_in
   rw [←mem_empty_iff_false (z i), ←disj]; exact z_in
 
+instance [∀ i, EspSepareT2 (Y i)] : EspSepareT2 (Π i, Y i) := separe_of_prod_separe
+
 -- Exemple 3.21.
 
 -- a)
+
+omit [∀ i, EspTop (Y i)]
 
 noncomputable def metrique_of_prod_metrique [M : ∀ i, EspaceMetrique (Y i)]
   [h : Nonempty ι] [Finite ι] : EspaceMetrique (Π i, Y i) := by
@@ -325,6 +335,67 @@ noncomputable def metrique_of_prod_metrique [M : ∀ i, EspaceMetrique (Y i)]
           · use (by use i); use i
           · ring
         · rw [←hi]; apply (M i).is_dist.ineq
+
+noncomputable instance instProd [∀ i, EspaceMetrique (Y i)] [h : Nonempty ι]
+  [Finite ι] : EspaceMetrique (Π i, Y i) := metrique_of_prod_metrique
+
+noncomputable instance instProdFin {n : ℕ} {h : n > 0} {F : Fin n → Type} [∀ i,
+  EspaceMetrique (F i)] : EspaceMetrique (Π i, F i) := by
+  have ne : Nonempty (Fin n) := by use 0
+  apply metrique_of_prod_metrique
+
+variable [∀ i, EspaceMetrique (Y i)] [Nonempty ι] [Finite ι]
+
+theorem vois_of_prod' (X : Partie (Π i, Y i)) (x : Π i, Y i) : @est_vois _
+  instOfEspaceMetrique x X ↔ ∃ U ⊆ X, @ouv_elementaire
+  _ _ (i ↦ instOfEspaceMetrique) U ∧ x ∈ U := by
+  apply Iff.intro
+  · intro h; rcases h with ⟨V, ⟨x_in, V_ouv, V_in⟩⟩
+    sorry
+  · intro h; rcases h with ⟨U, U_in, U_ouv, x_in⟩
+    sorry
+
+lemma est_vois_of_preimage_of_vois' (x : Π i, Y i) {i : ι} {V : Partie Y i}
+  (h : @est_vois _ instOfEspaceMetrique (x i) V) : @est_vois _ instOfEspaceMetrique
+  x (proj i ⁻¹' V) := by
+  rcases h with ⟨U, ⟨x_in, hU, U_in⟩⟩
+  use proj i ⁻¹' U, x_in
+  sorry
+  sorry
+
+theorem conv_to_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converges_to u l ↔ ∀ i,
+  converges_to (n ↦ (u n) i) (l i) := by
+  simp only [←conv_vers_iff_conv_to]; apply Iff.intro
+  · intro h i V hV; let U := proj i ⁻¹' V
+    have hU := est_vois_of_preimage_of_vois' l hV
+    rcases h U hU with ⟨N, hN⟩; use N; intro m hm
+    exact hN m hm
+  · intro h V hV; rw [vois_of_prod'] at hV
+    rcases hV with ⟨U, U_in, ⟨W, ⟨W_ouv, hW⟩, ⟨J, J_fin, hJ⟩⟩, l_in⟩
+    have vois_im : ∀ i, est_vois (l i) (W i) := by
+      intro i; apply ouv_est_vois (W_ouv i)
+      rw [hW, prod_espaces, mem_iInter] at l_in; exact l_in i
+    choose! f hf using h; let g := i ↦ f i (W i)
+--
+    have exists_N : ∀ i, ∀ n ≥ g i, (u n) i ∈ W i := by
+      intro i; exact hf i (W i) (vois_im i)
+    have exists_max : ∃ N, ∀ i ∈ J, N ≥ g i := by
+      suffices h : BddAbove {g i | i ∈ J} by
+        rcases h with ⟨M, hM⟩; use M; intro i hi
+        apply hM; use i, hi
+      apply SupReal.bddabove_of_finite_image
+    rcases exists_max with ⟨N, hN⟩; use N; intro n n_ge
+--
+    apply U_in; rw [hW, mem_prod_espaces]; intro i
+    by_cases in_J : i ∈ J
+    · case pos => apply exists_N; linarith [hN i in_J]
+    · case neg => rw [hJ i in_J]; apply mem_univ
+
+theorem converges_in_prod (u : ℕ → Π i, Y i) : converges u ↔ ∀ i, converges
+  (n ↦ (u n) i) := by
+  apply Iff.intro
+  · intro ⟨l, hl⟩ i; use l i; rw [conv_to_in_prod] at hl; exact hl i
+  · intro h; choose l hl using h; use l; rwa [←conv_to_in_prod] at hl
 
 --def est_ouvert_elementaire (s : Set (X × X)) :=
 --  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)

@@ -168,6 +168,9 @@ lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1
     · intro h m n hmn; exact h n m hmn
   · intro _ _ _ h₁ h₂; exact lt_trans h₁ h₂
 
+lemma extr_of_extract {φ ψ : ℕ → ℕ} (h₁ : extraction φ) (h₂ : extraction ψ) :
+  extraction (φ∘ψ) := by intro m n h; apply h₁; exact h₂ m n h
+
 lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
   intro n; induction n
   · case zero => apply zero_le
@@ -484,7 +487,7 @@ class ValuationField (K : Type) extends Field K where
   abs : K → ℝ
   isAbv : IsAbsoluteValue abs
 
-noncomputable instance : ValuationField ℝ where
+@[simp] noncomputable instance : ValuationField ℝ where
   abs := abs
   isAbv := IsAbsoluteValue.abs_isAbsoluteValue
 
@@ -496,13 +499,17 @@ instance module_abs : IsAbsoluteValue module where
   abv_mul' := norm_mul
 
 open Complex in
-noncomputable instance : ValuationField ℂ where
+@[simp] noncomputable instance : ValuationField ℂ where
   abs := module
   isAbv := module_abs
 
 scoped syntax : max (name := abs) atomic("|" noWs) term "|ₖ" : term
 macro_rules (kind := abs)
   | `(|$x|ₖ) => `(ValuationField.abs $x)
+
+lemma valuation_real (x : ℝ) : |x|ₖ = |x| := by simp
+open Complex in
+lemma valuation_complex (z : ℂ) : |z|ₖ = module z := by simp
 
 variable {K : Type} [VF : ValuationField K]
 
@@ -663,6 +670,11 @@ theorem eq_zero_iff (x : K^n) : x = 0 ↔ ∀ i, x.p i = 0 := by
 
 theorem zero_of_K_zero (x : K ^ (0 : ℕ)) : x = 0 := by
   rw [eq_zero_iff]; intro i; linarith [i.is_lt]
+
+theorem zero_of_K_zero' {n : ℕ} (h : n = 0) (x : K ^ n) : x = 0 := by
+  cases n
+  · exact zero_of_K_zero x
+  · linarith
 
 instance : AddCommGroup K^n where
   add := x ↦ y ↦ x + y

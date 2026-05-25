@@ -367,6 +367,12 @@ lemma conv_vers_iff_conv_to {X : Type} [EspaceMetrique X] (u : ℕ → X) (l : X
   · case mpr => intro h V ⟨⟨u, hu⟩, V_ouv⟩; apply h V V_ouv
                 exact hu.ouv_contenu hu.x_dans
 
+lemma converge_iff_converges {X : Type} [EspaceMetrique X] (u : ℕ → X) :
+  converge u ↔ converges u := by
+  apply Iff.intro
+  · intro ⟨l, conv⟩; use l; rwa [conv_vers_iff_conv_to] at conv
+  · intro ⟨l, conv⟩; use l; rwa [←conv_vers_iff_conv_to] at conv
+
 class EspSepareT2 (X : Type) [EspTop X] where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),
     (est_ouvert U) ∧ (est_ouvert V) ∧ (x ∈ U) ∧ (y ∈ V) ∧ (U ∩ V = ∅)

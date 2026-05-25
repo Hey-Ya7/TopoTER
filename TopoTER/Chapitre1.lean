@@ -220,14 +220,21 @@ structure estNorme (N : E → ℝ) where
   homogen : homogen (K := K) N
   ineq : ineq N
 
-lemma norm_zero {N : E → ℝ} (h : estNorme (K := K) N) : N 0 = 0 := by
+lemma norme_zero {N : E → ℝ} (h : estNorme (K := K) N) : N 0 = 0 := by
   rw [h.definie]
 
-lemma norm_neg {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x, N (-x) = N x
+lemma norme_neg {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x, N (-x) = N x
   := by intro x; rw [←neg_one_smul K, h.homogen, abs_neg_one, one_mul]
 
-lemma norm_symm {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N (x - y) =
-  N (y - x) := by intro x y; rw [←neg_sub, norm_neg h]
+lemma norme_symm {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N (x - y) =
+  N (y - x) := by intro x y; rw [←neg_sub, norme_neg h]
+
+lemma normalise {N : E → ℝ} [Module ℝ E] (h : estNorme (K := ℝ) N) : ∀ x ≠ 0,
+  N ((N x)⁻¹ • x) = 1 := by
+  intro x hx; rw [h.homogen]; dsimp [instValuationFieldReal]
+  rw [abs_of_nonneg, inv_mul_cancel₀]
+  · intro eq; apply hx; rwa [←h.definie]
+  · apply inv_nonneg_of_nonneg; exact h.nneg x
 
 lemma sub_ineq {N : E → ℝ} (h : estNorme (K := K) N) : ∀ x y, N x - N y ≤
   N (x - y) := by
@@ -254,7 +261,7 @@ theorem dist_of_norme (K E : Type) [ValuationField K] [GroupeNorme E]
   rcases V.is_norm with ⟨nneg, defi, homo, ineq⟩; constructor
   · case nneg => intro x y; apply nneg
   · case sep => intro x y; rw [defi, sub_eq_zero]
-  · case symm => intro x y; dsimp; rw [norm_symm V.is_norm]
+  · case symm => intro x y; dsimp; rw [norme_symm V.is_norm]
   · case ineq => intro x y z; dsimp
                  have eq : x - z = (x - y) + (y - z) := by abel
                  rw [eq]; apply ineq
@@ -290,6 +297,15 @@ lemma Kn_nonempty {n : ℕ} (h : n > 0) (x : K^n) : let s := {|x.p i|ₖ | i};
   s.Nonempty := by use |x.p ⟨0, h⟩|ₖ, ⟨0, h⟩
 
 open SupReal in
+@[simp] lemma norme_sup_zero : norme_sup (0 : K^n) = 0 := by
+  unfold norme_sup; cases n
+  · case zero => apply norme_Kzero
+  · case succ k =>
+    have h' := Kn_nonempty (K := K) (Nat.succ_pos k) 0
+    apply sSup_const h'; intro x hx; rcases hx with ⟨i, hi⟩
+    rw [←Valuation.abs_zero (K := K), ←hi]; congr
+
+open SupReal in
 noncomputable instance : GroupeNorme K^n where
   norm := norme_sup
   nneg := by {
@@ -299,20 +315,14 @@ noncomputable instance : GroupeNorme K^n where
   }
 
   definie := by {
-    intro x; unfold norme_sup; rw [eq_zero_iff]
+    intro x; unfold norme_sup
     apply Iff.intro
-    · case mp => intro hi i; apply abs_le_zero
-                 rw [←hi]; apply le_csSup
+    · case mp => rw [eq_zero_iff]; intro hi i
+                 apply abs_le_zero; rw [←hi]
+                 apply le_csSup
                  · apply bddabove_of_fin_image
                  · dsimp; use i
-    · case mpr =>
-        intro h; cases n
-        · case zero => apply norme_Kzero
-        · case succ k =>
-          have h' := Kn_nonempty (Nat.succ_pos k) x
-          apply sSup_const h'; intro x x_in
-          rcases x_in with ⟨i, hi⟩; rw [h i] at hi
-          rw [←Valuation.abs_zero (K := K), hi]
+    · case mpr => intro h; rw [h]; exact norme_sup_zero
   }
 
   ineq := by {
@@ -349,6 +359,9 @@ noncomputable instance : EspaceVecNorme K K^n where
       rw [←sSup_smul_of_nonneg (abs_nonneg a), h]
     ext r; simp [HSMul.hSMul]
   }
+
+theorem sup_est_norme (n : ℕ) : estNorme (K := K) (norme_sup (K := K) (n := n))
+  := instEspaceVecNormeK_n.is_norm
 
 noncomputable instance : EspaceMetrique K^n where
   d := x ↦ y ↦ ‖x - y‖
@@ -1147,6 +1160,12 @@ theorem bornee_of_cauchy (u : ℕ → X) (h : cauchy u) : seq_bornee u := by
   sorry
 
 -- c)
+
+theorem extr_conv_of_conv {u : ℕ → X} {φ : ℕ → ℕ} (hφ : extraction φ)
+  (conv : converges u) : converges (u ∘ φ) := by
+  rcases conv with ⟨l, hl⟩; use l; intro ε ε_pos
+  rcases hl ε ε_pos with ⟨N, hN⟩; use N; intro n n_ge
+  apply hN; apply le_trans n_ge; exact n_le_extr_n hφ n
 
 theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
   (hφ : extraction φ) (conv : converges (u ∘ φ)) : converges u := by

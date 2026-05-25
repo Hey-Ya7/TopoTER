@@ -138,6 +138,23 @@ theorem inter_decr_non_vide [cmp : EspCompact X] (u : ℕ → Partie X) (hf : �
     apply Nat.lt_succ_of_le; exact hM i.prop
   apply of_decr (M + 1) i ineq; exact hx
 
+-- Exemple 6.3.
+
+-- a)
+
+omit [EspSepareT2 X] in
+lemma compact_of_finite {A : Partie X} (h : Finite A) : est_compact A := by
+  intro F F_ouvert F_couvre
+  have exists_i : ∀ x ∈ A, ∃ i : F.ι, x ∈ F.u i := by
+    intro x hx; rcases F_couvre hx with ⟨P, ⟨i, hi⟩, x_in⟩
+    use i; dsimp at hi; rwa [←hi] at x_in
+  choose u hu using exists_i
+  let f : A → F.ι := x ↦ u x.1 x.2
+  use Set.range f, SupReal.image_of_fin f; intro x hx
+  rw [mem_union_famille]; use F.u (f ⟨x, hx⟩)
+  have f_in : f ⟨x, hx⟩ ∈ range f := by use ⟨x, hx⟩
+  apply And.intro _ (hu x hx); dsimp [SousFamille]; use ⟨f ⟨x, hx⟩, f_in⟩
+
 -- Théorème 6.4.
 
 -- a)
@@ -323,46 +340,37 @@ theorem lebesgue_comp_of_seq_comp (E : Type) [EspaceMetrique E] : seq_compact E 
     · case neg => rw [not_nonempty_iff] at nonempty
                   exact precompact_of_empty nonempty
 --
-  · by_cases nonempty : Nonempty E
-    · case pos => intro F F_ouvert F_couvre; by_contra contra
-                  choose! f hf using (exists_next_of_no_lebesgue F contra)
-                  rcases seq_comp f with ⟨φ, hφ, ⟨l, conv_l⟩⟩
-                  rcases F_couvre (mem_univ l) with ⟨L, hL, l_in⟩
-                  rcases F_ouvert L hL l l_in with ⟨ε, ε_pos, hε⟩
-                  rcases conv_l (ε/2) (by linarith) with ⟨N₁, hN₁⟩
-                  rcases inv_of_le_forall (ε/2) (by linarith) with ⟨N₂, hN₂⟩
+  · intro F F_ouvert F_couvre; by_contra contra
+    choose f hf using (exists_next_of_no_lebesgue F contra)
+    rcases seq_comp f with ⟨φ, hφ, ⟨l, conv_l⟩⟩
+    rcases F_couvre (mem_univ l) with ⟨L, hL, l_in⟩
+    rcases F_ouvert L hL l l_in with ⟨ε, ε_pos, hε⟩
+    rcases conv_l (ε/2) (by linarith) with ⟨N₁, hN₁⟩
+    rcases inv_of_le_forall (ε/2) (by linarith) with ⟨N₂, hN₂⟩
 --
-                  let N := max N₁ N₂; apply hf (φ N) L hL; intro x hx
-                  have ineq₁ : d(x, f (φ N)) < ε/2 := by
-                    apply lt_of_lt_of_le hx; apply hN₂
-                    apply le_trans _ (n_le_extr_n hφ N); apply le_max_right
-                  have ineq₂ : d(f (φ N), l) ≤ ε/2 := hN₁ N (le_max_left N₁ N₂)
-                  have ineq₃ := EspaceMetrique.is_dist.ineq x (f (φ N)) l
-                  apply hε; apply lt_of_le_of_lt ineq₃; linarith
-    · case neg => rw [not_nonempty_iff] at nonempty
-                  exact lebesgue_compact_of_empty nonempty
+    let N := max N₁ N₂; apply hf (φ N) L hL; intro x hx
+    have ineq₁ : d(x, f (φ N)) < ε/2 := by
+      apply lt_of_lt_of_le hx; apply hN₂
+      apply le_trans _ (n_le_extr_n hφ N); apply le_max_right
+    have ineq₂ : d(f (φ N), l) ≤ ε/2 := hN₁ N (le_max_left N₁ N₂)
+    have ineq₃ := EspaceMetrique.is_dist.ineq x (f (φ N)) l
+    apply hε; apply lt_of_le_of_lt ineq₃; linarith
 
 theorem compact_of_lebesgue_comp (E : Type) [EspaceMetrique E] : precompact E ∧
   lebesgue_compact E → EspCompact E := by
   intro ⟨h₁, h₂⟩; constructor; intro C C_ouvert C_couvre
-  by_cases nonempty : Nonempty C.ι
-  · case pos => rcases h₂ C C_ouvert C_couvre with ⟨r, r_pos, hr⟩
-                rcases h₁ r r_pos with ⟨J, J_fin, hJ, J_couvre⟩
-                have sousF : ∀ j : J.ι, ∃ i : C.ι, J.u j ⊆ C.u i := by
-                  intro j; rcases hJ (J.u j) (by use j) with ⟨x, hx⟩
-                  rw [hx]; rcases hr x with ⟨A, ⟨i, hi⟩, incl_A⟩
-                  use i; dsimp at hi; rwa [hi]
-                choose! f hf using sousF; use Set.range f; apply And.intro
-                · apply SupReal.image_of_fin
-                · intro x hx; rcases J_couvre hx with ⟨B, ⟨j, hj⟩, x_in⟩
-                  rw [mem_union_famille]; use C.u (f j); apply And.intro
-                  · use ⟨f j, by use j⟩
-                  · apply hf; dsimp at hj; rwa [hj]
-  · case neg => rw [not_nonempty_iff] at nonempty
-                use Ω; apply And.intro
-                · have fin := @Fintype.ofIsEmpty C.ι nonempty
-                  apply Finite.of_fintype
-                · exact sous_couvre_of_couvre C Ω C_couvre
+  rcases h₂ C C_ouvert C_couvre with ⟨r, r_pos, hr⟩
+  rcases h₁ r r_pos with ⟨J, J_fin, hJ, J_couvre⟩
+  have sousF : ∀ j : J.ι, ∃ i : C.ι, J.u j ⊆ C.u i := by
+    intro j; rcases hJ (J.u j) (by use j) with ⟨x, hx⟩
+    rw [hx]; rcases hr x with ⟨A, ⟨i, hi⟩, incl_A⟩
+    use i; dsimp at hi; rwa [hi]
+  choose f hf using sousF; use Set.range f; apply And.intro
+  · apply SupReal.image_of_fin
+  · intro x hx; rcases J_couvre hx with ⟨B, ⟨j, hj⟩, x_in⟩
+    rw [mem_union_famille]; use C.u (f j); apply And.intro
+    · use ⟨f j, by use j⟩
+    · apply hf; dsimp at hj; rwa [hj]
 
 theorem compact_iff_seq_comp (E : Type) [EspaceMetrique E] : EspCompact E ↔
   seq_compact E := by
@@ -419,9 +427,51 @@ theorem compact_iff_ferme_borne (A : Partie ℝ) : est_compact A ↔ est_ferme A
 -- d)
 
 theorem bornes_atteintes {f : X → ℝ} (h : est_continu f) {A : Partie X}
-  (comp : est_compact A) : ∃ a b, ∀ x ∈ A, f x ∈ [a ≤__≤ b] ∧ ∃ x₁ x₂,
+  (comp : est_compact A) : ∃ a b, (∀ x ∈ A, f x ∈ [a ≤__≤ b]) ∧ ∃ x₁ ∈ A, ∃ x₂ ∈ A,
   f x₁ = a ∧ f x₂ = b := by
   sorry
+
+-- Proposition 6.13.
+
+lemma compact_of_prod_two {Y : Fin 2 → Type} [M : ∀ i, EspaceMetrique (Y i)]
+  (C : ∀ i, seq_compact (Y i)) : seq_compact (Π i, Y i) := by
+  intro u; rw [Fin.forall_fin_two] at C
+  rcases C.left (n ↦ (u n) 0) with ⟨ϕ, hϕ, conv₁⟩
+  rcases C.right (n ↦ (u (ϕ n)) 1) with ⟨ψ, hψ, conv₂⟩
+  use ϕ∘ψ, extr_of_extract hϕ hψ
+  rw [converges_in_prod, Fin.forall_fin_two]
+  apply And.intro _ conv₂; rw [←Function.comp_assoc]
+  exact extr_conv_of_conv hψ conv₁
+
+theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀ i,
+  EspaceMetrique (Y i)] [C : ∀ i, EspCompact (Y i)] : @EspCompact (Π i, Y i)
+  (@instOfEspaceMetrique _ (instProdFin (h := h))) _ := by
+  induction n
+  · case zero => linarith
+  · case succ k hk =>
+    induction k
+    · case zero => specialize C 0; rw [compact_iff_seq_comp] at *; intro u
+                   rcases C (n ↦ (u n) 0) with ⟨φ, hφ, conv⟩; use φ, hφ
+                   rw [converges_in_prod]; intro i; rwa [Fin.fin_one_eq_zero i]
+--
+    · case succ k' hk' =>
+      let Y' : Fin (k' + 1) → Type := i ↦ Y (Fin.castSucc i)
+      have hyp : @EspCompact (Π i, Y' i) instOfEspaceMetrique _ := by
+        apply hk; linarith
+      specialize C (Fin.last (k' + 1))
+      rw [compact_iff_seq_comp] at *; intro u
+      let u₁ := n ↦ i ↦ u n (Fin.castSucc i)
+      rcases hyp u₁ with ⟨ϕ, hϕ, conv₁⟩
+      let u₂ := n ↦ u n (Fin.last (k' + 1))
+      rcases C (u₂∘ϕ) with ⟨ψ, hψ, conv₂⟩; use ϕ∘ψ, extr_of_extract hϕ hψ
+      rw [converges_in_prod]; rw [Fin.forall_fin_succ']
+      apply And.intro _ conv₂; rw [←Function.comp_assoc, ←converges_in_prod]
+      exact extr_conv_of_conv hψ conv₁
+
+-- Corollaire 6.14.
+
+theorem borel_lebesgue {n : ℕ} (h : n > 0) (A : Partie ℝ ^ n) : est_compact A ↔
+  est_ferme A ∧ est_borne A := by sorry
 
 -- 6.4. Compacts d'un e.v.n. de dimension finie
 
@@ -452,13 +502,13 @@ lemma norme_Kn_lipschitz {N : K ^ n → ℝ} (h : estNorme (K := K) N) :
     have ineq₁ : |N x - N y| ≤ N (x - y) := by
       rw [abs_sub_le_iff]; apply And.intro
       · apply sub_ineq h
-      · rw [norm_symm h]; apply sub_ineq h
+      · rw [norme_symm h]; apply sub_ineq h
     apply le_trans ineq₁
     let z := x - y; refold_let z
     have ineq₂ : N z ≤ ∑ i, N (z.p i • e i) := by
       nth_rw 1 [inCanonBasis z]
       apply Finset.le_sum_of_subadditive
-      · rw [norm_zero h]
+      · rw [norme_zero h]
       · intro x y; apply h.ineq
     apply le_trans ineq₂
 --
@@ -475,5 +525,76 @@ lemma norme_Kn_lipschitz {N : K ^ n → ℝ} (h : estNorme (K := K) N) :
 
 -- Theorème 6.22.
 
-theorem K_norm_equiv {N₁ N₂ : K ^ n → ℝ} (h₁ : estNorme (K := K) N₁)
-  (h₂ : estNorme (K := K) N₂) : N₁ ≃ N₂ on K^n := by sorry
+theorem K_norm_equiv_sup {N : ℝ ^ n → ℝ} (h : estNorme (K := ℝ) N) :
+  N ≃ norme_sup on ℝ^n := by
+  by_cases hyp : n > 0
+  · let NS := norme_sup (K := ℝ) (n := n)
+    have isN := sup_est_norme (K := ℝ) (n := n)
+    have hs : est_continu NS := by
+      apply unif_continu_cont; apply lip_continu
+      use 1, one_pos; exact norme_lipschitz (K := ℝ)
+    have hN : est_continu N := by
+      apply unif_continu_cont; apply lip_continu
+      exact norme_Kn_lipschitz h
+--
+    let U := norme_sup (K := ℝ) (n := n) ⁻¹' {1}
+    have hf : est_ferme U := by
+      rw [continu_iff_preim_ferm] at hs; apply hs
+      apply ferme_of_compact; apply compact_of_finite
+      exact Finite.of_subsingleton
+    have hb : est_borne U := by
+      use 2, zero_le_two; intro x hx y hy
+      have eq : ∀ z ∈ U, d(z, 0) = 1 := by
+        dsimp [instEspaceMetriqueK_n, instGroupeNormeK_n]
+        intro z hz; rw [sub_zero, hz]
+      have ineq := EspaceMetrique.is_dist.ineq x 0 y
+      rw [EspaceMetrique.is_dist.symm 0 y] at ineq
+      linarith [eq x hx, eq y hy]
+--
+    have ne_zero : ∀ z ∈ U, z ≠ 0 := by
+      intro z hz eq; apply zero_ne_one (α := ℝ)
+      rw [←hz, eq, norme_sup_zero]
+    have hc : est_compact U := by
+      rw [borel_lebesgue hyp]; exact ⟨hf, hb⟩
+    rcases bornes_atteintes hN hc with
+                    ⟨α, β, bdd, ⟨x₁, hx₁, x₂, hx₂, h₁, h₂⟩⟩
+    have α_pos : α > 0 := by
+      rw [←h₁]; apply lt_of_le_of_ne (h.nneg x₁)
+      intro eq; symm at eq; rw [h.definie] at eq
+      exact ne_zero x₁ hx₁ eq
+    have β_pos : β > 0 := by
+      rw [←h₂]; apply lt_of_le_of_ne (h.nneg x₂)
+      intro eq; symm at eq; rw [h.definie] at eq
+      exact ne_zero x₂ hx₂ eq
+    have hα : ∀ z ∈ U, N z ≥ α := by
+      intro z hz; apply (bdd z hz).left
+    have hβ : ∀ z ∈ U, N z ≤ β := by
+      intro z hz; apply (bdd z hz).right
+--
+    constructor
+    · use β, β_pos; intro x; by_cases zero : x = 0
+      · rw [zero, norme_sup_zero, norme_zero h, mul_zero]
+      · have NS_pos : norme_sup x > 0 := by
+          apply lt_of_le_of_ne
+          · apply instGroupeNormeK_n.nneg
+          · intro eq; apply zero; rw [←isN.definie, eq]
+        rw [←inv_mul_le_iff₀' NS_pos, ←abs_of_pos
+            (inv_pos_of_pos NS_pos), ←valuation_real, ←h.homogen]
+        apply hβ; exact normalise isN x zero
+--
+    · use α⁻¹, inv_pos_of_pos α_pos; intro x; by_cases zero : x = 0
+      · rw [zero, norme_sup_zero, norme_zero h, mul_zero]
+      · have NS_pos : norme_sup x > 0 := by
+          apply lt_of_le_of_ne
+          · apply instGroupeNormeK_n.nneg
+          · intro eq; apply zero; rw [←isN.definie, eq]
+        rw [le_inv_mul_iff₀ α_pos, ←le_inv_mul_iff₀' NS_pos, ←abs_of_pos
+            (inv_pos_of_pos NS_pos), ←valuation_real, ←h.homogen]
+        apply hα; exact normalise isN x zero
+--
+  · have eq_zero : n = 0 := by linarith
+    constructor
+    · use 1, one_pos; intro x;
+      simp [zero_of_K_zero' (eq_zero) x, norme_zero h]
+    · use 1, one_pos; intro x
+      simp [zero_of_K_zero' (eq_zero) x, norme_zero h]
