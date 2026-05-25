@@ -670,6 +670,26 @@ def fermee (A : Partie X) := ouverte Aᶜ
 
 @[simp] lemma fermee_def (A : Partie X) : fermee A ↔ ouverte Aᶜ := by rfl
 
+lemma ouv_contient_b_centre {U : Partie X} {c : X} :
+ouverte U → c ∈ U → ∃ r > 0, Bₒ c r ⊆ U := by
+  intro U_ouv hc
+  rcases U_ouv c hc with ⟨r, r_pos, h⟩
+  use r
+
+lemma ouv_contient_b {U : Partie X} :
+ouverte U → U.Nonempty → ∃ c : X, ∃ r > 0, Bₒ c r ⊆ U :=
+  fun U_ouv ⟨c, hc⟩ ↦ ⟨c, ouv_contient_b_centre U_ouv hc⟩
+
+lemma ouv_contient_bf_centre {U : Partie X} {c : X} :
+ouverte U → c ∈ U → ∃ r > 0, Bf c r ⊆ U := by
+  intro U_ouv hc
+  rcases U_ouv c hc with ⟨r, r_pos, h⟩
+  exact ⟨r/2, half_pos r_pos, fun x hx ↦ h (by simp at *; linarith)⟩
+
+lemma ouv_contient_bf {U : Partie X} :
+ouverte U → U.Nonempty → ∃ c : X, ∃ r > 0, Bf c r ⊆ U :=
+  fun U_ouv ⟨c, hc⟩ ↦ ⟨c, ouv_contient_bf_centre U_ouv hc⟩
+
 -- Exemple 1.8.
 
 -- a)
