@@ -114,7 +114,12 @@ lemma union_ferme {u v : Set X} (hu : est_ferme u) (hv : est_ferme v) :
   rw [est_ferme, compl_union]
   apply inter_ouvert; repeat assumption
 
-lemma inter_est_ferme {ι : Type} {u : ι → Set X} (hu : ∀ i, est_ferme (u i)) :
+lemma inter_est_ferme {u v : Set X} (hu : est_ferme u) (hv : est_ferme v) :
+  est_ferme (u ∩ v) := by
+  rw [est_ferme, compl_inter]
+  apply union_est_ouvert; repeat assumption
+
+lemma iinter_ferme {ι : Type} {u : ι → Set X} (hu : ∀ i, est_ferme (u i)) :
   est_ferme (⋂ i, u i) := by
   rw [est_ferme, compl_iInter]
   exact iunion_ouvert hu
@@ -200,19 +205,24 @@ lemma ferme_of_subset_induite {s t v : Partie X} (h : s ⊆ t) (hv : @est_ferme
   · intro hx; have ht : ⟨x.val, h x.prop⟩ ∈ t ↓∩ u := by exact hx
     rwa [←hu] at ht
 
-lemma ouvert_of_ouvert_induite {s t : Partie X} (hv : est_ouvert s) : @est_ouvert t
-  ofInd s := by
-  dsimp [ofInd]; use s, hv; ext x
-  apply Iff.intro
-  · intro h; exact h
-  · intro h; exact h
+abbrev toSubtype {s : Partie X} (t : Partie (Induite s)) := {Subtype.val x | x ∈ t}
+notation : max "↑'" t : max => toSubtype t
 
-lemma ferme_of_ferme_induite {s t : Partie X} (hv : est_ferme s) : @est_ferme t
-  ofInd s := by
-  rw [ferme_of_induite]; use s, hv; ext x
-  apply Iff.intro
-  · intro h; exact h
-  · intro h; exact h
+omit [EspTop X] in
+@[simp] lemma eq_val_image {s : Partie X} (t : Partie (Induite s)) : ↑'t =
+  Subtype.val '' t := rfl
+
+lemma ouvert_of_ouvert_induite {s : Partie X} {t : Partie s} (hv : est_ouvert s)
+  (ho : @est_ouvert s ofInd t) : est_ouvert ↑'t := by
+  dsimp [ofInd] at ho; rcases ho with ⟨v, vf, ht⟩
+  have is_inter : ↑'t = s ∩ v := by simp [ht]
+  rw [is_inter]; apply inter_ouvert hv vf
+
+lemma ferme_of_ferme_induite {s : Partie X} {t : Partie s} (hv : est_ferme s) (hf :
+  @est_ferme s ofInd t) : est_ferme ↑'t := by
+  rw [ferme_of_induite] at hf; rcases hf with ⟨v, vf, ht⟩
+  have is_inter : ↑'t = s ∩ v := by simp [ht]
+  rw [is_inter]; apply inter_est_ferme hv vf
 
 -- 2.2. Intérieur, adhérence, voisinage
 
@@ -308,8 +318,7 @@ lemma adh_eq_inter (s : Set X) : adh s = ⋂₀ {F : Set X | est_ferme F ∧ s �
 
 lemma adh_ferme {s : Set X} : est_ferme (adh s) := by
   rw [adh_eq_inter, sInter_eq_iInter]
-  apply inter_est_ferme
-  intro F
+  apply iinter_ferme; intro F
   exact F.property.1
 
 lemma adh_contenu_of_contenu_ferme (s t : Set X) (h : s ⊆ t) (hf : est_ferme t) :

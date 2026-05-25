@@ -192,28 +192,23 @@ theorem ferme_of_compact {A : Partie X} (h : est_compact A) : est_ferme A := by
 -- b)
 
 open Set.Notation in
-theorem compact_of_ferme {A B : Partie X} (hc : est_compact A) (h : B ⊆ A)
-  (hf : est_ferme B) : est_compact B := by
+theorem compact_of_ferme {A : Partie X} [C : EspCompact X] (hf : est_ferme A) :
+  est_compact A := by
   rw [←comp_iff_comp_induite, compact_iff_comp_f] at *
-  intro F F_ferme F_inter; simp only [ferme_of_induite] at F_ferme
-  have exists_f : ∀ i : F.ι, ∃ P, @est_ferme A ofInd P ∧ F.u i = P := by
-    intro i; rcases F_ferme (F.u i) (by use i) with ⟨u, uf, hu⟩
-    use A ↓∩ u, ferme_of_ferme_induite uf; rw [hu]; ext x
-    apply Iff.intro
-    · intro hyp; use ⟨x.val, h x.prop⟩, hyp
-    · intro hyp; rcases hyp with ⟨a, ha, hx⟩; rwa [mem_preimage, ←hx]
+  intro F F_ferme F_inter
+  have exists_f : ∀ i : F.ι, ∃ P, est_ferme P ∧ F.u i = P := by
+    intro i; specialize F_ferme (F.u i) (by use i)
+    use toSubtype (s := A) (F.u i), ferme_of_ferme_induite hf F_ferme
   choose f hf₁ hf₂ using exists_f
-  let G : Famille (Induite A) := ⟨F.ι, f⟩
 --
+  let G : Famille X := ⟨F.ι, f⟩
   have G_ferme : ∀ P ∈ G, est_ferme P := by
     intro P ⟨i, hi⟩; dsimp at hi; rw [←hi]; exact hf₁ i
   have G_inter : ⋂ᵢ G = ∅ := by
     rw [eq_empty_iff_forall_notMem]; intro x hx
     rw [mem_inter_famille] at hx
-    suffices ih : ∀ i, x ∈ F.u i by sorry
-    sorry
-  sorry
-
+  rcases C F F_ferme F_inter with ⟨J, hJ, J_inter⟩
+  use J, hJ, J_inter
 
 -- Théorème 6.5.
 
@@ -442,6 +437,11 @@ theorem compact_iff_ferme_borne (A : Partie ℝ) : est_compact A ↔ est_ferme A
                   rw [l_eq_l']; exact conv.left
                 let L : A := ⟨l, in_A⟩; use L; apply hl
 
+lemma compact_of_pave (α β : ℝ) : est_compact [α ≤__≤ β] := by
+  rw [compact_iff_ferme_borne]; apply And.intro
+  · exact Icc_fermee α β
+  · exact bornee_of_pave α β
+
 -- Exemple 6.12.
 
 -- d)
@@ -487,6 +487,13 @@ theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀
       rw [converges_in_prod]; rw [Fin.forall_fin_succ']
       apply And.intro _ conv₂; rw [←Function.comp_assoc, ←converges_in_prod]
       exact extr_conv_of_conv hψ conv₁
+
+lemma compact_of_prod_paves {n : ℕ} (h : n > 0) (R : ℝ) : @EspCompact (Π _ : Fin n,
+  Induite [-R ≤__≤ R]) (@ofMet _ (instProdFin (h := h))) _ := by
+  have comp_paves : ∀ _ : Fin n, @EspCompact (Induite [-R ≤__≤ R]) (@ofMet _ ofMetInd)
+    _ := by
+    intro _; sorry; --rw [comp_iff_comp_induite]; apply compact_of_pave
+  apply compact_of_prod_comp h (C := comp_paves)
 
 -- Corollaire 6.14.
 

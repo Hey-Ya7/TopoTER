@@ -198,7 +198,7 @@ lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
 
 variable {A : Partie X}
 
-instance : EspaceMetrique (Induite A) where
+instance ofMetInd : EspaceMetrique (Induite A) where
   d := induite_dist A
   is_dist := dist_of_induite A
 
@@ -1081,6 +1081,19 @@ lemma bornee_iff_bounded (A : Partie ℝ) : est_borne A ↔ ∃ M, ∀ x ∈ A,
     · intro x hx; dsimp; rw [dist_real, sub_zero]
       apply lt_of_le_of_lt (hM x hx)
       apply lt_max_of_lt_right; linarith
+
+lemma bornee_iff_in_pave (A : Partie ℝ) : est_borne A ↔ ∃ r : ℝ, ∀ x ∈ A,
+  x ∈ [-r ≤__≤ r] := by
+  rw [bornee_iff_bounded]; apply Iff.intro
+  · intro ⟨M, hM⟩; use M; intro x hx; specialize hM x hx; rwa [abs_le] at hM
+  · intro ⟨r, hr⟩; use r; intro x hx; specialize hr x hx; rwa [abs_le]
+
+lemma bornee_of_pave (α β : ℝ) : est_borne [α ≤__≤ β] := by
+  rw [bornee_iff_in_pave]; use max |α| |β|
+  intro x ⟨h₁, h₂⟩; apply And.intro
+  · apply le_trans _ h₁; apply le_trans _ (neg_abs_le α)
+    rw [neg_le_neg_iff]; apply le_max_left
+  · apply le_trans h₂ _; apply le_trans (le_abs_self β); apply le_max_right
 
 -- Définition 1.11.
 
