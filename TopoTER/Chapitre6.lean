@@ -210,7 +210,7 @@ theorem compact_of_ferme {A B : Partie X} (hc : est_compact A) (h : B ⊆ A)
   have G_inter : ⋂ᵢ G = ∅ := by
     rw [eq_empty_iff_forall_notMem]; intro x hx
     rw [mem_inter_famille] at hx
-    suffices ih : ∀ i, x ∈ F.u i by sorry
+    --suffices ih : ∀ i, x ∈ F.u i by sorry
     sorry
   sorry
 
@@ -560,7 +560,8 @@ theorem K_norm_equiv_sup {N : ℝ ^ n → ℝ} (h : estNorme (K := ℝ) N) :
     have hb : est_borne U := by
       use 2, zero_le_two; intro x hx y hy
       have eq : ∀ z ∈ U, d(z, 0) = 1 := by
-        dsimp; rw [dist_norme]
+        dsimp;
+        rw [dist_norme]
         intro z hz; rw [sub_zero, hz]
       have ineq := EspaceMetrique.is_dist.ineq x 0 y
       rw [EspaceMetrique.is_dist.symm 0 y] at ineq
