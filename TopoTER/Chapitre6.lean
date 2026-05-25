@@ -516,10 +516,8 @@ lemma norme_Kn_lipschitz {N : K ^ n → ℝ} (h : estNorme (K := K) N) :
     nth_rw 10 [←Finset.card_fin (k + 1)]
     apply Finset.sum_le_card_nsmul; intro i hi
     rw [mul_comm, h.homogen]; apply mul_le_mul
-    · apply le_csSup _ (by use i)
-      apply SupReal.bddabove_of_fin_image
-    · apply le_csSup _ (by use i)
-      apply SupReal.bddabove_of_fin_image
+    · exact le_csSup (SupReal.bddabove_of_fin_image _) (by use i)
+    · exact le_csSup (SupReal.bddabove_of_fin_image _) (by use i)
     · exact h.nneg (e i)
     · exact EspaceMetrique.is_dist.nneg x y
 
@@ -530,18 +528,15 @@ theorem K_norm_equiv_sup {N : ℝ ^ n → ℝ} (h : estNorme (K := ℝ) N) :
   by_cases hyp : n > 0
   · let NS := norme_sup (K := ℝ) (n := n)
     have isN := sup_est_norme (K := ℝ) (n := n)
-    have hs : est_continu NS := by
-      apply unif_continu_cont; apply lip_continu
-      use 1, one_pos; exact norme_lipschitz (K := ℝ)
-    have hN : est_continu N := by
-      apply unif_continu_cont; apply lip_continu
-      exact norme_Kn_lipschitz h
+    have hs : est_continu NS :=
+      unif_continu_cont NS (lip_continu NS ⟨1, one_pos, norme_lipschitz (K := ℝ)⟩)
+    have hN : est_continu N :=
+      unif_continu_cont N (lip_continu N (norme_Kn_lipschitz h))
 --
     let U := norme_sup (K := ℝ) (n := n) ⁻¹' {1}
     have hf : est_ferme U := by
-      rw [continu_iff_preim_ferm] at hs; apply hs
-      apply ferme_of_compact; apply compact_of_finite
-      exact Finite.of_subsingleton
+      rw [continu_iff_preim_ferm] at hs;
+      exact hs {1} (ferme_of_compact (compact_of_finite Finite.of_subsingleton))
     have hb : est_borne U := by
       use 2, zero_le_two; intro x hx y hy
       have eq : ∀ z ∈ U, d(z, 0) = 1 := by
