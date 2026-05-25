@@ -137,16 +137,16 @@ lemma cauchy_unif_continu_cauchy [EspaceMetrique X] [EspaceMetrique Y] (f : X �
 theorem prolongement_unif_continu [EspaceMetrique X] [EspaceMetrique Y] (A : Partie X) (f : A → Y)
 (hf : unif_continu f) (hY : complet Y) :
   ∃!(g : adh A → Y), (∀ x : A, f x = g ⟨x.1, contenu_adh A x.2⟩) ∧ unif_continu g := by
-    have cvg_in_Y : ∀ u : ℕ → A, cauchy u → converges (f ∘ u) := by
+    have cvg_in_Y : ∀ u : ℕ → A, converges u → converges (f ∘ u) := by
       intro u hu
-      have cauchyf : cauchy (f ∘ u) := cauchy_unif_continu_cauchy f hf u hu
+      have cauchyu : cauchy u := cauchy_of_conv u hu
+      have cauchyf : cauchy (f ∘ u) := cauchy_unif_continu_cauchy f hf u cauchyu
       exact hY (f ∘ u) cauchyf
 
-    let suite_conv (x : adh A) : ∃ u : ℕ → X, (∀ n : ℕ, u n ∈ A) ∧ converge_vers u x := by
+    have suite_conv (x : adh A) : ∃ u : ℕ → X, (∀ n : ℕ, u n ∈ A) ∧ converge_vers u x := by
       refine (in_adh_suite A ↑x).mp x.2
 
-    let g : adh A → Y := fun x ↦ let u := Classical.choose (suite_conv x)
-
+    let g : adh A → Y := x ↦
 
 
 
