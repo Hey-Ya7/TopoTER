@@ -41,7 +41,6 @@ instance topo_engendree (S : Set (Set X)) : EspTop X where
   union_ouvert := fun hu ↦ ouv_top_engendree.unionS hu
   inter_ouvert := fun hU hV ↦ ouv_top_engendree.interS hU hV
 
-
 lemma iunion_ouvert {ι : Type} {u : ι → Set X} (h : ∀ i, est_ouvert (u i)) :
   est_ouvert (⋃ i, u i) := by
   let F : Famille X := ⟨ι, u⟩
@@ -135,12 +134,22 @@ lemma union_fini_ferme' {ι : Type} {u : ι → Set X} [Finite ι]
 -- a)
 
 open Metrique
-instance {X : Type} [EspaceMetrique X] : EspTop X where
+instance ofMet {X : Type} [EspaceMetrique X] : EspTop X where
   est_ouvert := ouverte
   univ_ouvert := ouverte_of_uni
   empty_ouvert := ouverte_of_vide
   union_ouvert := ouverte_of_union
   inter_ouvert := ouverte_of_inter
+
+class EspMetrisable (X : Type) [EspTop X] where
+  metrique : ∃ d : X → X → ℝ, estDistance d
+
+instance [M : EspaceMetrique X] : EspMetrisable X where
+  metrique := by use M.d; exact M.is_dist
+
+noncomputable instance [M : EspMetrisable X] : EspaceMetrique X where
+  d := Exists.choose M.metrique
+  is_dist := by apply Exists.choose_spec
 
 open Set.Notation in
 -- lire l'intro de Mathlib.Data.Set.Subset
@@ -198,7 +207,7 @@ lemma univ_est_vois (x : X) : est_vois x Ω := by
 open Set.Notation in
 lemma ouv_of_ind_iff_ouv_of_metrique_ind {X : Type} [M : EspaceMetrique X]
   (A : Partie X) : ∀ s : Partie (Induite A), instElemInduite.est_ouvert s ↔
-  instOfEspaceMetrique.est_ouvert s := by
+  ofMet.est_ouvert s := by
   intro s; apply Iff.intro
   · intro h; rcases h with ⟨U, U_ouv, hU⟩
     intro x hx; specialize U_ouv x (by rwa [hU] at hx)
@@ -366,6 +375,12 @@ lemma conv_vers_iff_conv_to {X : Type} [EspaceMetrique X] (u : ℕ → X) (l : X
                apply ouv_est_vois U_ouv; exact l_in
   · case mpr => intro h V ⟨⟨u, hu⟩, V_ouv⟩; apply h V V_ouv
                 exact hu.ouv_contenu hu.x_dans
+
+lemma converge_iff_converges {X : Type} [EspaceMetrique X] (u : ℕ → X) :
+  converge u ↔ converges u := by
+  apply Iff.intro
+  · intro ⟨l, conv⟩; use l; rwa [conv_vers_iff_conv_to] at conv
+  · intro ⟨l, conv⟩; use l; rwa [←conv_vers_iff_conv_to] at conv
 
 class EspSepareT2 (X : Type) [EspTop X] where
   est_separe : ∀ (x y : X), x ≠ y → ∃ (U V : Set X),

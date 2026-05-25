@@ -168,6 +168,9 @@ lemma extract_equiv (φ : ℕ → ℕ) : extraction φ ↔ ∀ n, φ n < φ (n+1
     · intro h m n hmn; exact h n m hmn
   · intro _ _ _ h₁ h₂; exact lt_trans h₁ h₂
 
+lemma extr_of_extract {φ ψ : ℕ → ℕ} (h₁ : extraction φ) (h₂ : extraction ψ) :
+  extraction (φ∘ψ) := by intro m n h; apply h₁; exact h₂ m n h
+
 lemma n_le_extr_n {φ : ℕ → ℕ} (h : extraction φ) : ∀ n, n ≤ φ n := by
   intro n; induction n
   · case zero => apply zero_le
@@ -260,14 +263,33 @@ theorem image_of_fin {α J : Type} (f : J → α) [Finite J] : Finite {f i | i} 
   · intro x hx; rcases hx with ⟨i, hi⟩; use i, by simp
   · apply Set.finite_univ
 
-theorem bddabove_of_finite_image {α β} [Nonempty α] [Preorder α] [IsDirectedOrder α]
-  {J : Set β} [Finite J] (f : β → α) : BddAbove {f i | i ∈ J} := by
+theorem bddabove_of_finite_image {α β : Type} [Nonempty α] [Preorder α]
+  [IsDirectedOrder α] {J : Set β} [Finite J] (f : β → α) : BddAbove {f i | i ∈ J}
+  := by
   let f' : J → α := j ↦ f j
   have eq : {f i | i ∈ J} = {f' j | j} := by
     ext x; apply Iff.intro
     · intro ⟨i, i_in, hi⟩; use ⟨i, i_in⟩
     · intro ⟨j, hj⟩; use j.val, j.prop, hj
-  rw [eq]; apply Set.Finite.bddAbove; apply Set.toFinite
+  rw [eq]; apply Set.Finite.bddAbove; apply image_of_fin
+
+theorem bddbelow_of_finite_image {α β : Type} [Nonempty α] [Preorder α]
+  [IsCodirectedOrder α] {J : Set β} [Finite J] (f : β → α) : BddBelow {f i | i ∈ J}
+  := by
+  let f' : J → α := j ↦ f j
+  have eq : {f i | i ∈ J} = {f' j | j} := by
+    ext x; apply Iff.intro
+    · intro ⟨i, i_in, hi⟩; use ⟨i, i_in⟩
+    · intro ⟨j, hj⟩; use j.val, j.prop, hj
+  rw [eq]; apply Set.Finite.bddBelow; apply image_of_fin
+
+theorem bddabove_of_finite_image' {α β : Type} [Nonempty α] [Preorder α]
+  [IsDirectedOrder α] [Finite β] (f : β → α) : BddAbove {f i | i} := by
+  apply Set.Finite.bddAbove; apply image_of_fin
+
+theorem bddbelow_of_finite_image' {α β : Type} [Nonempty α] [Preorder α]
+  [IsCodirectedOrder α] [Finite β] (f : β → α) : BddBelow {f i | i} := by
+  apply Set.Finite.bddBelow; apply image_of_fin
 
 theorem bddabove_of_fin_image {n} (f : Fin n → ℝ) : BddAbove {f i | i} := by
   apply Set.Finite.bddAbove; apply image_of_fin
@@ -465,7 +487,7 @@ class ValuationField (K : Type) extends Field K where
   abs : K → ℝ
   isAbv : IsAbsoluteValue abs
 
-noncomputable instance : ValuationField ℝ where
+@[simp] noncomputable instance : ValuationField ℝ where
   abs := abs
   isAbv := IsAbsoluteValue.abs_isAbsoluteValue
 
@@ -477,13 +499,17 @@ instance module_abs : IsAbsoluteValue module where
   abv_mul' := norm_mul
 
 open Complex in
-noncomputable instance : ValuationField ℂ where
+@[simp] noncomputable instance : ValuationField ℂ where
   abs := module
   isAbv := module_abs
 
 scoped syntax : max (name := abs) atomic("|" noWs) term "|ₖ" : term
 macro_rules (kind := abs)
   | `(|$x|ₖ) => `(ValuationField.abs $x)
+
+lemma valuation_real (x : ℝ) : |x|ₖ = |x| := by simp
+open Complex in
+lemma valuation_complex (z : ℂ) : |z|ₖ = module z := by simp
 
 variable {K : Type} [VF : ValuationField K]
 
@@ -644,6 +670,11 @@ theorem eq_zero_iff (x : K^n) : x = 0 ↔ ∀ i, x.p i = 0 := by
 
 theorem zero_of_K_zero (x : K ^ (0 : ℕ)) : x = 0 := by
   rw [eq_zero_iff]; intro i; linarith [i.is_lt]
+
+theorem zero_of_K_zero' {n : ℕ} (h : n = 0) (x : K ^ n) : x = 0 := by
+  cases n
+  · exact zero_of_K_zero x
+  · linarith
 
 instance : AddCommGroup K^n where
   add := x ↦ y ↦ x + y
