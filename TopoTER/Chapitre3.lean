@@ -439,7 +439,13 @@ variable [∀ i, EspaceMetrique (Y i)] [Nonempty ι] [Finite ι]
 
 theorem conv_to_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converges_to u l ↔ ∀ i,
   converges_to (n ↦ (u n) i) (l i) := by
-  sorry
+  apply Iff.intro
+  · unfold converges_to at *; intro conv_l i; intro ε ε_pos ; specialize conv_l ε ε_pos; rcases conv_l with ⟨N, hN⟩;
+    use N; intro n hn; specialize hN n hn;
+    calc
+      d((fun n ↦ u n i) n,  (l i)) ≤ d((u n), l) := by apply
+
+
 
 theorem converges_in_prod (u : ℕ → Π i, Y i) : converges u ↔ ∀ i, converges
   (n ↦ (u n) i) := by
