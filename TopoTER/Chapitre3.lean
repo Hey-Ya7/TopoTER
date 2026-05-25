@@ -430,22 +430,60 @@ noncomputable def metrique_of_prod_metrique [M : ∀ i, EspaceMetrique (Y i)]
 noncomputable instance instProd [∀ i, EspaceMetrique (Y i)] [h : Nonempty ι]
   [Finite ι] : EspaceMetrique (Π i, Y i) := metrique_of_prod_metrique
 
+lemma prod_dist [∀ i, EspaceMetrique (Y i)] [h : Nonempty ι] [Finite ι] (x y :
+  Π i, Y i) : d(x, y) = sSup {d(x i, y i) | i} := by rfl
+
+lemma le_prod_dist [∀ i, EspaceMetrique (Y i)] [h : Nonempty ι] [Finite ι]
+  (x y : Π i, Y i) : ∀ i, d(x i, y i) ≤ d(x, y) := by
+  intro i; rw [prod_dist]; apply le_csSup _ (by use i)
+  apply SupReal.bddabove_of_finite_image'
+
 noncomputable instance instProdFin {n : ℕ} {h : n > 0} {F : Fin n → Type} [∀ i,
   EspaceMetrique (F i)] : EspaceMetrique (Π i, F i) := by
   have ne : Nonempty (Fin n) := by use 0
   apply metrique_of_prod_metrique
 
+lemma ouv_of_metrique_iff_ouv_of_top_prod [M : ∀ i, EspaceMetrique (Y i)]
+  [h : Nonempty ι] [Finite ι] : ∀ s : Partie Π i, Y i, ofMet.est_ouvert s ↔
+  (@top_prod _ _ (i ↦ ofMet)).est_ouvert s := by
+  intro s; apply Iff.intro
+  · intro h; sorry
+--
+  · intro h a ha; rw [ouvert_ssi_vois] at h
+    specialize h a ha; rw [vois_of_prod] at h
+    rcases h with ⟨U, U_in, ⟨p, ⟨p_ouv, hp⟩, _⟩, a_in⟩
+    rw [hp, mem_prod_iff] at a_in
+    have exists_r : ∀ i, ∃ r > 0, Bₒ (a i) r ⊆ p i := by
+      intro i; apply p_ouv i; exact a_in i
+    choose f hf₁ hf₂ using exists_r; let S := Set.range f
+--
+    let i := Nonempty.some h
+    have hn : S.Nonempty := by use (f i); use i
+    have hf : Finite S := by apply SupReal.image_of_fin
+    use sInf S; apply And.intro
+    · rw [gt_iff_lt, Finite.lt_csInf_iff hf hn]
+      intro x ⟨j, hj⟩; rw [←hj]; exact hf₁ j
+    · intro x hx; apply U_in; rw [hp, mem_prod_iff]
+      intro j; apply hf₂; dsimp; apply lt_of_le_of_lt
+      · exact le_prod_dist x a j
+      · apply lt_of_lt_of_le hx; apply csInf_le _ (by use j)
+        apply SupReal.bddbelow_of_finite_image'
+
 variable [∀ i, EspaceMetrique (Y i)] [Nonempty ι] [Finite ι]
+
+theorem conv_vers_metrique_iff_conv_vers_top (u : ℕ → Π i, Y i) (l : Π i, Y i) :
+  ofMet.converge_vers u l ↔ (@top_prod _ _ (i ↦ ofMet)).converge_vers u l := by
+  apply Iff.intro
+  · intro h; sorry
+  sorry
 
 theorem conv_to_in_prod (u : ℕ → Π i, Y i) (l : Π i, Y i) : converges_to u l ↔ ∀ i,
   converges_to (n ↦ (u n) i) (l i) := by
   apply Iff.intro
-  · unfold converges_to at *; intro conv_l i; intro ε ε_pos ; specialize conv_l ε ε_pos; rcases conv_l with ⟨N, hN⟩;
-    use N; intro n hn; specialize hN n hn;
-    calc
-      d((fun n ↦ u n i) n,  (l i)) ≤ d((u n), l) := by apply
-
-
+  · intro h i; rw [←conv_vers_iff_conv_to] at *
+    --rw [conv_vers_in_prod (Y := Y)] at h
+    sorry
+  sorry
 
 theorem converges_in_prod (u : ℕ → Π i, Y i) : converges u ↔ ∀ i, converges
   (n ↦ (u n) i) := by

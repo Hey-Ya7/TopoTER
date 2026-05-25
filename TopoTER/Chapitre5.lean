@@ -154,7 +154,7 @@ converge_vers u l ↔ converges_to u l := by
     specialize hN n hn
     simp at hN
     linarith [hN]
-  · rintro conv V ⟨v, l_v, v_ouv, v_V⟩
+  · rintro conv V ⟨v, l_v, v_ouv, v_V⟩; stop
     rcases ouv_contient_bf_centre v_ouv l_v with ⟨r, r_pos, B_v⟩
     rcases conv r r_pos with ⟨N, hN⟩
     use N
@@ -338,7 +338,7 @@ theorem thm_baire : complet X → baire X := by
 
   have H : ∃ c : ℕ → X, ∃ r : ℕ → ℝ, (∀ n, B_ok n (c n) (r n)) ∧
                          (∀ n, Bf (c (n+1)) (r (n+1)) ⊆ Bf (c n) (r n)) := by
-
+    stop
     rcases ouv_contient_bf (W_ouv 0) (W_ne 0) with ⟨c0, r0, r0_pos, h0⟩
 
     have B0_ok : B_ok 0 c0 (min r0 (1/2)) := by
