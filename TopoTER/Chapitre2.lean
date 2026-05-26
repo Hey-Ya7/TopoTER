@@ -205,12 +205,7 @@ lemma ferme_of_subset_induite {s t v : Partie X} (h : s ⊆ t) (hv : @est_ferme
   · intro hx; have ht : ⟨x.val, h x.prop⟩ ∈ t ↓∩ u := by exact hx
     rwa [←hu] at ht
 
-abbrev toSubtype {s : Partie X} (t : Partie (Induite s)) := {Subtype.val x | x ∈ t}
-notation : max "↑'" t : max => toSubtype t
-
-omit [EspTop X] in
-@[simp] lemma eq_val_image {s : Partie X} (t : Partie (Induite s)) : ↑'t =
-  Subtype.val '' t := rfl
+notation : max "↑'" t : max => Subtype.val '' t
 
 lemma ouvert_of_ouvert_induite {s : Partie X} {t : Partie s} (hv : est_ouvert s)
   (ho : @est_ouvert s ofInd t) : est_ouvert ↑'t := by

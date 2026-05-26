@@ -442,7 +442,7 @@ lemma le_prod_dist [∀ i, EspaceMetrique (Y i)] [h : Nonempty ι] [Finite ι]
   intro i; rw [prod_dist]; apply le_csSup _ (by use i)
   apply SupReal.bddabove_of_finite_image'
 
-noncomputable instance instProdFin {n : ℕ} {h : n > 0} {F : Fin n → Type} [∀ i,
+noncomputable instance instProdFin {n : ℕ} (h : n > 0) {F : Fin n → Type} [∀ i,
   EspaceMetrique (F i)] : EspaceMetrique (Π i, F i) := by
   have ne : Nonempty (Fin n) := by use 0
   apply metrique_of_prod_metrique
@@ -522,6 +522,26 @@ theorem converges_in_prod (u : ℕ → Π i, Y i) : converges u ↔ ∀ i, conve
   apply Iff.intro
   · intro ⟨l, hl⟩ i; use l i; rw [conv_to_in_prod] at hl; exact hl i
   · intro h; choose l hl using h; use l; rwa [←conv_to_in_prod] at hl
+
+theorem prod_borne_iff_borne (A : Partie Π i, Y i) : est_borne A ↔ ∀ i, est_borne
+  (proj i '' A) := by
+  apply Iff.intro
+  · intro ⟨M, M_nneg, hM⟩ k; use M, M_nneg
+    intro x ⟨i, i_in, hi⟩ y ⟨j, j_in, hj⟩
+    rw [←hi, ←hj]; apply le_trans _ (hM i i_in j j_in)
+    exact le_prod_dist i j k
+  · intro hi; choose f hf hf' using hi
+    let i := nempty.some
+    use sSup {f i | i}; apply And.intro
+    · apply le_csSup_of_le (b := f i) _ (by use i) (hf i)
+      apply SupReal.bddabove_of_finite_image'
+    · intro x hx y hy; rw [prod_dist]; apply csSup_le
+      · use d(x i, y i); use i
+      · intro d ⟨j, hj⟩; rw [←hj]
+        have x_in : (x j) ∈ proj j '' A := by use x, hx; rfl
+        have y_in : (y j) ∈ proj j '' A := by use y, hy; rfl
+        apply le_trans (hf' j (x j) x_in (y j) y_in)
+        apply le_csSup _ (by use j); apply SupReal.bddabove_of_finite_image'
 
 --def est_ouvert_elementaire (s : Set (X × X)) :=
 --  ∃ U1 U2 : Set X, (s = (U1 × U2)) ∧ (est_ouvert U1) ∧ (est_ouvert U2)

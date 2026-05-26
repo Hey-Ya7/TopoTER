@@ -191,24 +191,36 @@ theorem ferme_of_compact {A : Partie X} (h : est_compact A) : est_ferme A := by
 
 -- b)
 
-open Set.Notation in
 theorem compact_of_ferme {A : Partie X} [C : EspCompact X] (hf : est_ferme A) :
   est_compact A := by
   rw [←comp_iff_comp_induite, compact_iff_comp_f] at *
-  intro F F_ferme F_inter; stop
-  have exists_f : ∀ i : F.ι, ∃ P, est_ferme P ∧ F.u i = P := by
-    intro i; specialize F_ferme (F.u i) (by use i)
-    use toSubtype (s := A) (F.u i), --ferme_of_ferme_induite hf F_ferme
-  --choose f hf₁ hf₂ using exists_f
+  intro F F_ferme F_inter
+  by_cases h : IsEmpty F.ι
+  · use Ω, finite_univ; rw [univ_sous_famille_inter, ←F_inter]
+  · rw [not_isEmpty_iff] at h; rcases h with ⟨i⟩
+    have exists_f : ∀ i : F.ι, ∃ P : Set X, est_ferme P ∧ ↑'(F.u i) = P := by
+      intro i; specialize F_ferme (F.u i) (by use i)
+      use ↑'(F.u i), ferme_of_ferme_induite hf F_ferme
+    choose f hf₁ hf₂ using exists_f
 --
-  let G : Famille X := ⟨F.ι, f⟩ sorry
-  have G_ferme : ∀ P ∈ G, est_ferme P := by
-    intro P ⟨i, hi⟩; dsimp at hi; rw [←hi]; exact hf₁ i sorry
-  have G_inter : ⋂ᵢ G = ∅ := by
-    rw [eq_empty_iff_forall_notMem]; intro x hx
-    rw [mem_inter_famille] at hx
-  --rcases C F F_ferme F_inter with ⟨J, hJ, J_inter⟩
-  use J, hJ, J_inter
+    let G : Famille X := ⟨F.ι, f⟩
+    have G_ferme : ∀ P ∈ G, est_ferme P := by
+      intro P ⟨i, hi⟩; dsimp at hi; rw [←hi]; exact hf₁ i
+    have G_inter : ⋂ᵢ G = ∅ := by
+      rw [eq_empty_iff_forall_notMem]; intro x hx
+      rw [mem_inter_famille] at hx
+      have x_in : x ∈ ↑'(F.u i) := by
+        rw [hf₂ i]; exact hx (f i) (by use i)
+      rcases x_in with ⟨y, y_in, hy⟩
+      rw [←mem_empty_iff_false y, ←F_inter]
+      rw [mem_inter_famille]; intro A ⟨j, hj⟩
+      dsimp at hj; rw [←hj]; apply mem_of_mem_image_val
+      rw [hy, hf₂ j]; exact hx (f j) (by use j)
+--
+    rcases C G G_ferme G_inter with ⟨J, hJ, J_inter⟩
+    use J, hJ; rw [←preimage_empty (f := Subtype.val)]
+    rw [Famille.val_image_of_inter, ←J_inter]
+    congr; funext i; exact hf₂ i
 
 -- Théorème 6.5.
 
@@ -485,9 +497,12 @@ lemma compact_of_prod_two {Y : Fin 2 → Type} [M : ∀ i, EspaceMetrique (Y i)]
   apply And.intro _ conv₂; rw [←Function.comp_assoc]
   exact extr_conv_of_conv hψ conv₁
 
+noncomputable def ofMetProd {n} (h : n > 0) (Y : Fin n → Type) [∀ i, EspaceMetrique
+  (Y i)] := @ofMet _ (instProdFin h (F := Y))
+
 theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀ i,
   EspaceMetrique (Y i)] [C : ∀ i, EspCompact (Y i)] : @EspCompact (Π i, Y i)
-  (@ofMet _ (instProdFin (h := h))) _ := by
+  (ofMetProd h Y) _ := by
   induction n
   · case zero => linarith
   · case succ k hk =>
@@ -513,11 +528,29 @@ theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀
 lemma compact_of_prod_paves {n : ℕ} (h : n > 0) (R : ℝ) : @EspCompact (Π _ : Fin n,
   Induite [-R ≤__≤ R]) (@ofMet _ (instProdFin (h := h))) _ := by
   have comp_paves : ∀ _ : Fin n, @EspCompact (Induite [-R ≤__≤ R]) (@ofMet _ ofMetInd)
-    _ := by
-    intro _; sorry; --rw [comp_iff_comp_induite]; apply compact_of_pave
+    _ := by stop
+    intro _; rw [comp_iff_comp_induite]; apply compact_of_pave
   apply compact_of_prod_comp h (C := comp_paves)
 
 -- Corollaire 6.14.
+
+noncomputable instance MofRn {n} (h : n > 0) : EspaceMetrique (Π _ : Fin n, ℝ) :=
+  instProdFin h (F := _ ↦ ℝ)
+
+noncomputable instance TofRn {n} (h : n > 0) : EspTop (Π _ : Fin n, ℝ) :=
+  @ofMet _ (MofRn h)
+
+variable {n : ℕ}
+def R_n (_ : n > 0) : Type := Π _ : Fin n, ℝ
+
+noncomputable instance {h : n > 0} : EspaceMetrique (R_n h) := MofRn h
+noncomputable instance {h : n > 0} : EspTop (R_n h) := TofRn h
+
+theorem Rn_compact_iff_ferme_borne {n : ℕ} (h : n > 0) (A : Partie (R_n h)) :
+  est_compact A ↔ est_ferme A ∧ est_borne A := by
+  apply Iff.intro
+  · intro hc; exact ⟨ferme_of_compact hc, borne_of_compact hc⟩
+  · intro ⟨hf, hb⟩; sorry
 
 theorem borel_lebesgue {n : ℕ} (h : n > 0) (A : Partie ℝ ^ n) : est_compact A ↔
   est_ferme A ∧ est_borne A := by sorry

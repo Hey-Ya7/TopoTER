@@ -23,11 +23,10 @@ macro_rules (kind := for_all)
 
 abbrev Ω {α} : Set α := Set.univ
 notation "Partie " X => Set X
-
 abbrev Induite {X : Type} (A : Partie X) : Partie X := A
 
-instance {X : Type} {A : Partie X} : Coe (Partie X) (Partie Induite A) where
-  coe := S ↦ {x | (x : X) ∈ S}
+instance {X : Type} {A : Partie X} : Coe (Partie X) (Partie Induite A)
+  where coe := S ↦ {x | (x : X) ∈ S}
 
 lemma self_induite {X} {A : Partie X} : (A : Partie Induite A) = Ω := by
   ext x; unfold Induite; simp
@@ -258,6 +257,33 @@ lemma union_famille_compl (F : Famille X) : (⋃ᵢ F)ᶜ = ⋂ᵢ F`ᶜ := by
 
 lemma inter_famille_compl (F : Famille X) : (⋂ᵢ F)ᶜ = ⋃ᵢ F`ᶜ := by
   simp [iUnion, iInter, Compl]
+
+open Set
+lemma val_image_of_union {A : Partie X} (F : Famille (Induite A)) : letI G :
+(Famille X) := ⟨F.ι, i ↦ Subtype.val '' (F.u i)⟩; ⋃ᵢ F = Subtype.val ⁻¹' ⋃ᵢ G := by
+  rw [iUnion, iUnion, preimage_iUnion]; congr; ext i A
+  rw [preimage_val_image_val_eq_self]
+
+lemma val_image_of_inter {A : Partie X} (F : Famille (Induite A)) : letI G :
+(Famille X) := ⟨F.ι, i ↦ Subtype.val '' (F.u i)⟩; ⋂ᵢ F = Subtype.val ⁻¹' ⋂ᵢ G := by
+  rw [iInter, iInter, preimage_iInter]; congr; ext i A
+  rw [preimage_val_image_val_eq_self]
+
+lemma univ_sous_famille_union {F : Famille X} : letI G := SousFamille F Ω; ⋃ᵢ G =
+  ⋃ᵢ F := by
+  dsimp [SousFamille]; ext x; apply Iff.intro
+  · intro ⟨A, ⟨⟨i, hi⟩, hA⟩⟩; rw [mem_union_famille]; use A
+    dsimp at hi; apply And.intro _ hA; use i, hi
+  · intro ⟨A, ⟨⟨i, hi⟩, hA⟩⟩; rw [mem_union_famille]; use A
+    dsimp at hi; apply And.intro _ hA; use ⟨i, mem_univ i⟩
+
+lemma univ_sous_famille_inter {F : Famille X} : letI G := SousFamille F Ω; ⋂ᵢ G =
+  ⋂ᵢ F := by
+  dsimp [SousFamille]; ext x; apply Iff.intro
+  · intro h; rw [mem_inter_famille]; intro A ⟨i, hi⟩
+    dsimp at hi; rw [←hi]; apply h; use ⟨i, mem_univ i⟩
+  · intro h; rw [mem_inter_famille]; intro A ⟨i, hi⟩
+    dsimp at hi; rw [←hi]; apply h; use i
 
 end Famille
 
@@ -624,6 +650,10 @@ class Euclidean (E : Type) [AddCommGroup E] extends Module ℝ E,
 @[ext]
 structure K_n (K : Type) [Field K] (n : ℕ) where
   p : Fin n → K
+
+@[simp]
+instance toProd {K} [Field K] {n : ℕ} : Coe (K_n K n) (Π _ : Fin n, K)
+  := ⟨k ↦ i ↦ k.p i⟩
 
 notation : max K : max "^" n : max => K_n K n
 
