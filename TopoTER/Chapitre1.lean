@@ -1114,6 +1114,8 @@ def converges_to (u : ℕ → X) (l : X) := ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u 
 
 def converges (u : ℕ → X) := ∃ l, converges_to u l
 
+lemma conv_of_conv_to {u : ℕ → X} {l : X} : converges_to u l → converges u := _ ↦ (by use l)
+
 lemma conv_to_iff_really_conv_to (u : ℕ → ℝ) (l : ℝ) : converges_to u l ↔
   really_converges_to u l := by rfl
 
@@ -1212,6 +1214,9 @@ theorem cauchy_of_conv (u : ℕ → X) (h : converges u) : cauchy u := by
   have ineq₁ := ineq (u m) l (u n)
   have ineq₂ := hN m hm; have ineq₃ := hN n hn
   rw [symm l (u n)] at ineq₁; linarith
+
+lemma cauchy_of_conv_to {u : ℕ → X} {l : X} : converges_to u l → cauchy u :=
+  h ↦ cauchy_of_conv u (conv_of_conv_to h)
 
 -- b)
 

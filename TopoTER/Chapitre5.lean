@@ -77,6 +77,36 @@ open Metrique
 
 variable {X Y : Type} [EspaceMetrique X] [EspaceMetrique Y]
 
+lemma conv_to_equ {u : ℕ → X} {l : X} : converge_vers u l ↔ converges_to u l := by
+  unfold converge_vers converges_to
+  constructor
+  · intro conv ε ε_pos
+    have B_vois : est_vois l (Bₒ l ε) :=
+      ⟨Bₒ l ε, centre_in_boule l ε_pos, ouv_of_boule_ouv l ε, by rfl⟩
+    rcases conv (Bₒ l ε) B_vois with ⟨N, hN⟩
+    use N
+    intro n hn
+    specialize hN n hn
+    simp at hN
+    linarith [hN]
+  · rintro conv V ⟨v, l_v, v_ouv, v_V⟩
+    rcases ouv_contient_bf_centre v_ouv l_v with ⟨r, r_pos, B_v⟩
+    rcases conv r r_pos with ⟨N, hN⟩
+    use N
+    intro n hn
+    specialize hN n hn
+    apply B_v.trans
+    · exact v_V
+    · simp only [boule_fermee.eq_1, mem_setOf_eq, hN]
+
+lemma conv_equ {u : ℕ → X} : converge u ↔ converges u := by
+  unfold converge converges
+  constructor
+  · rintro ⟨l, hl⟩
+    exact ⟨l, conv_to_equ.mp hl⟩
+  · rintro ⟨l, hl⟩
+    exact ⟨l, conv_to_equ.mpr hl⟩
+
 lemma cauchy_unif_continu_cauchy (f : X → Y)
 (hcont : unif_continu f) (u : ℕ → X) (h : cauchy u) : cauchy (f ∘ u) := by
   intro ε ε_pos
@@ -88,15 +118,92 @@ lemma cauchy_unif_continu_cauchy (f : X → Y)
 theorem prolongement_unif_continu (A : Partie X) (f : A → Y) (hf : unif_continu f)
 (hY : complet Y) :
 ∃! (g : adh A → Y), (∀ x : A, f x = g ⟨x.1, contenu_adh A x.2⟩) ∧ unif_continu g := by
+
     have cvg_in_Y : ∀ u : ℕ → A, cauchy u → converges (f ∘ u) := by
       intro u hu
       have cauchyf : cauchy (f ∘ u) := cauchy_unif_continu_cauchy f hf u hu
       exact hY (f ∘ u) cauchyf
 
-    let suite_conv (x : adh A) : ∃ u : ℕ → X, (∀ n : ℕ, u n ∈ A) ∧ converge_vers u x := by
-      refine (in_adh_suite A ↑x).mp x.2
+    have suite_conv : ∀ x : adh A, ∃ u : ℕ → A, converge_vers (fun n ↦ ⟨u n, contenu_adh A (u n).2⟩) x := by
+      intro x
+      rcases (in_adh_suite A x).mp x.2 with ⟨u, u_A, hu⟩
+      have : ∀ (n : ℕ), u n ∈ adh A := n ↦ contenu_adh A (u_A n)
+      use (fun n ↦ ⟨u n, u_A n⟩)
+      intro V V_vois
+      rcases V_vois with ⟨v, x_v, v_ouv, v_V⟩
+      rcases v_ouv with ⟨w, w_ouv, w_v⟩
+      have segolene : est_vois (↑x) w := by
+        use w
+        constructor
+        · rw [w_v] at x_v
+          exact x_v
+        · exact w_ouv
+        · exact subset_refl w
+      rcases hu w segolene with ⟨N, hN⟩
+      use N
+      intro n hn
+      simp
+      apply v_V
+      rw [w_v]
+      exact hN n hn
 
-    let g : adh A → Y := fun x ↦ let u := Classical.choose (suite_conv x); sorry
+
+
+
+
+  --  have eeeeeeeee : ∀ x : adh A, ∃ l : Y, ∀ u : ℕ → A, (converge_vers (fun n => (u n : X)) (x : X))
+  --    → converges_to (f ∘ u) l := by
+  --    intro x
+  --    rcases suite_conv x with ⟨y', hy1, hy2⟩
+  --    have hy3 : converges y' := by
+  --      rw [←conv_equ]
+  --      use x
+  --    let y : ℕ → ↑A := fun n ↦ ⟨y' n, hy1 n⟩
+  --    rcases cvg_in_Y y (cauchy_of_conv y' hy3) with ⟨l, hl⟩
+  --    use l
+  --    intro u u_conv
+  --    sorry
+
+    have unicite_lim : ∀ x : adh A, ∀ u v : ℕ → A, ((converges_to (fun n => (u n : X)) (x : X)) ∧ (converges_to (fun n => (v n : X)) (x : X)))
+      → ∃ l : Y,  (converges_to (f ∘ u) l  ∧ converges_to (f ∘ v) l) := by
+        intro x u v ⟨hu, hv⟩
+        let z : ℕ → ↑A := n ↦ if Even n then u n else v n
+        -- 1. On définit la version "étendue" de z dans X
+        let z_X := fun n ↦ (z n : X)
+        have z_conv : converges z_X := by
+          use x
+          intro ε ε_pos
+          rcases hu ε ε_pos with ⟨N, hN⟩
+          rcases hv ε ε_pos with ⟨M, hM⟩
+          use max N M
+          intro n hn
+          by_cases! pair : Even n
+          · unfold z_X z
+            simp [pair]
+            exact hN n (le_of_max_le_left hn)
+          · unfold z_X z
+            simp [pair]
+            exact hM n (le_of_max_le_right hn)
+        -- 2. On prouve qu'elle est Cauchy dans X (car elle y converge vers x)
+        have cauchy_z_X : cauchy z_X := cauchy_of_conv z_X z_conv
+
+        -- 3. On montre que cauchy z_X est identique à cauchy z
+        -- (En Lean, c'est vrai par définition car la distance est la même)
+        have cauchy_z : cauchy z := cauchy_z_X
+
+        --have cauchy_z : cauchy z := cauchy_of_conv z z_conv
+        have lil_z : converges (f∘z) := cvg_in_Y z cauchy_z
+        rcases lil_z with ⟨l, hl⟩
+        use l
+        sorry
+        --constructor
+        --· have conv_fu : converges (f ∘ u) := cvg_in_Y u (cauchy_of_conv_to hu)
+
+    have conv_u_fu : ∀ u : ℕ → A, converges u → converges (f ∘ u) :=
+      fun u h ↦ hY (f ∘ u) (cauchy_unif_continu_cauchy f hf u (cauchy_of_conv u h))
+
+    let g := fun x ↦ Classical.choose (suite_conv x)
+
     sorry
 
 lemma diam_born_sub {A B : Partie X} :
@@ -138,29 +245,6 @@ diam_bornee B → A ⊆ B → diam A ≤ diam B := by
           exact ⟨A_B hx, by use y; exact ⟨A_B hy, hxy⟩⟩
       · linarith
     · linarith
-
-lemma conv_equ {u : ℕ → X} {l : X} :
-converge_vers u l ↔ converges_to u l := by
-  unfold converge_vers converges_to
-  constructor
-  · intro conv ε ε_pos
-    have B_vois : est_vois l (Bₒ l ε) :=
-      ⟨Bₒ l ε, centre_in_boule l ε_pos, ouv_of_boule_ouv l ε, by rfl⟩
-    rcases conv (Bₒ l ε) B_vois with ⟨N, hN⟩
-    use N
-    intro n hn
-    specialize hN n hn
-    simp at hN
-    linarith [hN]
-  · rintro conv V ⟨v, l_v, v_ouv, v_V⟩
-    rcases ouv_contient_bf_centre v_ouv l_v with ⟨r, r_pos, B_v⟩
-    rcases conv r r_pos with ⟨N, hN⟩
-    use N
-    intro n hn
-    specialize hN n hn
-    apply B_v.trans
-    · exact v_V
-    · simp only [boule_fermee.eq_1, mem_setOf_eq, hN]
 
 -----------------------------------------------------------------------------------------
 
@@ -253,7 +337,7 @@ converges_to (fun n ↦ diam (F n)) 0 -> ∃ x : X, ⋂ n : ℕ, F n = {x} := by
     · have x_eq_y : ∀ n ≥ N, x n = y n := by
         intro n hn
         simp [y, hn]
-      rw [←conv_ge_N_equ x_eq_y, conv_equ]
+      rw [←conv_ge_N_equ x_eq_y, conv_to_equ]
       exact hl
 
   have mborn : ∃ N : ℕ, ∀ n : ℕ, n ≥ N → diam_bornee (F n) := by

@@ -413,6 +413,42 @@ lemma conv_equ_ouv (u : ℕ -> X) (l : X) : converge_vers u l ↔
 
 def converge (u : ℕ → X) := ∃ l : X, converge_vers u l
 
+lemma conv_of_conv_vers {u : ℕ → X} {l : X} : converge_vers u l → converge u := _ ↦ (by use l)
+
+lemma converge_vers_sub {A : Partie X} {u : ℕ → A} (hu : converge u) :
+converge (fun n ↦ (u n : X)) := by
+  rcases hu with ⟨l, hl⟩
+  use l
+  intro V V_vois
+  have monique : est_vois l {x | ↑x ∈ V} := by
+    rcases V_vois with ⟨u, l_u, u_ouv, u_V⟩
+    unfold est_vois
+    use u ∩ A
+    constructor
+    · exact ⟨l_u, by simp⟩
+    · use u, u_ouv
+      simp
+      rfl
+    · simp only [Subtype.coe_prop, setOf_true, inter_univ, setOf_subset_setOf, Subtype.forall]
+      exact fun _ _ a_u ↦ u_V a_u
+  exact hl V monique
+
+def converge_sub_vers {A : Partie X} (u : ℕ → A)
+(hu : converge (fun n ↦ (⟨u n, contenu_adh A (u n).2⟩ : adh A))) :
+converge (fun n ↦ (u n : X)) := by
+  rcases hu with ⟨l, hl⟩
+  use l
+  intro V V_vois
+  have chantal : est_vois l {x | ↑x ∈ V} := by
+    rcases V_vois with ⟨u, l_u, u_ouv, u_V⟩
+    use u
+    constructor
+    · exact l_u
+    · exact ⟨u, u_ouv, by rfl⟩
+    · simp only [adh, mem_setOf_eq, coe_setOf, setOf_subset_setOf, Subtype.forall]
+      exact fun _ _ a ↦ u_V a
+  exact hl V chantal
+
 lemma conv_vers_iff_conv_to {X : Type} [EspaceMetrique X] (u : ℕ → X) (l : X) :
   converge_vers u l ↔ converges_to u l := by
   rw [lim_iff_lim_vois, conv_equ_ouv]; apply Iff.intro
