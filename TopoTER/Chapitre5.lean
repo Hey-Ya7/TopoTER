@@ -115,15 +115,14 @@ lemma cauchy_unif_continu_cauchy (f : X → Y)
   rcases h with ⟨N, hnN⟩
   exact ⟨N, fun m hm n hn ↦ hconvδ (u m) (u n) (hnN m hm n hn)⟩
 
-theorem prolongement_unif_continu (A : Partie X) (f : A → Y) (hf : unif_continu f)
-(hY : complet Y) :
-∃! (g : adh A → Y), (∀ x : A, f x = g ⟨x.1, contenu_adh A x.2⟩) ∧ unif_continu g := by
+theorem prolongement_unif_continu (A : Partie X) [EspaceMetrique A] (f : A → Y) (hf : unif_continu f)
+(hY : complet Y) : False :=
+--∃! (g : adh A → Y), (∀ x : A, f x = g ⟨x.1, contenu_adh A x.2⟩) ∧ unif_continu g := by
 
-    have cvg_in_Y : ∀ u : ℕ → A, cauchy u → converges (f ∘ u) := by
-      intro u hu
-      have cauchyf : cauchy (f ∘ u) := cauchy_unif_continu_cauchy f hf u hu
-      exact hY (f ∘ u) cauchyf
-
+--    have cvg_in_Y : ∀ u : ℕ → A, cauchy u → converges (f ∘ u) := by
+--      intro u hu
+--      have cauchyf : cauchy (f ∘ u) := cauchy_unif_continu_cauchy f hf u hu
+--      exact hY (f ∘ u) cauchyf
     have suite_conv : ∀ x : adh A, ∃ u : ℕ → A, converge_vers (fun n ↦ ⟨u n, contenu_adh A (u n).2⟩) x := by
       intro x
       rcases (in_adh_suite A x).mp x.2 with ⟨u, u_A, hu⟩
@@ -146,10 +145,6 @@ theorem prolongement_unif_continu (A : Partie X) (f : A → Y) (hf : unif_contin
       apply v_V
       rw [w_v]
       exact hN n hn
-
-
-
-
 
   --  have eeeeeeeee : ∀ x : adh A, ∃ l : Y, ∀ u : ℕ → A, (converge_vers (fun n => (u n : X)) (x : X))
   --    → converges_to (f ∘ u) l := by
@@ -186,28 +181,26 @@ theorem prolongement_unif_continu (A : Partie X) (f : A → Y) (hf : unif_contin
             exact hM n (le_of_max_le_right hn)
         -- 2. On prouve qu'elle est Cauchy dans X (car elle y converge vers x)
         have cauchy_z_X : cauchy z_X := cauchy_of_conv z_X z_conv
+        sorry
 
         -- 3. On montre que cauchy z_X est identique à cauchy z
         -- (En Lean, c'est vrai par définition car la distance est la même)
-        have cauchy_z : cauchy z := cauchy_z_X
+        --have cauchy_z : cauchy z := cauchy_z_X
 
         --have cauchy_z : cauchy z := cauchy_of_conv z z_conv
-        have lil_z : converges (f∘z) := cvg_in_Y z cauchy_z
-        rcases lil_z with ⟨l, hl⟩
-        use l
-        sorry
+        --have lil_z : converges (f∘z) := cvg_in_Y z cauchy_z
+        --rcases lil_z with ⟨l, hl⟩
+        --use l
         --constructor
         --· have conv_fu : converges (f ∘ u) := cvg_in_Y u (cauchy_of_conv_to hu)
 
-    have conv_u_fu : ∀ u : ℕ → A, converges u → converges (f ∘ u) :=
-      fun u h ↦ hY (f ∘ u) (cauchy_unif_continu_cauchy f hf u (cauchy_of_conv u h))
+    --have conv_u_fu : ∀ u : ℕ → A, converges u → converges (f ∘ u) :=
+      --fun u h ↦ hY (f ∘ u) (cauchy_unif_continu_cauchy f hf u (cauchy_of_conv u h))
 
-    let g := fun x ↦ Classical.choose (suite_conv x)
+    --let g := fun x ↦ Classical.choose (suite_conv x)
+  sorry
 
-    sorry
-
-lemma diam_born_sub {A B : Partie X} :
-diam_bornee B → A ⊆ B → diam_bornee A := by
+lemma diam_born_sub {A B : Partie X} : diam_bornee B → A ⊆ B → diam_bornee A := by
   intro bornB A_B
   rw [bornee_iff_bdd]
   rw [bornee_iff_bdd] at bornB

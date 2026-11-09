@@ -23,10 +23,12 @@ macro_rules (kind := for_all)
 
 abbrev Ω {α} : Set α := Set.univ
 notation "Partie " X => Set X
-abbrev Induite {X : Type} (A : Partie X) : Partie X := A
+abbrev Induite {X : Type} (A : Partie X) : Type := Set.Elem A
+
+notation : max "↑'" t : max => Subtype.val '' t
 
 instance {X : Type} {A : Partie X} : Coe (Partie X) (Partie Induite A)
-  where coe := S ↦ {x | (x : X) ∈ S}
+  where coe := S ↦ {x | x.val ∈ S}
 
 lemma self_induite {X} {A : Partie X} : (A : Partie Induite A) = Ω := by
   ext x; unfold Induite; simp
@@ -54,6 +56,44 @@ abbrev C : Partie ℂ := Ω
 
 abbrev C_star : Partie ℂ := {x : ℂ | x ≠ 0}
 notation "Cˣ" => C_star
+
+lemma range_eq_image_univ {α β : Type} (f : α → β) : Set.range f = f '' Ω := by
+  ext x; apply Iff.intro
+  · intro ⟨a, ha⟩; use a, Set.mem_univ a
+  · intro ⟨a, _, ha⟩; use a
+
+open Function
+
+variable {α : Sort u_1} {β : Sort u_2} {f : α → β}
+
+noncomputable def invBij (bij : Bijective f) := b ↦ (bij.existsUnique b).choose
+
+lemma left_inverse_of_invBij (hf : Bijective f) : LeftInverse (invBij hf) f := by
+  intro x; have h := Exists.choose_spec (hf.existsUnique (f x))
+  symm; apply h.right; rfl
+
+lemma right_inverse_of_invBij (hf : Bijective f) : RightInverse (invBij hf) f := by
+  intro y; have h := Exists.choose_spec (hf.existsUnique y)
+  exact h.left
+
+lemma invBij_comp (hf : Bijective f) : (invBij hf) ∘ f = id := by
+  ext x; exact left_inverse_of_invBij hf x
+
+lemma comp_invBij (hf : Bijective f) : f ∘ (invBij hf) = id := by
+  ext x; exact right_inverse_of_invBij hf x
+
+lemma injective_of_invBij (hf : Bijective f) : Injective (invBij hf) := by
+  by_cases h : Nonempty β
+  · rw [injective_iff_hasLeftInverse]; use f
+    apply RightInverse.leftInverse; exact right_inverse_of_invBij hf
+  · rw [not_nonempty_iff] at h; apply injective_of_subsingleton
+
+lemma surjective_of_invBij (hf : Bijective f) : Surjective (invBij hf) := by
+  rw [surjective_iff_hasRightInverse]; use f
+  apply LeftInverse.rightInverse; exact left_inverse_of_invBij hf
+
+theorem bijective_of_invBij (hf : Bijective f) : Bijective (invBij hf) := by
+  exact ⟨injective_of_invBij hf, surjective_of_invBij hf⟩
 
 lemma Z_eq_of_sub_lt_one (x y : Z) (h : |(x : ℝ) - y| < 1) : x = y := by
   rcases x.prop with ⟨m, hm⟩; rcases y.prop with ⟨n, hn⟩
@@ -268,6 +308,15 @@ lemma val_image_of_inter {A : Partie X} (F : Famille (Induite A)) : letI G :
 (Famille X) := ⟨F.ι, i ↦ Subtype.val '' (F.u i)⟩; ⋂ᵢ F = Subtype.val ⁻¹' ⋂ᵢ G := by
   rw [iInter, iInter, preimage_iInter]; congr; ext i A
   rw [preimage_val_image_val_eq_self]
+
+open Set.Notation
+lemma val_preimage_of_union {A : Partie X} (F : Famille X) : letI G : Famille A :=
+  ⟨F.ι, i ↦ A ↓∩ (F.u i)⟩; ⋃ᵢ G = A ↓∩ ⋃ᵢ F := by
+  unfold iUnion; rw [preimage_iUnion]
+
+lemma val_preimage_of_inter {A : Partie X} (F : Famille X) : letI G : Famille A :=
+  ⟨F.ι, i ↦ A ↓∩ (F.u i)⟩; ⋂ᵢ G = A ↓∩ ⋂ᵢ F := by
+  unfold iInter; rw [preimage_iInter]
 
 lemma univ_sous_famille_union {F : Famille X} : letI G := SousFamille F Ω; ⋃ᵢ G =
   ⋃ᵢ F := by

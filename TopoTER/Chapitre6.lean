@@ -87,7 +87,7 @@ instance comp_induite_of_comp {A : Partie X} {comp : est_compact A} :
     rcases J_couvre hx with ⟨B, ⟨i, hi⟩, x_in⟩
     use F.u i, (by use i); dsimp [C] at hi; rwa [(hf i).2, hi]
 
-open Set.Notation in
+open Set.Notation
 theorem comp_iff_comp_induite (A : Partie X) : EspCompact (Induite A) ↔
   est_compact A := by
   apply Iff.intro
@@ -109,6 +109,44 @@ theorem comp_iff_comp_induite (A : Partie X) : EspCompact (Induite A) ↔
                rcases J_couvre X.prop with ⟨B, ⟨i, hi⟩, X_in⟩
                use C.u i, (by use i); dsimp at hi; rwa [←hi] at X_in
   · case mpr => intro h; apply comp_induite_of_comp; exact h
+
+omit [EspSepareT2 X] in
+theorem comp_iff_subset_induite {A B : Partie X} (h : A ⊆ B) : @est_compact B
+  ofInd A ↔ est_compact A := by
+  apply Iff.intro
+  · case mp => intro cmp C C_ouvert C_couvre
+               let F : Famille (Induite B) := ⟨C.ι, i ↦ C.u i⟩
+               have F_ouvert : ∀ P ∈ F, est_ouvert P := by
+                intro P ⟨i, hi⟩; dsimp at hi; rw [←hi]
+                apply ouvert_induite_of_ouvert; apply C_ouvert; use i
+               have F_couvre : couvrement F A := by
+                intro x hx; rw [mem_union_famille]
+                rcases C_couvre hx with ⟨P, ⟨i, hi⟩, hP⟩
+                use F.u i, (by use i); dsimp at *; rwa [←hi] at hP
+--
+               rcases cmp F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩
+               use J, hJ; intro x hx; let x' : B := ⟨x, h hx⟩
+               have x'_in : x' ∈ {x | ↑x ∈ A} := by exact hx
+               rcases J_couvre x'_in with ⟨P, ⟨i, hi⟩, in_P⟩
+               use (C.u i), (by use i); dsimp at *; rwa [←hi] at in_P
+  · case mpr =>
+      intro cmp F F_ouvert F_couvre; dsimp [ofInd] at F_ouvert
+      have exists_o : ∀ i : F.ι, ∃ P, est_ouvert P ∧ F.u i = B ↓∩ P := by
+        intro i; exact F_ouvert (F.u i) (by use i)
+      choose f hf₁ hf₂ using exists_o
+      let C : Famille X := ⟨F.ι, f⟩
+      have C_ouvert : ∀ P ∈ C, est_ouvert P := by
+        intro P ⟨i, hi⟩; dsimp at hi; rw [←hi]; exact hf₁ i
+      have C_couvre : couvrement C A := by
+        intro x hx; rw [mem_union_famille]; let x' : B := ⟨x, h hx⟩
+        have x'_in : x' ∈ {x | ↑x ∈ A} := by exact hx
+        rcases F_couvre x'_in with ⟨P, ⟨i, hi⟩, hP⟩
+        use C.u i, (by use i); dsimp at *; rwa [←hi, hf₂ i] at hP
+--
+      rcases cmp C C_ouvert C_couvre with ⟨J, hJ, J_couvre⟩
+      use J, hJ; intro x hx
+      rcases J_couvre hx with ⟨P, ⟨i, hi⟩, in_P⟩
+      use (F.u i), (by use i); rw [hf₂ i]; rwa [←hi] at in_P
 
 -- b)
 
@@ -154,6 +192,44 @@ lemma compact_of_finite {A : Partie X} (h : Finite A) : est_compact A := by
   rw [mem_union_famille]; use F.u (f ⟨x, hx⟩)
   have f_in : f ⟨x, hx⟩ ∈ range f := by use ⟨x, hx⟩
   apply And.intro _ (hu x hx); dsimp [SousFamille]; use ⟨f ⟨x, hx⟩, f_in⟩
+
+-- b)
+
+omit [EspSepareT2 Y] in
+lemma comp_of_homeo_of_comp [comp : EspCompact X] [Homeo : Homeomorphe X Y]
+  (S := sep_iff_homeo_sep (Homeo := Homeo)) : EspCompact Y where
+  compact := by {
+    have Homeo' : Homeomorphe Y X := homeo_symm X Y
+    let H' := Homeo'.est_homeo; let f' := Homeo'.homeo; let f := H'.inv
+    intro C C_ouvert C_couvre
+    let F : Famille X := ⟨C.ι, i ↦ f' '' (C.u i)⟩
+    have F_ouvert : ∀ P ∈ F, est_ouvert P := by
+      intro P ⟨i, hi⟩; dsimp [F] at hi; rw [←hi, ←ouv_iff_homeo_ouv]
+      exact C_ouvert (C.u i) (by use i)
+--
+    have F_couvre : couvrement F Ω := by
+      intro x hx; rcases C_couvre (mem_univ (f x)) with ⟨s, ⟨i, hi⟩, hs⟩
+      dsimp at hi; rw [←hi] at hs; use F.u i, by use i
+      rw [←id_def x, ←H'.right_inv]; exact mem_image_of_mem f' hs
+    rcases comp.compact F F_ouvert F_couvre with ⟨J, hJ, J_couvre⟩; use J, hJ
+    intro y hy; rcases J_couvre (mem_univ (f' y)) with ⟨s, ⟨i, hi⟩, hs⟩
+    dsimp at hi; rw [←hi] at hs; use C.u i, by use i
+    apply mem_image_of_mem f at hs; rw [←Function.comp_apply (f := f)] at hs
+    rwa [←image_comp, H'.left_inv, image_id] at hs
+  }
+
+omit [EspSepareT2 Y] in
+lemma comp_iff_homeo_comp [Homeo : Homeomorphe X Y] (S := sep_iff_homeo_sep
+  (Homeo := Homeo)) : EspCompact X ↔ EspCompact Y := by
+  apply Iff.intro
+  · intro h; apply comp_of_homeo_of_comp (X := X)
+  · intro h; apply comp_of_homeo_of_comp (X := Y)
+
+omit [EspSepareT2 Y] in
+lemma comp_iff_homeo_comp₂ {f : X → Y} [H : Homeomorphisme f] (S := sep_iff_homeo_sep
+  (Homeo := ⟨f, H⟩)) (A : Partie X) : est_compact A ↔ est_compact (f '' A) := by
+  rw [←comp_iff_comp_induite]; let Homeo := ind_homeo_ind (H := H) A
+  rw [comp_iff_homeo_comp (Homeo := Homeo), comp_iff_comp_induite]
 
 -- Théorème 6.4.
 
@@ -222,6 +298,13 @@ theorem compact_of_ferme {A : Partie X} [C : EspCompact X] (hf : est_ferme A) :
     rw [Famille.val_image_of_inter, ←J_inter]
     congr; funext i; exact hf₂ i
 
+lemma comp_of_ferme_subset_comp {A B : Partie X} (h : A ⊆ B) (hf : est_ferme A)
+  (hc : est_compact B) : est_compact A := by
+  rw [←comp_iff_comp_induite] at hc
+  have hc' : @est_compact B ofInd A := by
+    apply compact_of_ferme; exact ferme_induite_of_ferme hf
+  rwa [comp_iff_subset_induite h] at hc'
+
 -- Théorème 6.5.
 
 omit [EspSepareT2 X] [EspSepareT2 Y] in
@@ -244,6 +327,11 @@ theorem compact_of_continu_image {f : X → Y} (h : est_continu f) {A : Partie X
   apply J_couvre at x_in; rcases x_in with ⟨s, s_in, hs⟩
   rcases s_in with ⟨i, hi⟩; rw [←hi] at hs
   rw [mem_union_famille]; use C.u i, (by use i), (by rwa [←hx])
+
+omit [EspSepareT2 Y] in
+theorem compact_of_continu_range {f : X → Y} (h : est_continu f) (comp : EspCompact X)
+  : est_compact (range f) := by
+  rw [range_eq_image_univ]; apply compact_of_continu_image h comp.compact
 
 -- 6.2. Espaces métriques compacts
 
@@ -411,21 +499,12 @@ theorem compact_iff_seq_comp (E : Type) [EspaceMetrique E] : EspCompact E ↔
 theorem compact_iff_ferme_borne (A : Partie ℝ) : est_compact A ↔ est_ferme A ∧
   est_borne A := by
   apply Iff.intro
-  · case mp => intro h; apply And.intro
-               · exact ferme_of_compact h
-               · exact borne_of_compact h
+  · case mp => intro h; exact ⟨ferme_of_compact h, borne_of_compact h⟩
   · case mpr => intro ⟨hf, hb⟩; rw [←comp_iff_comp_induite]
-                suffices h : seq_compact (Induite A) by
-                  rw [←compact_iff_seq_comp] at h; constructor
-                  have cmp := h.compact; intro C C_ouvert C_couvre
-                  have C_ouvert' : ∀ P ∈ C, ofMet.est_ouvert P := by
-                    intro P hP; rw [←ouv_of_ind_iff_ouv_of_metrique_ind]
-                    exact C_ouvert P hP
-                  rcases cmp C C_ouvert' C_couvre with ⟨J, hJ, J_couvre⟩
-                  use J, hJ, J_couvre
+                rw [comp_iff_homeo_comp (Y := MetInduite A)]
+                rw [compact_iff_seq_comp]; rcases hb with ⟨M, M_nneg, hM⟩
+                intro u; let u' : ℕ → ℝ := n ↦ (u n).val
 --
-                intro u; rcases hb with ⟨M, M_nneg, hM⟩
-                let u' : ℕ → ℝ := n ↦ u n
                 have seq_bdd : seq_bornee u' := by
                   use M, M_nneg; intro x hx y hy; apply hM
                   · rcases hx with ⟨n, hn⟩; unfold u' at hn
@@ -488,7 +567,7 @@ theorem bornes_atteintes {f : X → ℝ} (h : est_continu f) {A : Partie X} (ne 
 -- Proposition 6.13.
 
 lemma compact_of_prod_two {Y : Fin 2 → Type} [M : ∀ i, EspaceMetrique (Y i)]
-  (C : ∀ i, seq_compact (Y i)) : seq_compact (Π i, Y i) := by
+  (C : ∀ i, seq_compact (Y i)) : seq_compact (MetProd Y) := by
   intro u; rw [Fin.forall_fin_two] at C
   rcases C.left (n ↦ (u n) 0) with ⟨ϕ, hϕ, conv₁⟩
   rcases C.right (n ↦ (u (ϕ n)) 1) with ⟨ψ, hψ, conv₂⟩
@@ -497,12 +576,9 @@ lemma compact_of_prod_two {Y : Fin 2 → Type} [M : ∀ i, EspaceMetrique (Y i)]
   apply And.intro _ conv₂; rw [←Function.comp_assoc]
   exact extr_conv_of_conv hψ conv₁
 
-noncomputable def ofMetProd {n} (h : n > 0) (Y : Fin n → Type) [∀ i, EspaceMetrique
-  (Y i)] := @ofMet _ (instProdFin h (F := Y))
-
 theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀ i,
-  EspaceMetrique (Y i)] [C : ∀ i, EspCompact (Y i)] : @EspCompact (Π i, Y i)
-  (ofMetProd h Y) _ := by
+  EspaceMetrique (Y i)] [C : ∀ i, EspCompact (Y i)] : EspCompact (MetProdFin h Y)
+  := by
   induction n
   · case zero => linarith
   · case succ k hk =>
@@ -513,7 +589,7 @@ theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀
 --
     · case succ k' hk' =>
       let Y' : Fin (k' + 1) → Type := i ↦ Y (Fin.castSucc i)
-      have hyp : @EspCompact (Π i, Y' i) ofMet _ := by
+      have hyp : EspCompact (MetProd Y') := by
         apply hk; linarith
       specialize C (Fin.last (k' + 1))
       rw [compact_iff_seq_comp] at *; intro u
@@ -525,35 +601,46 @@ theorem compact_of_prod_comp {n : ℕ} (h : n > 0) {Y : Fin n → Type} [M : ∀
       apply And.intro _ conv₂; rw [←Function.comp_assoc, ←converges_in_prod]
       exact extr_conv_of_conv hψ conv₁
 
-lemma compact_of_prod_paves {n : ℕ} (h : n > 0) (R : ℝ) : @EspCompact (Π _ : Fin n,
-  Induite [-R ≤__≤ R]) (@ofMet _ (instProdFin (h := h))) _ := by
-  have comp_paves : ∀ _ : Fin n, @EspCompact (Induite [-R ≤__≤ R]) (@ofMet _ ofMetInd)
-    _ := by stop
-    intro _; rw [comp_iff_comp_induite]; apply compact_of_pave
-  apply compact_of_prod_comp h (C := comp_paves)
-
 -- Corollaire 6.14.
-
-noncomputable instance MofRn {n} (h : n > 0) : EspaceMetrique (Π _ : Fin n, ℝ) :=
-  instProdFin h (F := _ ↦ ℝ)
-
-noncomputable instance TofRn {n} (h : n > 0) : EspTop (Π _ : Fin n, ℝ) :=
-  @ofMet _ (MofRn h)
 
 variable {n : ℕ}
 def R_n (_ : n > 0) : Type := Π _ : Fin n, ℝ
 
-noncomputable instance {h : n > 0} : EspaceMetrique (R_n h) := MofRn h
-noncomputable instance {h : n > 0} : EspTop (R_n h) := TofRn h
+noncomputable instance instRn (h : n > 0) : EspaceMetrique (R_n h) := instProdFin h _
 
 theorem Rn_compact_iff_ferme_borne {n : ℕ} (h : n > 0) (A : Partie (R_n h)) :
   est_compact A ↔ est_ferme A ∧ est_borne A := by
   apply Iff.intro
   · intro hc; exact ⟨ferme_of_compact hc, borne_of_compact hc⟩
-  · intro ⟨hf, hb⟩; sorry
+  · intro ⟨hf, hb⟩; rw [prod_borne_iff_borne (nempty := ⟨0, h⟩)] at hb
+    simp only [bornee_iff_in_pave] at hb; choose m hm using hb
+    let P := prod_espaces (i ↦ [-m i ≤__≤ m i])
+    have in_P : A ⊆ P := by
+      intro x hx; rw [mem_prod_espaces]; intro i
+      apply hm i; use x, hx
+    apply comp_of_ferme_subset_comp in_P hf
+    unfold P; rw [←comp_iff_comp_induite]
+--
+    rw [←comp_iff_homeo_comp (Homeo := homeo_ind_prod_fin)]
+    rw [comp_iff_homeo_comp (Homeo := homeo_prod_induite)]
+    let H_ind := i ↦ homeo_met_ind [-m i ≤__≤ m i]
+    unfold ofProdInd prod_induite
+    rw [comp_iff_homeo_comp (Homeo := prodHomeo (Homeo := H_ind))]
+    rw [comp_iff_homeo_comp (Homeo := homeo_prod_fin (h := h))]
+    have comp : ∀ i, EspCompact (MetInduite [-m i ≤__≤ m i]) := by
+      intro i; rw [←comp_iff_homeo_comp (Homeo := homeo_met_ind _)]
+      rw [comp_iff_comp_induite]; apply compact_of_pave
+    apply compact_of_prod_comp (C := comp) h
 
 theorem borel_lebesgue {n : ℕ} (h : n > 0) (A : Partie ℝ ^ n) : est_compact A ↔
-  est_ferme A ∧ est_borne A := by sorry
+  est_ferme A ∧ est_borne A := by
+  apply Iff.intro
+  · intro hc; exact ⟨ferme_of_compact hc, borne_of_compact hc⟩
+  · intro ⟨hf, hb⟩; let Homeo := Rn_homeo_prod (h := h)
+    let H := Homeo.est_homeo; rw [comp_iff_homeo_comp₂ (H := H)]
+    rw [Rn_compact_iff_ferme_borne]; apply And.intro
+    · rwa [←ferme_iff_homeo_ferme (H := H)]
+    · dsimp [Homeo, Rn_homeo_prod]; rwa [←Rn_borne_iff_prod_borne]
 
 -- 6.4. Compacts d'un e.v.n. de dimension finie
 
@@ -612,15 +699,18 @@ theorem K_norm_equiv_sup {N : ℝ ^ n → ℝ} (h : estNorme (K := ℝ) N) :
   by_cases hyp : n > 0
   · let NS := norme_sup (K := ℝ) (n := n)
     have isN := sup_est_norme (K := ℝ) (n := n)
+    have hl : k_lipschitz NS :=
+      ⟨1, one_pos, norme_lipschitz (K := ℝ)⟩
     have hs : est_continu NS :=
-      unif_continu_cont NS (lip_continu NS ⟨1, one_pos, norme_lipschitz (K := ℝ)⟩)
+      unif_continu_cont NS (lip_continu NS hl)
     have hN : est_continu N :=
       unif_continu_cont N (lip_continu N (norme_Kn_lipschitz h))
 --
     let U := norme_sup (K := ℝ) (n := n) ⁻¹' {1}
     have hf : est_ferme U := by
-      rw [continu_iff_preim_ferm] at hs;
-      exact hs {1} (ferme_of_compact (compact_of_finite Finite.of_subsingleton))
+      rw [continu_iff_preim_ferm] at hs; apply hs {1}
+      apply ferme_of_compact; apply compact_of_finite
+      exact Finite.of_subsingleton
     have hb : est_borne U := by
       use 2, zero_le_two; intro x hx y hy
       have eq : ∀ z ∈ U, d(z, 0) = 1 := by
@@ -671,9 +761,9 @@ theorem K_norm_equiv_sup {N : ℝ ^ n → ℝ} (h : estNorme (K := ℝ) N) :
           apply lt_of_le_of_ne
           · apply instGroupeNormeK_n.nneg
           · intro eq; apply zero; rw [←isN.definie, eq]
-        rw [le_inv_mul_iff₀ α_pos, ←le_inv_mul_iff₀' NS_pos, ←abs_of_pos
-            (inv_pos_of_pos NS_pos), ←valuation_real, ←h.homogen]
-        apply hα; exact normalise isN x zero
+        rw [le_inv_mul_iff₀ α_pos, ←le_inv_mul_iff₀' NS_pos,
+            ←abs_of_pos (inv_pos_of_pos NS_pos), ←valuation_real]
+        rw [←h.homogen]; apply hα; exact normalise isN x zero
 --
   · have eq_zero : n = 0 := by linarith
     constructor

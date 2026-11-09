@@ -186,6 +186,8 @@ end Discrete
 
 -- 5.
 
+def MetInduite (A : Partie X) : Type := Set.Elem A
+
 def induite_dist (A : Partie X) : A → A → ℝ := x ↦ y ↦ d(x.val, y.val)
 
 lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
@@ -196,13 +198,12 @@ lemma dist_of_induite (A : Partie X) : estDistance (induite_dist A) := by
   · case symm => intro x y; unfold induite_dist; apply symm
   · case ineq => intro x y z; unfold induite_dist; apply ineq
 
-variable {A : Partie X}
-
-instance ofMetInd : EspaceMetrique (Induite A) where
+instance ofMetInd (A : Partie X) : EspaceMetrique (MetInduite A) where
   d := induite_dist A
   is_dist := dist_of_induite A
 
-lemma dist_induite (x y : A) : d(x, y) = d(x.val, y.val) := by rfl
+lemma dist_induite {A : Partie X} (x y : MetInduite A) : d(x, y) = d(x.val, y.val)
+  := by rfl
 
 end Metrique
 
@@ -719,7 +720,7 @@ ouverte U → U.Nonempty → ∃ c : X, ∃ r > 0, Bf c r ⊆ U :=
 @[simp] theorem fermee_of_uni : fermee (X := X) Ω := by
   rw [fermee_def, Set.compl_univ]; apply ouverte_of_vide
 
-abbrev Z_induite : Partie ℝ := Induite Z
+abbrev Z_induite : Type := MetInduite Z
 
 lemma boule_in_Z_induite : ∀ x : Z_induite, Bₒ x (1/2) = {x} := by
   intro k; ext x; apply Iff.intro
@@ -887,16 +888,19 @@ example : let S := [0 ≤__< 1]; ¬ ouverte S ∧ ¬ fermee S := by
 
 -- c)
 
-section Relatifs
+instance {X : Type} {A : Partie X} : Coe (Partie X) (Partie MetInduite A)
+  where coe := S ↦ {x | x.val ∈ S}
 
-lemma ouverte_of_self_ind (A : Partie X) : ouverte (A : Partie Induite A)
-  := by rw [self_induite]; exact ouverte_of_uni
+lemma met_self_induite {X} {A : Partie X} : (A : Partie MetInduite A) = Ω := by
+  ext x; unfold MetInduite; simp
 
-def S : Partie ℝ := [0 ≤__< 1]
-abbrev Sᵢ : Partie ℝ := Induite S
+lemma ouverte_of_self_ind (A : Partie X) : ouverte (A : Partie MetInduite A)
+  := by rw [met_self_induite]; exact ouverte_of_uni
 
-example : ouverte (S : Partie Sᵢ) := ouverte_of_self_ind S
-example : ¬ ouverte (S : Partie ℝ) := Ico_pas_ouverte one_pos
+example : ouverte ([0 ≤__< 1] : Partie MetInduite [0 ≤__< 1]) := by
+  apply ouverte_of_self_ind
+
+example : ¬ ouverte ([0 ≤__< 1] : Partie ℝ) := Ico_pas_ouverte one_pos
 
 lemma in_Z_induite : ∀ n : ℕ, ↑n ∈ Z := by
   intro n; use n; rw [Int.cast_natCast]
@@ -920,8 +924,6 @@ example : Infinite (Bₒ (0 : ℝ) (1/2)) := by
   rw [←Subtype.val_inj] at h; dsimp [f] at h;
   rw [←inv_eq_one_div, ←inv_eq_one_div, inv_inj] at h
   rwa [add_right_cancel_iff, Nat.cast_inj] at h
-
-end Relatifs
 
 -- Proposition 1.9.
 
@@ -985,6 +987,34 @@ theorem ouv_eq_boule_union {U : Partie X} (h : ouverte U) : ∃ F : Famille X,
   · case mpr => intro in_U; rcases in_U with ⟨U', hU', x_in⟩
                 rcases hU' with ⟨U'', hU''⟩; dsimp at hU''
                 apply (hr U'' U''.prop).right; rwa [←hU''] at x_in
+
+open Set Set.Notation
+
+lemma boule_induite (A : Partie X) (a : A) (r : ℝ) : Bₒ (X := MetInduite A) a r =
+  A ↓∩ Bₒ a.val r := by rfl
+
+open Famille in
+lemma induite_ouvert {A : Partie X} (s : Partie MetInduite A) : ouverte s ↔
+  ∃ t : Partie X, ouverte t ∧ s = A ↓∩ t := by
+  apply Iff.intro
+  · intro h; apply ouv_eq_boule_union at h
+    rcases h with ⟨F, hF, eqF⟩
+    have exists_B : ∀ i, ∃ a r, F.u i = A ↓∩ Bₒ a r := by
+      intro i; rcases hF (F.u i) (by use i) with ⟨a, r, hB⟩
+      use a.val, r; rw [hB, boule_induite]
+    choose a r hB using exists_B
+    let F' : Famille X := ⟨F.ι, i ↦ Bₒ (a i) (r i)⟩
+    use ⋃ᵢ F'; apply And.intro
+    · apply ouverte_of_union; intro P ⟨i, hi⟩
+      dsimp [F'] at hi; rw [←hi]; apply ouv_of_boule_ouv
+    · rw [←val_preimage_of_union, eqF]
+      unfold Famille.iUnion; congr; funext i; rw [hB i]
+--
+  · intro ⟨t, ht, hs⟩; rw [hs]; intro x hx
+    rcases ht x.val hx with ⟨r, r_pos, hr⟩
+    use r, r_pos; rw [boule_induite]
+    rw [Subtype.preimage_val_subset_preimage_val_iff]
+    apply inter_subset_inter_right; exact hr
 
 -- Définition 1.10.
 
@@ -1114,7 +1144,8 @@ def converges_to (u : ℕ → X) (l : X) := ∀ ε > 0, ∃ N, ∀ n ≥ N, d(u 
 
 def converges (u : ℕ → X) := ∃ l, converges_to u l
 
-lemma conv_of_conv_to {u : ℕ → X} {l : X} : converges_to u l → converges u := _ ↦ (by use l)
+lemma conv_of_conv_to {u : ℕ → X} {l : X} : converges_to u l → converges u := _ ↦
+  (by use l)
 
 lemma conv_to_iff_really_conv_to (u : ℕ → ℝ) (l : ℝ) : converges_to u l ↔
   really_converges_to u l := by rfl
@@ -1248,5 +1279,4 @@ theorem conv_of_cauchy_extr (u : ℕ → X) (h : cauchy u) (φ : ℕ → ℕ)
 
 -- Définition 1.16.
 
-def complet (X : Type) [EspaceMetrique X] := ∀ u : ℕ → X, cauchy u →
-  converges u
+def complet (X : Type) [EspaceMetrique X] := ∀ u : ℕ → X, cauchy u → converges u
